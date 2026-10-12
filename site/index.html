@@ -69,8 +69,14 @@
   h2 { font-size: 1.35rem; margin: 0 0 4px; }
   .unter { color: var(--muted); margin: 0 0 16px; }
   .kacheln {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 12px; margin: 0 0 16px;
+  }
+  @media (max-width: 900px) { .kacheln { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) {
+    .kacheln { gap: 8px; }
+    .kachel { padding: 10px 12px; }
+    .kachel .wert { font-size: 1.35rem; }
   }
   .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
   .kachel .label { color: var(--muted); font-size: 0.85rem; }
@@ -84,7 +90,7 @@
   }
   figure img { display: block; width: 100%; height: auto; border-radius: 6px; aspect-ratio: 3000 / 1688; }
   /* Maus-Anzeige über den Balken */
-  .bildrahmen { position: relative; }
+  .bildrahmen { position: relative; container-type: inline-size; }
   .hover { position: absolute; inset: 0; pointer-events: none; }
   .hover .zone { position: absolute; pointer-events: auto; cursor: pointer; }
   .hover .markierung {
@@ -94,12 +100,13 @@
   .hover .tipp {
     position: absolute; pointer-events: none; display: none; z-index: 2;
     background: var(--card); color: var(--text); border: 1px solid var(--line);
-    border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; font-weight: 600;
+    border-radius: 0.6em; padding: 0.45em 0.8em; font-weight: 600;
+    font-size: clamp(9px, 1.25cqw, 14px);   /* wächst mit der Breite der Grafik */
     line-height: 1.35; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     font-variant-numeric: tabular-nums;
   }
   .hover .tipp.fest { box-shadow: none; }
-  .hover .tipp .klein { font-weight: 400; color: var(--muted); font-size: 0.78rem; }
+  .hover .tipp .klein { font-weight: 400; color: var(--muted); font-size: 0.9em; }
   figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
   .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .downloads a {
@@ -300,8 +307,7 @@
 
     function fuelle(b) {
       tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
-                       `${grad(b.temp)} | ${k(b.abw)}` +
-                       (b.laufend ? `<br><span class="klein">noch unvollständig</span>` : "");
+                       `${grad(b.temp)} | ${k(b.abw)}`;      // "bisher" zeigt das laufende Jahr an
       tipp.style.display = "block";
     }
     function ruhe() {                                   // Zustand ohne Maus
@@ -383,14 +389,16 @@
     const unvollst = !aktuell.letzter.startsWith("31.12.");
     const volle = unvollst ? reihen.slice(0, -1) : reihen;
     const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+    const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
     document.getElementById("kacheln-jahr").innerHTML =
       kachel(`${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
              (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
              aktuell.abw >= 0 ? "warm" : "kalt") +
-      kachel("Wärmstes Jahr", String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
       kachel("Mitteltemperatur " + aktuell.jahr, grad(aktuell.temp),
-             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel");
+             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel") +
+      kachel("Wärmstes Jahr", String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
+      kachel("Kältestes Jahr", String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt");
     // Startmonat: Monat des letzten Datentags (über Adresse #monat-03 auch direkt wählbar)
     const ausAdresse = parseInt((location.hash.match(/monat-(\d+)/) || [])[1], 10);
     const ausDaten = parseInt(stand.split(".")[1], 10) || 1;
@@ -436,14 +444,16 @@
         const unvollst = aktuell.tage < tageImMonat;
         const volle = unvollst ? reihen.slice(0, -1) : reihen;
         const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+        const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         ziel.innerHTML =
           kachel(`${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt") +
-          kachel(`Wärmster ${name}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
           kachel(`Mitteltemperatur ${name} ${aktuell.jahr}`, grad(aktuell.temp),
-                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel");
+                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel") +
+          kachel(`Wärmster ${name}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
+          kachel(`Kältester ${name}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt");
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
@@ -493,15 +503,18 @@
         const unvollst = aktuell.tage < saisonTage(x, aktuell.jahr);
         const volle = unvollst ? reihen.slice(0, -1) : reihen;
         const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+        const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         const rekordJahr = saisonLabel(x, rekord.jahr).split(" ")[1];
         ziel.innerHTML =
           kachel(`${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt") +
-          kachel(`Wärmster ${x.name}`, rekordJahr, `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
           kachel(`Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`, grad(aktuell.temp),
-                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit");
+                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit") +
+          kachel(`Wärmster ${x.name}`, rekordJahr, `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm") +
+          kachel(`Kältester ${x.name}`, saisonLabel(x, kaeltest.jahr).split(" ")[1],
+                 `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt");
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
