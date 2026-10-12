@@ -1,4 +1,4 @@
-# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr + alle Monate) und veröffentlicht sie auf GitHub Pages.
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten) und veröffentlicht sie auf GitHub Pages.
 # Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
 
 name: Tägliche Klimagrafik
@@ -62,6 +62,21 @@ jobs:
           ERA5_DUNKEL: "1"
           ERA5_OHNE_DOWNLOAD: "1"
         run: python skripte/ERA5_Monatsmittel_Balken.py
+
+      - name: Jahreszeitengrafiken erstellen (hell)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_JAHRESZEITEN: alle
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahreszeiten_Balken.py
+
+      - name: Jahreszeitengrafiken erstellen (dunkel)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_JAHRESZEITEN: alle
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahreszeiten_Balken.py
 
       - name: Webseite zusammenstellen
         run: cp site/index.html _site/
