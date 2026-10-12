@@ -35,6 +35,7 @@ Läuft lokal (Windows) und auf GitHub:
 """
 
 import os
+import time
 import requests
 import numpy as np
 import pandas as pd
@@ -131,12 +132,14 @@ SCHRIFT = 1.3                   # Faktor für alle Schriftgrößen (1.0 = klein,
 # ERA5_DUNKEL=1 und erzeugt so zusätzlich eine dunkle Fassung für die Webseite.
 DUNKEL = os.environ.get("ERA5_DUNKEL") == "1"
 
-# Webseiten-Fassung (auf GitHub automatisch): ohne Zahlen und Rekord-Kasten; der Info-Kasten
-# ist im Bild leer - an seiner Stelle zeigt die Webseite die Werte des Balkens unter der Maus. Lokal bleibt alles wie eingestellt.
+# Webseiten-Fassung (auf GitHub automatisch): ohne Zahlen. Es entstehen zwei Bilder:
+#   ..._voll.png  mit Info-Kasten und Rekord-Kasten (zum Vergrößern und Herunterladen)
+#   ....png       ohne die beiden Kästen für die interaktive Ansicht - dort zeigt die Webseite
+#                 die Werte des Balkens unter der Maus an der Stelle des Info-Kastens Lokal bleibt alles wie eingestellt.
 WEB = os.environ.get("ERA5_WEB", "1" if os.environ.get("CI") else "0") == "1"
-INFO_ALS_PLATZHALTER = False     # Info-Kasten nur als Platz für die Webseite (nicht im Bild)
+INFO_ALS_PLATZHALTER = False     # zusätzlich ein Bild ohne Info- und Rekord-Kasten speichern
 if WEB:
-    SHOW_VALUES = SHOW_RECORD = False
+    SHOW_VALUES = False
     INFO_ALS_PLATZHALTER = SHOW_INFO  # dort zeigt die Webseite die Werte des Balkens unter der Maus
 if os.environ.get("ERA5_TREND"):                 # Trendlinie auch von außen wählbar
     TREND = os.environ["ERA5_TREND"]
@@ -206,8 +209,16 @@ if os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE):
     print(f"Vorhandene Daten werden genutzt:\n{FILE}")
 else:
     print("Lade aktuelle ERA5-Daten herunter...")
-    response = requests.get(URL, timeout=60)
-    response.raise_for_status()
+    for versuch in range(1, 4):                    # bis zu 3 Versuche, falls der Server hakt
+        try:
+            response = requests.get(URL, timeout=60)
+            response.raise_for_status()
+            break
+        except requests.RequestException as fehler:
+            if versuch == 3:
+                raise
+            print(f"Download fehlgeschlagen ({fehler}) - neuer Versuch in 60 Sekunden ...")
+            time.sleep(60)
     with open(FILE, "wb") as f:
         f.write(response.content)
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
@@ -533,7 +544,7 @@ def erstelle(season, anzeigen=True):
                                                connectionstyle="angle,angleA=0,angleB=90,rad=0",
                                                relpos=(1, 0.5) if left else (0, 0.5),
                                                shrinkA=0, shrinkB=1),
-                               zorder=9)
+                               zorder=9, gid="rekord")
 
         def is_free(m):
             fig.canvas.draw()
@@ -588,18 +599,26 @@ def erstelle(season, anzeigen=True):
         ax.add_patch(Rectangle((jahr - 0.28, y0), 0.56, y1 - y0, facecolor=FARBEN["bg"],
                                edgecolor="none", zorder=5))   # Balken ist 0.8 breit -> Rand frei
 
-    # Lage des Info-Kastens merken; in der Webseiten-Fassung bleibt die Stelle im Bild leer
+    # Lage des Info-Kastens merken (dort zeigt die Webseite die Werte unter der Maus)
     info_rahmen = None
     if SHOW_INFO:
         fig.canvas.draw()
         info_rahmen = info_text.get_bbox_patch().get_window_extent(fig.canvas.get_renderer())
-    if INFO_ALS_PLATZHALTER:
-        info_text.set_visible(False)
 
     if SAVE_PNG:
         png_folder = os.path.join(FOLDER, "Grafiken")      # Unterordner für die Grafiken
         os.makedirs(png_folder, exist_ok=True)
         png_file = os.path.join(png_folder, PNG_NAME)
+        if INFO_ALS_PLATZHALTER:
+            # 1) volle Fassung zum Vergrößern und Herunterladen: mit Info- und Rekord-Kasten
+            voll_file = os.path.splitext(png_file)[0] + "_voll.png"
+            fig.savefig(voll_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+            print(f"Grafik (mit Kästen) gespeichert unter:\n{voll_file}")
+            # 2) interaktive Fassung: Kästen ausblenden, die Webseite zeigt die Werte selbst an
+            info_text.set_visible(False)
+            for t in ax.texts:
+                if t.get_gid() == "rekord":
+                    t.set_visible(False)
         fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
         print(f"Grafik gespeichert unter:\n{png_file}")
         # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
