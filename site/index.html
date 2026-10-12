@@ -3,18 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Klimagrafiken Global</title>
+<title>Klima im Wandel</title>
 <meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Copernicus Climate Pulse).">
 <style>
   :root {
-    --bg: #f6f5f2;
-    --card: #ffffff;
-    --text: #1d1d1f;
-    --muted: #6b6b70;
-    --line: #e3e1dc;
-    --accent: #b2182b;
-    --accent-soft: #fbeaec;
-    --cool: #2166ac;
+    --bg: #f6f5f2; --card: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --line: #e3e1dc;
+    --accent: #b2182b; --accent-soft: #fbeaec; --cool: #2166ac;
   }
   /* Dunkel: wenn der Schalter auf "dunkel" steht oder (ohne Wahl) das System dunkel ist */
   :root[data-theme="dark"] {
@@ -29,34 +23,32 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.5;
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5;
   }
   main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 48px; }
   header { position: relative; padding-right: 56px; }
+  header h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: -0.01em; }
+  header p { margin: 4px 0 0; color: var(--muted); }
   .schalter {
     position: absolute; top: 0; right: 0; width: 44px; height: 44px; border-radius: 999px;
     border: 1px solid var(--line); background: var(--card); color: var(--text);
     font-size: 1.2rem; cursor: pointer; display: grid; place-items: center;
   }
   .schalter:hover { border-color: var(--accent); }
-  .schalter:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  header h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: -0.01em; }
-  header p { margin: 4px 0 0; color: var(--muted); }
+  .schalter:focus-visible, .monate button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .stand {
     display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 999px;
     background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 0.9rem;
   }
+  section { margin-top: 40px; }
+  h2 { font-size: 1.35rem; margin: 0 0 4px; }
+  .unter { color: var(--muted); margin: 0 0 16px; }
   .kacheln {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px; margin: 24px 0;
+    gap: 12px; margin: 0 0 16px;
   }
-  .kachel {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
-  }
+  .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
   .kachel .label { color: var(--muted); font-size: 0.85rem; }
   .kachel .wert { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .kachel .zusatz { color: var(--muted); font-size: 0.85rem; }
@@ -66,15 +58,27 @@
     margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: 12px; overflow: hidden;
   }
-  figure img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 6px; aspect-ratio: 3000 / 1688; }
   figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
-  .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .downloads a {
     text-decoration: none; color: var(--text); border: 1px solid var(--line); background: var(--card);
     border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
   }
   .downloads a:hover { border-color: var(--accent); color: var(--accent); }
-  footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
+  .monate {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-bottom: 16px;
+  }
+  @media (max-width: 720px) { .monate { grid-template-columns: repeat(6, 1fr); } }
+  .monate button {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 8px; padding: 8px 0; font: inherit; font-size: 0.9rem; cursor: pointer;
+  }
+  .monate button:hover { border-color: var(--accent); }
+  .monate button[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
   footer a { color: inherit; }
 </style>
 </head>
@@ -83,26 +87,46 @@
   <header>
     <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
             title="Hell / Dunkel">◐</button>
-    <h1>Globale Jahresmitteltemperatur</h1>
-    <p>Abweichung von der vorindustriellen Zeit (1850–1900) · ERA5 · täglich aktualisiert</p>
+    <h1>Klima im Wandel</h1>
+    <p>Globale Temperatur als Abweichung von der vorindustriellen Zeit (1850–1900) · ERA5 · täglich aktualisiert</p>
     <span class="stand" id="stand">Daten werden geladen …</span>
   </header>
 
-  <section class="kacheln" id="kacheln" aria-live="polite"></section>
+  <!-- ======================= JAHR ======================= -->
+  <section aria-labelledby="h-jahr">
+    <h2 id="h-jahr">Jahresmittel</h2>
+    <p class="unter">Jedes Jahr seit 1940 im Vergleich</p>
+    <div class="kacheln" id="kacheln-jahr" aria-live="polite"></div>
+    <figure>
+      <a id="link-jahr" href="#">
+        <img id="bild-jahr" alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
+      </a>
+      <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
+    </figure>
+    <nav class="downloads" aria-label="Downloads Jahresmittel">
+      <a id="png-jahr" href="#" download>Grafik (PNG)</a>
+      <a href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
+      <a href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+    </nav>
+  </section>
 
-  <figure>
-    <a id="bild-link" href="daten/Grafiken/ERA5_global_jahreswerte.png">
-      <img id="bild" src="daten/Grafiken/ERA5_global_jahreswerte.png"
-           alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
-    </a>
-    <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
-  </figure>
-
-  <nav class="downloads" aria-label="Downloads">
-    <a id="png-download" href="daten/Grafiken/ERA5_global_jahreswerte.png" download>Grafik (PNG)</a>
-    <a href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
-    <a href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
-  </nav>
+  <!-- ======================= MONATE ======================= -->
+  <section aria-labelledby="h-monat">
+    <h2 id="h-monat">Monatsmittel</h2>
+    <p class="unter">Ein Monat über alle Jahre seit 1940 – z. B. alle Oktobermonate im Vergleich</p>
+    <div class="monate" id="monate" role="group" aria-label="Monat auswählen"></div>
+    <div class="kacheln" id="kacheln-monat" aria-live="polite"></div>
+    <figure>
+      <a id="link-monat" href="#">
+        <img id="bild-monat" alt="">
+      </a>
+      <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
+    </figure>
+    <nav class="downloads" aria-label="Downloads Monatsmittel">
+      <a id="png-monat" href="#" download>Grafik (PNG)</a>
+      <a id="txt-monat" href="#">Monatswerte (TXT)</a>
+    </nav>
+  </section>
 
   <footer>
     Datenquelle: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
@@ -111,80 +135,144 @@
 </main>
 
 <script>
+  const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+                  "August", "September", "Oktober", "November", "Dezember"];
+  const KURZ = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+  const nn = m => String(m).padStart(2, "0");
+
+  let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
+  let monat = null;          // gewählter Monat 1..12
+
   // ---------- Hell / Dunkel ----------
   // Ohne eigene Wahl folgt die Seite der Systemeinstellung; eine Wahl wird im Browser gemerkt.
-  const BILD = "daten/Grafiken/ERA5_global_jahreswerte";
-  let version = "";                                   // wird nach dem Laden auf den Datenstand gesetzt
   const systemDunkel = window.matchMedia("(prefers-color-scheme: dark)");
   let wahl = null;                                    // "light", "dark" oder null (= System)
   try { wahl = localStorage.getItem("thema"); } catch (e) {}
+  const istDunkel = () => (wahl ? wahl === "dark" : systemDunkel.matches);
+
+  // Bild, Vergrößern-Link und PNG-Download auf die passende (helle/dunkle) Datei setzen
+  function setzeBild(teil, name) {
+    const datei = `daten/Grafiken/${name}${istDunkel() ? "_dunkel" : ""}.png${version}`;
+    document.getElementById("bild-" + teil).src = datei;
+    document.getElementById("link-" + teil).href = datei;
+    document.getElementById("png-" + teil).href = datei;
+  }
 
   function anwenden() {
-    const dunkel = wahl ? wahl === "dark" : systemDunkel.matches;
     if (wahl) document.documentElement.setAttribute("data-theme", wahl);
     else document.documentElement.removeAttribute("data-theme");
-    const datei = BILD + (dunkel ? "_dunkel" : "") + ".png" + version;
-    document.getElementById("bild").src = datei;
-    document.getElementById("bild-link").href = datei;
-    document.getElementById("png-download").href = datei;
     const knopf = document.getElementById("schalter");
-    knopf.textContent = dunkel ? "☀" : "☾";
-    knopf.setAttribute("aria-label", dunkel ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
+    knopf.textContent = istDunkel() ? "☀" : "☾";
+    knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
+    setzeBild("jahr", "ERA5_global_jahreswerte");
+    if (monat) setzeBild("monat", `ERA5_global_monat_${nn(monat)}`);
   }
   document.getElementById("schalter").addEventListener("click", () => {
-    const dunkel = wahl ? wahl === "dark" : systemDunkel.matches;
-    wahl = dunkel ? "light" : "dark";
+    wahl = istDunkel() ? "light" : "dark";
     try { localStorage.setItem("thema", wahl); } catch (e) {}
     anwenden();
   });
   systemDunkel.addEventListener("change", anwenden);
-  anwenden();
 
-  // Zahlen deutsch formatieren: +1,50 K
+  // ---------- Hilfen ----------
   const k = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2).replace(".", ",") + " K";
+  const grad = v => v.toFixed(2).replace(".", ",") + " °C";
+  const kachel = (label, wert, zusatz, klasse = "") =>
+    `<div class="kachel"><div class="label">${label}</div>` +
+    `<div class="wert ${klasse}">${wert}</div><div class="zusatz">${zusatz}</div></div>`;
 
+  // TXT-Datei (Jahr Temp Abw Rang Tage letzter_Tag) einlesen
+  function lese(text) {
+    const zeilen = text.split("\n");
+    const stand = (zeilen.find(z => z.startsWith("# Stand:")) || "").replace("# Stand:", "").trim();
+    const reihen = zeilen.filter(z => /^\d{4}\s/.test(z)).map(z => {
+      const [jahr, temp, abw, rang, tage, letzter] = z.trim().split(/\s+/);
+      return { jahr: +jahr, temp: +temp, abw: +abw, rang: +rang, tage: +tage, letzter };
+    });
+    return { stand, reihen };
+  }
+
+  // ---------- Jahr ----------
+  function zeigeJahr({ stand, reihen }) {
+    if (!reihen.length) return;
+    document.getElementById("stand").textContent = "Stand der Daten: " + stand;
+    const aktuell = reihen[reihen.length - 1];
+    const unvollst = !aktuell.letzter.startsWith("31.12.");
+    const volle = unvollst ? reihen.slice(0, -1) : reihen;
+    const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+    document.getElementById("kacheln-jahr").innerHTML =
+      kachel(`${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+             `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
+             (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+             aktuell.abw >= 0 ? "warm" : "kalt") +
+      kachel("Wärmstes Jahr", String(rekord.jahr), k(rekord.abw), "warm") +
+      kachel("Mitteltemperatur " + aktuell.jahr, grad(aktuell.temp),
+             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel");
+    // Startmonat: Monat des letzten Datentags (über Adresse #monat-03 auch direkt wählbar)
+    const ausAdresse = parseInt((location.hash.match(/monat-(\d+)/) || [])[1], 10);
+    const ausDaten = parseInt(stand.split(".")[1], 10) || 1;
+    waehleMonat(ausAdresse >= 1 && ausAdresse <= 12 ? ausAdresse : ausDaten, false);
+  }
+
+  // ---------- Monate ----------
+  const leiste = document.getElementById("monate");
+  KURZ.forEach((kurz, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = kurz;
+    b.setAttribute("aria-label", MONATE[i]);
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => waehleMonat(i + 1, true));
+    leiste.appendChild(b);
+  });
+
+  function waehleMonat(m, adresseMerken) {
+    monat = m;
+    [...leiste.children].forEach((b, i) => b.setAttribute("aria-pressed", String(i + 1 === m)));
+    if (adresseMerken) history.replaceState(null, "", "#monat-" + nn(m));
+    const name = MONATE[m - 1];
+    document.getElementById("bild-monat").alt =
+      `Balkendiagramm der globalen Mitteltemperatur im ${name} seit 1940 als Abweichung von 1850–1900`;
+    document.getElementById("txt-monat").href = `daten/ERA5_global_monat_${nn(m)}.txt`;
+    setzeBild("monat", `ERA5_global_monat_${nn(m)}`);
+
+    const ziel = document.getElementById("kacheln-monat");
+    fetch(`daten/ERA5_global_monat_${nn(m)}.txt`, { cache: "no-store" })
+      .then(r => r.text())
+      .then(text => {
+        if (monat !== m) return;                       // inzwischen anderer Monat gewählt
+        const { reihen } = lese(text);
+        if (!reihen.length) { ziel.innerHTML = ""; return; }
+        const aktuell = reihen[reihen.length - 1];
+        const tageImMonat = new Date(aktuell.jahr, m, 0).getDate();
+        const unvollst = aktuell.tage < tageImMonat;
+        const volle = unvollst ? reihen.slice(0, -1) : reihen;
+        const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+        ziel.innerHTML =
+          kachel(`${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+                 `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
+                 (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+                 aktuell.abw >= 0 ? "warm" : "kalt") +
+          kachel(`Wärmster ${name}`, String(rekord.jahr), k(rekord.abw), "warm") +
+          kachel(`Mitteltemperatur ${name} ${aktuell.jahr}`, grad(aktuell.temp),
+                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel");
+      })
+      .catch(() => { ziel.innerHTML = ""; });
+  }
+
+  // ---------- Start ----------
+  anwenden();
   fetch("daten/ERA5_global_jahreswerte.txt", { cache: "no-store" })
     .then(r => r.text())
     .then(text => {
-      const zeilen = text.split("\n");
-      const stand = (zeilen.find(z => z.startsWith("# Stand:")) || "").replace("# Stand:", "").trim();
-
-      // Datenzeilen: Jahr Temp Abw Rang Tage letzter_Tag
-      const jahre = zeilen
-        .filter(z => /^\d{4}\s/.test(z))
-        .map(z => {
-          const [jahr, temp, abw, rang, tage, letzter] = z.trim().split(/\s+/);
-          return { jahr: +jahr, temp: +temp, abw: +abw, rang: +rang, tage: +tage, letzter };
-        });
-      if (!jahre.length) return;
-
-      const aktuell = jahre[jahre.length - 1];
-      const unvollstaendig = !aktuell.letzter.startsWith("31.12.");
-      const volle = unvollstaendig ? jahre.slice(0, -1) : jahre;
-      const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
-
-      document.getElementById("stand").textContent = "Stand der Daten: " + stand;
-
-      // Bild nach jedem Datenstand neu laden (nicht aus dem Browser-Speicher)
-      version = "?v=" + encodeURIComponent(stand);
+      const daten = lese(text);
+      version = "?v=" + encodeURIComponent(daten.stand);
       anwenden();
-
-      const kachel = (label, wert, zusatz, klasse = "") =>
-        `<div class="kachel"><div class="label">${label}</div>` +
-        `<div class="wert ${klasse}">${wert}</div><div class="zusatz">${zusatz}</div></div>`;
-
-      document.getElementById("kacheln").innerHTML =
-        kachel(`${aktuell.jahr}${unvollstaendig ? " bisher" : ""}`, k(aktuell.abw),
-               `${unvollstaendig ? "bisher " : ""}Rang ${aktuell.rang} von ${jahre.length}` +
-               (unvollstaendig ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
-               aktuell.abw >= 0 ? "warm" : "kalt") +
-        kachel("Wärmstes Jahr", String(rekord.jahr), k(rekord.abw), "warm") +
-        kachel("Mitteltemperatur " + aktuell.jahr,
-               aktuell.temp.toFixed(2).replace(".", ",") + " °C",
-               unvollstaendig ? "laufendes Jahr, noch unvollständig" : "Jahresmittel");
+      zeigeJahr(daten);
     })
     .catch(() => {
       document.getElementById("stand").textContent = "Stand der Daten: unbekannt";
+      waehleMonat(1, false);
     });
 </script>
 </body>
