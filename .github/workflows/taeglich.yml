@@ -96,3 +96,28 @@ jobs:
       - name: Auf GitHub Pages veröffentlichen
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # Verhindert, dass GitHub den täglichen Lauf nach 60 Tagen ohne Änderung pausiert:
+  # am 1. jedes Monats schreibt der geplante Lauf das Datum in wachhalten.txt.
+  # (Änderungen durch diesen Bot starten keinen neuen Lauf.)
+  wachhalten:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v6
+
+      - name: Monatlicher Eintrag
+        run: |
+          if [ "$(date -u +%d)" = "01" ]; then
+            date -u +"%Y-%m-%d" > wachhalten.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            git add wachhalten.txt
+            git commit -m "Monatlicher Eintrag (hält den täglichen Lauf aktiv)" || exit 0
+            git push
+          else
+            echo "Heute kein Eintrag nötig (nur am 1. des Monats)."
+          fi
