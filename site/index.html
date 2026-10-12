@@ -86,6 +86,7 @@
     line-height: 1.35; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     font-variant-numeric: tabular-nums;
   }
+  .hover .tipp.fest { box-shadow: none; }
   .hover .tipp .klein { font-weight: 400; color: var(--muted); font-size: 0.78rem; }
   figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
   .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -276,15 +277,30 @@
     const link = document.getElementById("link-" + teil);
     let aktiv = null, beruehrt = false, warAktiv = false;
 
-    function zeige(b) {
-      aktiv = b;
-      Object.assign(mark.style, { display: "block", left: pz(b.x0), width: pz(b.x1 - b.x0),
-                                  top: pz(b.y0), height: pz(b.y1 - b.y0) });
+    // Gibt es im Bild einen (leeren) Platz für den Info-Kasten, steht der Kasten fest oben links
+    // und zeigt ohne Maus den neuesten Wert - wie der frühere Info-Kasten.
+    const fest = !!d.info;
+    const neuester = d.balken[d.balken.length - 1];
+
+    function fuelle(b) {
       tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
                        `${grad(b.temp)} | ${k(b.abw)}` +
                        (b.laufend ? `<br><span class="klein">noch unvollständig</span>` : "");
       tipp.style.display = "block";
-      // Kasten über dem Balken, mittig; am Rand und oben im Bild bleiben
+    }
+    function ruhe() {                                   // Zustand ohne Maus
+      aktiv = null;
+      mark.style.display = "none";
+      if (fest) fuelle(neuester); else tipp.style.display = "none";
+    }
+
+    function zeige(b) {
+      aktiv = b;
+      Object.assign(mark.style, { display: "block", left: pz(b.x0), width: pz(b.x1 - b.x0),
+                                  top: pz(b.y0), height: pz(b.y1 - b.y0) });
+      fuelle(b);
+      if (fest) return;                                 // fester Platz oben links
+      // sonst: Kasten über dem Balken, mittig; am Rand und oben im Bild bleiben
       const W = schicht.clientWidth, H = schicht.clientHeight;
       const tw = tipp.offsetWidth, th = tipp.offsetHeight;
       let x = ((b.x0 + b.x1) / 2) * W - tw / 2;
@@ -294,7 +310,12 @@
       tipp.style.left = x + "px";
       tipp.style.top = y + "px";
     }
-    function verstecke() { aktiv = null; mark.style.display = "none"; tipp.style.display = "none"; }
+    const verstecke = ruhe;
+    if (fest) {
+      tipp.classList.add("fest");
+      Object.assign(tipp.style, { left: pz(d.info.x0), top: pz(d.info.y0) });
+      ruhe();
+    }
 
     d.balken.forEach((b, i) => {
       const z = document.createElement("div");
