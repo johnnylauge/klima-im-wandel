@@ -71,6 +71,22 @@
     padding: 12px; overflow: hidden;
   }
   figure img { display: block; width: 100%; height: auto; border-radius: 6px; aspect-ratio: 3000 / 1688; }
+  /* Maus-Anzeige über den Balken */
+  .bildrahmen { position: relative; }
+  .hover { position: absolute; inset: 0; pointer-events: none; }
+  .hover .zone { position: absolute; pointer-events: auto; cursor: pointer; }
+  .hover .markierung {
+    position: absolute; pointer-events: none; display: none;
+    outline: 2px solid var(--text); outline-offset: 1px; border-radius: 1px;
+  }
+  .hover .tipp {
+    position: absolute; pointer-events: none; display: none; z-index: 2;
+    background: var(--card); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; font-weight: 600;
+    line-height: 1.35; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    font-variant-numeric: tabular-nums;
+  }
+  .hover .tipp .klein { font-weight: 400; color: var(--muted); font-size: 0.78rem; }
   figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
   .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .downloads a {
@@ -118,10 +134,13 @@
     <p class="unter">Jedes Jahr seit 1940 im Vergleich</p>
     <div class="kacheln" id="kacheln-jahr" aria-live="polite"></div>
     <figure>
-      <a id="link-jahr" href="#">
-        <img id="bild-jahr" alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
-      </a>
-      <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
+      <div class="bildrahmen">
+        <a id="link-jahr" href="#">
+          <img id="bild-jahr" alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
+        </a>
+        <div class="hover" id="hover-jahr"></div>
+      </div>
+      <figcaption>Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.</figcaption>
     </figure>
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
@@ -138,9 +157,12 @@
     <div class="saisons" id="saisons" role="group" aria-label="Jahreszeit auswählen"></div>
     <div class="kacheln" id="kacheln-saison" aria-live="polite"></div>
     <figure>
-      <a id="link-saison" href="#">
-        <img id="bild-saison" alt="">
-      </a>
+      <div class="bildrahmen">
+        <a id="link-saison" href="#">
+          <img id="bild-saison" alt="">
+        </a>
+        <div class="hover" id="hover-saison"></div>
+      </div>
       <figcaption id="hinweis-saison">Zum Vergrößern auf die Grafik klicken.</figcaption>
     </figure>
     <nav class="downloads" aria-label="Downloads Jahreszeiten">
@@ -156,10 +178,13 @@
     <div class="monate" id="monate" role="group" aria-label="Monat auswählen"></div>
     <div class="kacheln" id="kacheln-monat" aria-live="polite"></div>
     <figure>
-      <a id="link-monat" href="#">
-        <img id="bild-monat" alt="">
-      </a>
-      <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
+      <div class="bildrahmen">
+        <a id="link-monat" href="#">
+          <img id="bild-monat" alt="">
+        </a>
+        <div class="hover" id="hover-monat"></div>
+      </div>
+      <figcaption>Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.</figcaption>
     </figure>
     <nav class="downloads" aria-label="Downloads Monatsmittel">
       <a id="png-monat" href="#" download>Grafik (PNG)</a>
@@ -204,6 +229,7 @@
     document.getElementById("bild-" + teil).src = datei;
     document.getElementById("link-" + teil).href = datei;
     document.getElementById("png-" + teil).href = datei;
+    ladeHover(teil, name);
   }
 
   function anwenden() {
@@ -222,6 +248,77 @@
     anwenden();
   });
   systemDunkel.addEventListener("change", anwenden);
+
+  // ---------- Maus-Anzeige über den Balken ----------
+  // Das Skript schreibt zu jeder Grafik eine JSON-Datei mit der Lage jedes Balkens im Bild.
+  // Darüber liegen unsichtbare Felder; beim Darüberfahren erscheint ein Kasten mit den Werten.
+  const hoverGeladen = {};
+  function ladeHover(teil, name) {
+    const schicht = document.getElementById("hover-" + teil);
+    const schluessel = name + version;
+    if (hoverGeladen[teil] === schluessel) return;          // schon da (z. B. nur hell/dunkel gewechselt)
+    hoverGeladen[teil] = schluessel;
+    schicht.innerHTML = "";
+    fetch(`daten/Grafiken/${name}.json${version}`, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d && hoverGeladen[teil] === schluessel) baueHover(teil, schicht, d); })
+      .catch(() => {});
+  }
+
+  function baueHover(teil, schicht, d) {
+    const pz = v => (v * 100).toFixed(3) + "%";
+    const mark = document.createElement("div");
+    mark.className = "markierung";
+    const tipp = document.createElement("div");
+    tipp.className = "tipp";
+    tipp.setAttribute("role", "status");
+    schicht.append(mark, tipp);
+    const link = document.getElementById("link-" + teil);
+    let aktiv = null, beruehrt = false, warAktiv = false;
+
+    function zeige(b) {
+      aktiv = b;
+      Object.assign(mark.style, { display: "block", left: pz(b.x0), width: pz(b.x1 - b.x0),
+                                  top: pz(b.y0), height: pz(b.y1 - b.y0) });
+      tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
+                       `${grad(b.temp)} | ${k(b.abw)}` +
+                       (b.laufend ? `<br><span class="klein">noch unvollständig</span>` : "");
+      tipp.style.display = "block";
+      // Kasten über dem Balken, mittig; am Rand und oben im Bild bleiben
+      const W = schicht.clientWidth, H = schicht.clientHeight;
+      const tw = tipp.offsetWidth, th = tipp.offsetHeight;
+      let x = ((b.x0 + b.x1) / 2) * W - tw / 2;
+      x = Math.max(4, Math.min(W - tw - 4, x));
+      let y = b.y0 * H - th - 10;
+      if (y < d.achse.y0 * H) y = b.y0 * H + 10;               // zu wenig Platz oben -> darunter
+      tipp.style.left = x + "px";
+      tipp.style.top = y + "px";
+    }
+    function verstecke() { aktiv = null; mark.style.display = "none"; tipp.style.display = "none"; }
+
+    d.balken.forEach((b, i) => {
+      const z = document.createElement("div");
+      z.className = "zone";
+      // Feld über die ganze Höhe des Diagramms, so breit wie der Abstand zu den Nachbarbalken
+      const links = i > 0 ? (d.balken[i - 1].x1 + b.x0) / 2 : b.x0;
+      const rechts = i < d.balken.length - 1 ? (b.x1 + d.balken[i + 1].x0) / 2 : b.x1;
+      Object.assign(z.style, { left: pz(links), width: pz(rechts - links),
+                               top: pz(d.achse.y0), height: pz(d.achse.y1 - d.achse.y0) });
+      // Maus: Darüberfahren zeigt die Werte, Klicken öffnet die große Grafik
+      z.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") zeige(b); });
+      z.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") verstecke(); });
+      // Handy: erstes Antippen zeigt die Werte, zweites Antippen desselben Balkens öffnet die Grafik
+      z.addEventListener("pointerdown", e => { beruehrt = e.pointerType !== "mouse"; warAktiv = aktiv === b; });
+      z.addEventListener("click", e => {
+        e.preventDefault();
+        if (beruehrt && !warAktiv) { zeige(b); return; }
+        window.location.href = link.href;
+      });
+      schicht.appendChild(z);
+    });
+    schicht.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") verstecke(); });
+    window.addEventListener("resize", () => { if (aktiv) zeige(aktiv); });
+  }
 
   // ---------- Hilfen ----------
   const k = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2).replace(".", ",") + " K";
@@ -344,8 +441,8 @@
       `Balkendiagramm der globalen Mitteltemperatur im ${x.name} seit 1940 als Abweichung von 1850–1900`;
     document.getElementById("txt-saison").href = `daten/ERA5_global_saison_${x.datei}.txt`;
     document.getElementById("hinweis-saison").textContent = x.name === "Winter"
-      ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Zum Vergrößern auf die Grafik klicken."
-      : "Zum Vergrößern auf die Grafik klicken.";
+      ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Mit der Maus über einen Balken fahren zeigt die Werte · zum Vergrößern klicken."
+      : "Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.";
     setzeBild("saison", `ERA5_global_saison_${x.datei}`);
 
     const ziel = document.getElementById("kacheln-saison");
