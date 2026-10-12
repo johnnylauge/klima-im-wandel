@@ -42,6 +42,34 @@ import matplotlib.patheffects as pe
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.ticker import MultipleLocator
+import json
+
+
+def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, datei):
+    """Schreibt für die Webseite, wo jeder Balken im Bild liegt (Anteile 0..1 von Breite/Höhe,
+    gemessen von oben links) und welche Werte dazugehören. Die Webseite legt damit unsichtbare
+    Felder über das PNG und zeigt beim Darüberfahren mit der Maus einen Kasten an."""
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    breite, hoehe = fig.canvas.get_width_height()
+    fx = lambda v: round(min(max(v / breite, 0), 1), 5)
+    fy = lambda v: round(min(max(1 - v / hoehe, 0), 1), 5)
+    achse = ax.get_window_extent(r)
+    balken = []
+    for b, (jahr, z) in zip(bars, werte.iterrows()):
+        e = b.get_window_extent(r)
+        balken.append(dict(
+            jahr=int(jahr), label=beschriftung(jahr), rang=int(z["rank"]),
+            temp=round(float(z["temp"]), 3), abw=round(float(z["anomaly"]), 3),
+            laufend=bool(jahr == laufend_jahr),
+            x0=fx(e.x0), x1=fx(e.x1),
+            y0=fy(max(e.y0, e.y1)), y1=fy(min(e.y0, e.y1)),   # oben / unten im Bild
+        ))
+    with open(datei, "w", encoding="utf-8") as f:
+        json.dump(dict(achse=dict(x0=fx(achse.x0), x1=fx(achse.x1),
+                                  y0=fy(achse.y1), y1=fy(achse.y0)),
+                       balken=balken), f, ensure_ascii=False)
+    print(f"Daten für die Maus-Anzeige gespeichert unter:\n{datei}")
 
 # =========================================================
 # EINSTELLUNGEN
@@ -495,6 +523,10 @@ def erstelle(monat, anzeigen=True):
         png_file = os.path.join(png_folder, PNG_NAME)
         fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
         print(f"Grafik gespeichert unter:\n{png_file}")
+        # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
+        speichere_hover_daten(fig, ax, bars, annual, monat_label,
+                              current_year if is_partial else None,
+                              os.path.join(png_folder, f"ERA5_global_monat_{MONTH:02d}" + ".json"))
     if anzeigen:
         plt.show()
     else:
