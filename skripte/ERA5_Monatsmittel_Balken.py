@@ -45,7 +45,7 @@ from matplotlib.ticker import MultipleLocator
 import json
 
 
-def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, datei):
+def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, datei, info_rahmen=None):
     """Schreibt für die Webseite, wo jeder Balken im Bild liegt (Anteile 0..1 von Breite/Höhe,
     gemessen von oben links) und welche Werte dazugehören. Die Webseite legt damit unsichtbare
     Felder über das PNG und zeigt beim Darüberfahren mit der Maus einen Kasten an."""
@@ -68,8 +68,28 @@ def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, date
     with open(datei, "w", encoding="utf-8") as f:
         json.dump(dict(achse=dict(x0=fx(achse.x0), x1=fx(achse.x1),
                                   y0=fy(achse.y1), y1=fy(achse.y0)),
+                       info=(dict(x0=fx(info_rahmen.x0), x1=fx(info_rahmen.x1),
+                                  y0=fy(info_rahmen.y1), y1=fy(info_rahmen.y0))
+                             if info_rahmen is not None else None),
                        balken=balken), f, ensure_ascii=False)
     print(f"Daten für die Maus-Anzeige gespeichert unter:\n{datei}")
+
+
+def loess(reihe, fenster=30):
+    """LOESS-Glättung: für jedes Jahr eine lokale Gerade durch die 'fenster' nächstgelegenen
+    Jahre, nahe Jahre zählen stärker (Tricube-Gewichte). Ergibt einen ruhigen Klimatrend,
+    der - anders als ein zentriertes Mittel - bis zum letzten vollständigen Jahr reicht."""
+    x = reihe.index.to_numpy(float)
+    y = reihe.to_numpy(float)
+    q = min(fenster, len(x))
+    werte = []
+    for x0 in x:
+        d = np.abs(x - x0)
+        h = np.sort(d)[q - 1] * 1.000001 or 1.0
+        w = np.clip(1 - (d / h) ** 3, 0, None) ** 3
+        A = np.vstack([np.ones_like(x), x - x0]).T * np.sqrt(w)[:, None]
+        werte.append(np.linalg.lstsq(A, y * np.sqrt(w), rcond=None)[0][0])
+    return pd.Series(werte, index=reihe.index)
 
 # =========================================================
 # EINSTELLUNGEN
@@ -94,6 +114,9 @@ SHOW_RUNNING_MEAN = True        # Gleitendes Mittel als Linie
 RUNNING_WINDOW = 5              # Fensterbreite in Jahren
 SMOOTH_LINE = True              # Linie weich statt eckig zeichnen
 SHOW_RECORD = True              # wärmsten (vollständigen) Monat in der Grafik markieren
+SHOW_INFO = True                # Info-Kasten oben links (aktueller Wert und Rang)
+TREND = "loess30"               # Trendlinie: "5jahre" = gleitendes 5-Jahres-Mittel,
+                                # "loess30" = LOESS-Glättung über 30 Jahre (Klimatrend)
 SHOW_1_5_LINE = True            # 1,5-K-Linie (nur bei Bezug 1850–1900)
 Y_LIMITS = (-0.30, 1.80)        # feste y-Achse (unten, oben); None = automatisch
 Y_TICK_STEP = 0.25              # Abstand der Beschriftung auf der y-Achse
@@ -106,6 +129,16 @@ SCHRIFT = 1.3                   # Faktor für alle Schriftgrößen (1.0 = klein,
 # Helle oder dunkle Grafik. Lokal hier umstellen; auf GitHub setzt die Steuerdatei
 # ERA5_DUNKEL=1 und erzeugt so zusätzlich eine dunkle Fassung für die Webseite.
 DUNKEL = os.environ.get("ERA5_DUNKEL") == "1"
+
+# Webseiten-Fassung (auf GitHub automatisch): ohne Zahlen und Rekord-Kasten; der Info-Kasten
+# ist im Bild leer - an seiner Stelle zeigt die Webseite die Werte des Balkens unter der Maus. Lokal bleibt alles wie eingestellt.
+WEB = os.environ.get("ERA5_WEB", "1" if os.environ.get("CI") else "0") == "1"
+INFO_ALS_PLATZHALTER = False     # Info-Kasten nur als Platz für die Webseite (nicht im Bild)
+if WEB:
+    SHOW_VALUES = SHOW_RECORD = False
+    INFO_ALS_PLATZHALTER = SHOW_INFO  # dort zeigt die Webseite die Werte des Balkens unter der Maus
+if os.environ.get("ERA5_TREND"):                 # Trendlinie auch von außen wählbar
+    TREND = os.environ["ERA5_TREND"]
 
 # Auf GitHub gibt die Steuerdatei die Monate vor (z. B. "alle")
 if os.environ.get("ERA5_MONATE"):
@@ -311,7 +344,10 @@ def erstelle(monat, anzeigen=True):
     # Gleitendes Mittel (zentriert, nur vollständige Jahre)
     if SHOW_RUNNING_MEAN:
         full = annual.drop(current_year) if is_partial else annual
-        running = full["anomaly"].rolling(RUNNING_WINDOW, center=True).mean().dropna()
+        if TREND == "loess30":
+            running = loess(full["anomaly"], 30)
+        else:
+            running = full["anomaly"].rolling(RUNNING_WINDOW, center=True).mean().dropna()
         x, y = running.index.to_numpy(float), running.to_numpy(float)
 
         # Glättung: weiche Kurve (Catmull-Rom-Spline) durch die Jahreswerte,
@@ -330,7 +366,8 @@ def erstelle(monat, anzeigen=True):
 
         ax.plot(x, y, color=FARBEN["fg"], lw=2.2, ls="--",
                 path_effects=[pe.Stroke(linewidth=4, foreground=FARBEN["linie_rand"]), pe.Normal()],
-                label=f"{RUNNING_WINDOW}-jähriges gleitendes Mittel", zorder=5)
+                label=("LOESS-Trend (30 Jahre)" if TREND == "loess30"
+                       else f"{RUNNING_WINDOW}-jähriges gleitendes Mittel"), zorder=5)
 
     # 1,5-K-Linie
     if SHOW_1_5_LINE and BASELINE == "1850-1900":
@@ -351,6 +388,7 @@ def erstelle(monat, anzeigen=True):
         info += f"\nWärmster {MONTH_NAME}: {warmest} ({annual.loc[warmest, 'anomaly']:+.2f} K)"
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)
+    info_text.set_visible(SHOW_INFO)
 
     # =========================================================
     # ACHSEN, TITEL, LEGENDE
@@ -429,15 +467,19 @@ def erstelle(monat, anzeigen=True):
             fig.canvas.draw()
             r = fig.canvas.get_renderer()
             area = ax.get_window_extent(r)
-            k = info_text.get_bbox_patch().get_window_extent(r)   # sichtbarer Rahmen des Info-Kastens
             l = legend.get_frame().get_window_extent(r)           # sichtbarer Rahmen der Legende
-            gap = area.y1 - k.y1                                  # Abstand Info-Kasten zum oberen Rand
-            ziel_oben = k.y0 - gap
+            if SHOW_INFO:                                         # unter den Info-Kasten
+                k = info_text.get_bbox_patch().get_window_extent(r)
+                gap = area.y1 - k.y1                              # Abstand Info-Kasten zum oberen Rand
+                ziel_oben, links = k.y0 - gap, k.x0
+            else:                                                 # ohne Info-Kasten: oben links
+                gap = 0.03 * area.height
+                ziel_oben, links = area.y1 - gap, area.x0 + 0.01 * area.width
             if SHOW_1_5_LINE and BASELINE == "1850-1900":         # 1,5-K-Linie nicht verdecken
                 linie = ax.transData.transform((0, 1.5))[1]
                 ziel_oben = min(ziel_oben, linie - gap)
             anker = legend.get_bbox_to_anchor().transformed(ax.transAxes.inverted())
-            legend.set_bbox_to_anchor((anker.x0 + (k.x0 - l.x0) / area.width,
+            legend.set_bbox_to_anchor((anker.x0 + (links - l.x0) / area.width,
                                        anker.y0 + (ziel_oben - l.y1) / area.height),
                                       transform=ax.transAxes)
 
@@ -471,7 +513,7 @@ def erstelle(monat, anzeigen=True):
             area = ax.get_window_extent(r)
             if bb.x0 < area.x0 or bb.x1 > area.x1 or bb.y1 > area.y1 - 2:
                 return False
-            others = [t for t in ax.texts if t.get_bbox_patch() is not None and t is not m]
+            others = [t for t in ax.texts if t.get_bbox_patch() is not None and t is not m and t.get_visible()]
             if ax.get_legend():
                 others.append(ax.get_legend())
             for o in others:
@@ -517,6 +559,14 @@ def erstelle(monat, anzeigen=True):
         ax.add_patch(Rectangle((jahr - 0.28, y0), 0.56, y1 - y0, facecolor=FARBEN["bg"],
                                edgecolor="none", zorder=5))   # Balken ist 0.8 breit -> Rand frei
 
+    # Lage des Info-Kastens merken; in der Webseiten-Fassung bleibt die Stelle im Bild leer
+    info_rahmen = None
+    if SHOW_INFO:
+        fig.canvas.draw()
+        info_rahmen = info_text.get_bbox_patch().get_window_extent(fig.canvas.get_renderer())
+    if INFO_ALS_PLATZHALTER:
+        info_text.set_visible(False)
+
     if SAVE_PNG:
         png_folder = os.path.join(FOLDER, "Grafiken")      # Unterordner für die Grafiken
         os.makedirs(png_folder, exist_ok=True)
@@ -526,7 +576,8 @@ def erstelle(monat, anzeigen=True):
         # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
         speichere_hover_daten(fig, ax, bars, annual, monat_label,
                               current_year if is_partial else None,
-                              os.path.join(png_folder, f"ERA5_global_monat_{MONTH:02d}" + ".json"))
+                              os.path.join(png_folder, f"ERA5_global_monat_{MONTH:02d}" + ".json"),
+                              info_rahmen=info_rahmen)
     if anzeigen:
         plt.show()
     else:
