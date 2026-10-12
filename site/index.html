@@ -48,7 +48,7 @@
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
   }
   .reiter button {
-    border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 600;
+    border: 0; white-space: nowrap; background: transparent; color: var(--text); font: inherit; font-weight: 600;
     padding: 8px 20px; border-radius: 8px; cursor: pointer;
   }
   .reiter button:hover { color: var(--accent); }
@@ -78,16 +78,18 @@
     border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
   }
   .downloads a:hover { border-color: var(--accent); color: var(--accent); }
-  .monate {
+  .monate, .saisons {
     display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-bottom: 16px;
   }
+  .saisons { grid-template-columns: repeat(4, 1fr); max-width: 560px; }
   @media (max-width: 720px) { .monate { grid-template-columns: repeat(6, 1fr); } }
-  .monate button {
+  .monate button, .saisons button {
     border: 1px solid var(--line); background: var(--card); color: var(--text);
     border-radius: 8px; padding: 8px 0; font: inherit; font-size: 0.9rem; cursor: pointer;
   }
-  .monate button:hover { border-color: var(--accent); }
-  .monate button[aria-pressed="true"] {
+  .monate button:hover, .saisons button:hover { border-color: var(--accent); }
+  .saisons button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .monate button[aria-pressed="true"], .saisons button[aria-pressed="true"] {
     background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
   }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
@@ -106,6 +108,7 @@
 
   <div class="reiter" role="tablist" aria-label="Ansicht wählen">
     <button type="button" role="tab" id="tab-jahr" aria-controls="ansicht-jahr" aria-selected="true">Jahr</button>
+    <button type="button" role="tab" id="tab-saison" aria-controls="ansicht-saison" aria-selected="false">Jahreszeit</button>
     <button type="button" role="tab" id="tab-monat" aria-controls="ansicht-monat" aria-selected="false">Monat</button>
   </div>
 
@@ -124,6 +127,25 @@
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
       <a href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
       <a href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+    </nav>
+  </section>
+
+  <!-- ======================= JAHRESZEITEN ======================= -->
+  <section id="ansicht-saison" role="tabpanel" aria-labelledby="tab-saison" hidden>
+    <h2 id="h-saison">Jahreszeiten</h2>
+    <p class="unter">Eine Jahreszeit über alle Jahre seit 1940 · meteorologisch: Frühling März–Mai,
+      Sommer Juni–August, Herbst September–November, Winter Dezember–Februar</p>
+    <div class="saisons" id="saisons" role="group" aria-label="Jahreszeit auswählen"></div>
+    <div class="kacheln" id="kacheln-saison" aria-live="polite"></div>
+    <figure>
+      <a id="link-saison" href="#">
+        <img id="bild-saison" alt="">
+      </a>
+      <figcaption id="hinweis-saison">Zum Vergrößern auf die Grafik klicken.</figcaption>
+    </figure>
+    <nav class="downloads" aria-label="Downloads Jahreszeiten">
+      <a id="png-saison" href="#" download>Grafik (PNG)</a>
+      <a id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
     </nav>
   </section>
 
@@ -159,6 +181,15 @@
 
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
   let monat = null;          // gewählter Monat 1..12
+  let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
+
+  // Jahreszeiten: Name, Dateiname, Monate
+  const SAISONS = [
+    { name: "Frühling", datei: "fruehling", monate: [3, 4, 5] },
+    { name: "Sommer",   datei: "sommer",    monate: [6, 7, 8] },
+    { name: "Herbst",   datei: "herbst",    monate: [9, 10, 11] },
+    { name: "Winter",   datei: "winter",    monate: [12, 1, 2] },
+  ];
 
   // ---------- Hell / Dunkel ----------
   // Ohne eigene Wahl folgt die Seite der Systemeinstellung; eine Wahl wird im Browser gemerkt.
@@ -183,6 +214,7 @@
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
     setzeBild("jahr", "ERA5_global_jahreswerte");
     if (monat) setzeBild("monat", `ERA5_global_monat_${nn(monat)}`);
+    if (saison !== null) setzeBild("saison", `ERA5_global_saison_${SAISONS[saison].datei}`);
   }
   document.getElementById("schalter").addEventListener("click", () => {
     wahl = istDunkel() ? "light" : "dark";
@@ -229,6 +261,11 @@
     const ausAdresse = parseInt((location.hash.match(/monat-(\d+)/) || [])[1], 10);
     const ausDaten = parseInt(stand.split(".")[1], 10) || 1;
     waehleMonat(ausAdresse >= 1 && ausAdresse <= 12 ? ausAdresse : ausDaten, false);
+    // Start-Jahreszeit: die des letzten Datentags (über Adresse #saison-sommer auch direkt wählbar)
+    const sAdresse = SAISONS.findIndex(x =>
+      location.hash === "#jahreszeit-" + x.datei || location.hash === "#saison-" + x.datei);
+    const sDaten = SAISONS.findIndex(x => x.monate.includes(ausDaten));
+    waehleSaison(sAdresse >= 0 ? sAdresse : sDaten, false);
   }
 
   // ---------- Monate ----------
@@ -277,27 +314,91 @@
       .catch(() => { ziel.innerHTML = ""; });
   }
 
-  // ---------- Reiter Jahr / Monat ----------
+  // ---------- Jahreszeiten ----------
+  const sLeiste = document.getElementById("saisons");
+  SAISONS.forEach((x, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = x.name;
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => waehleSaison(i, true));
+    sLeiste.appendChild(b);
+  });
+
+  // Bezeichnung, z. B. "Sommer 2026" oder "Winter 2025/26" (Winter zählt zum Jahr von Jan/Feb)
+  const saisonLabel = (x, jahr) =>
+    x.name === "Winter" ? `Winter ${jahr - 1}/${String(jahr).slice(-2)}` : `${x.name} ${jahr}`;
+
+  // Anzahl Tage der Jahreszeit im jeweiligen Jahr
+  function saisonTage(x, jahr) {
+    if (x.name === "Winter") return Math.round((new Date(jahr, 2, 1) - new Date(jahr - 1, 11, 1)) / 864e5);
+    return x.monate.reduce((n, m) => n + new Date(jahr, m, 0).getDate(), 0);
+  }
+
+  function waehleSaison(i, adresseMerken) {
+    saison = i;
+    const x = SAISONS[i];
+    [...sLeiste.children].forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
+    if (adresseMerken) history.replaceState(null, "", "#jahreszeit-" + x.datei);
+    document.getElementById("bild-saison").alt =
+      `Balkendiagramm der globalen Mitteltemperatur im ${x.name} seit 1940 als Abweichung von 1850–1900`;
+    document.getElementById("txt-saison").href = `daten/ERA5_global_saison_${x.datei}.txt`;
+    document.getElementById("hinweis-saison").textContent = x.name === "Winter"
+      ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Zum Vergrößern auf die Grafik klicken."
+      : "Zum Vergrößern auf die Grafik klicken.";
+    setzeBild("saison", `ERA5_global_saison_${x.datei}`);
+
+    const ziel = document.getElementById("kacheln-saison");
+    fetch(`daten/ERA5_global_saison_${x.datei}.txt`, { cache: "no-store" })
+      .then(r => r.text())
+      .then(text => {
+        if (saison !== i) return;                      // inzwischen andere Jahreszeit gewählt
+        const { reihen } = lese(text);
+        if (!reihen.length) { ziel.innerHTML = ""; return; }
+        const aktuell = reihen[reihen.length - 1];
+        const unvollst = aktuell.tage < saisonTage(x, aktuell.jahr);
+        const volle = unvollst ? reihen.slice(0, -1) : reihen;
+        const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+        const rekordJahr = saisonLabel(x, rekord.jahr).split(" ")[1];
+        ziel.innerHTML =
+          kachel(`${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+                 `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
+                 (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+                 aktuell.abw >= 0 ? "warm" : "kalt") +
+          kachel(`Wärmster ${x.name}`, rekordJahr, k(rekord.abw), "warm") +
+          kachel(`Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`, grad(aktuell.temp),
+                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit");
+      })
+      .catch(() => { ziel.innerHTML = ""; });
+  }
+
+  // ---------- Reiter Jahr / Jahreszeit / Monat ----------
+  const ANSICHTEN = ["jahr", "saison", "monat"];
   function zeigeAnsicht(name, adresseMerken) {
-    ["jahr", "monat"].forEach(n => {
+    ANSICHTEN.forEach(n => {
       document.getElementById("tab-" + n).setAttribute("aria-selected", String(n === name));
       document.getElementById("ansicht-" + n).hidden = n !== name;
     });
     if (adresseMerken) {
-      history.replaceState(null, "", name === "monat" && monat ? "#monat-" + nn(monat) : "#" + name);
+      let ziel = "#" + (name === "saison" ? "jahreszeit" : name);
+      if (name === "monat" && monat) ziel = "#monat-" + nn(monat);
+      if (name === "saison" && saison !== null) ziel = "#jahreszeit-" + SAISONS[saison].datei;
+      history.replaceState(null, "", ziel);
     }
   }
-  document.getElementById("tab-jahr").addEventListener("click", () => zeigeAnsicht("jahr", true));
-  document.getElementById("tab-monat").addEventListener("click", () => zeigeAnsicht("monat", true));
+  ANSICHTEN.forEach(n =>
+    document.getElementById("tab-" + n).addEventListener("click", () => zeigeAnsicht(n, true)));
   // Pfeiltasten links/rechts zwischen den Reitern
   document.querySelector(".reiter").addEventListener("keydown", e => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    const ziel = document.getElementById("tab-jahr").getAttribute("aria-selected") === "true" ? "monat" : "jahr";
+    const jetzt = ANSICHTEN.findIndex(n => document.getElementById("tab-" + n).getAttribute("aria-selected") === "true");
+    const ziel = ANSICHTEN[(jetzt + (e.key === "ArrowRight" ? 1 : -1) + ANSICHTEN.length) % ANSICHTEN.length];
     zeigeAnsicht(ziel, true);
     document.getElementById("tab-" + ziel).focus();
   });
-  // Direkt-Link: #monat oder #monat-03 öffnet die Monatsansicht
+  // Direkt-Links: #monat, #monat-03, #jahreszeit, #jahreszeit-sommer
   if (/^#monat/.test(location.hash)) zeigeAnsicht("monat", false);
+  if (/^#(jahreszeit|saison)/.test(location.hash)) zeigeAnsicht("saison", false);
 
   // ---------- Start ----------
   anwenden();
@@ -312,6 +413,7 @@
     .catch(() => {
       document.getElementById("stand").textContent = "Stand der Daten: unbekannt";
       waehleMonat(1, false);
+      waehleSaison(0, false);
     });
 </script>
 </body>
