@@ -41,7 +41,19 @@
     display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 999px;
     background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 0.9rem;
   }
-  section { margin-top: 40px; }
+  section { margin-top: 24px; }
+  section[hidden] { display: none; }
+  .reiter {
+    display: inline-flex; gap: 4px; margin-top: 24px; padding: 4px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .reiter button {
+    border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 600;
+    padding: 8px 20px; border-radius: 8px; cursor: pointer;
+  }
+  .reiter button:hover { color: var(--accent); }
+  .reiter button[aria-selected="true"] { background: var(--accent); color: #fff; }
+  .reiter button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   h2 { font-size: 1.35rem; margin: 0 0 4px; }
   .unter { color: var(--muted); margin: 0 0 16px; }
   .kacheln {
@@ -92,8 +104,13 @@
     <span class="stand" id="stand">Daten werden geladen …</span>
   </header>
 
+  <div class="reiter" role="tablist" aria-label="Ansicht wählen">
+    <button type="button" role="tab" id="tab-jahr" aria-controls="ansicht-jahr" aria-selected="true">Jahr</button>
+    <button type="button" role="tab" id="tab-monat" aria-controls="ansicht-monat" aria-selected="false">Monat</button>
+  </div>
+
   <!-- ======================= JAHR ======================= -->
-  <section aria-labelledby="h-jahr">
+  <section id="ansicht-jahr" role="tabpanel" aria-labelledby="tab-jahr">
     <h2 id="h-jahr">Jahresmittel</h2>
     <p class="unter">Jedes Jahr seit 1940 im Vergleich</p>
     <div class="kacheln" id="kacheln-jahr" aria-live="polite"></div>
@@ -111,7 +128,7 @@
   </section>
 
   <!-- ======================= MONATE ======================= -->
-  <section aria-labelledby="h-monat">
+  <section id="ansicht-monat" role="tabpanel" aria-labelledby="tab-monat" hidden>
     <h2 id="h-monat">Monatsmittel</h2>
     <p class="unter">Ein Monat über alle Jahre seit 1940 – z. B. alle Oktobermonate im Vergleich</p>
     <div class="monate" id="monate" role="group" aria-label="Monat auswählen"></div>
@@ -259,6 +276,28 @@
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
+
+  // ---------- Reiter Jahr / Monat ----------
+  function zeigeAnsicht(name, adresseMerken) {
+    ["jahr", "monat"].forEach(n => {
+      document.getElementById("tab-" + n).setAttribute("aria-selected", String(n === name));
+      document.getElementById("ansicht-" + n).hidden = n !== name;
+    });
+    if (adresseMerken) {
+      history.replaceState(null, "", name === "monat" && monat ? "#monat-" + nn(monat) : "#" + name);
+    }
+  }
+  document.getElementById("tab-jahr").addEventListener("click", () => zeigeAnsicht("jahr", true));
+  document.getElementById("tab-monat").addEventListener("click", () => zeigeAnsicht("monat", true));
+  // Pfeiltasten links/rechts zwischen den Reitern
+  document.querySelector(".reiter").addEventListener("keydown", e => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    const ziel = document.getElementById("tab-jahr").getAttribute("aria-selected") === "true" ? "monat" : "jahr";
+    zeigeAnsicht(ziel, true);
+    document.getElementById("tab-" + ziel).focus();
+  });
+  // Direkt-Link: #monat oder #monat-03 öffnet die Monatsansicht
+  if (/^#monat/.test(location.hash)) zeigeAnsicht("monat", false);
 
   // ---------- Start ----------
   anwenden();
