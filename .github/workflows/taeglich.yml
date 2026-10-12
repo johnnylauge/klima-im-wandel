@@ -1,0 +1,68 @@
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafik und veröffentlicht sie auf GitHub Pages.
+# Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
+
+name: Tägliche Klimagrafik
+
+on:
+  schedule:
+    - cron: "0 9 * * *"        # täglich 09:00 UTC (= 11:00 Sommerzeit / 10:00 Winterzeit)
+  workflow_dispatch:            # Knopf zum manuellen Starten
+  push:
+    branches: [main]            # auch nach jeder Änderung an Skript oder Webseite
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Nie zwei Läufe gleichzeitig veröffentlichen
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v6
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pakete installieren
+        run: pip install -r requirements.txt
+
+      - name: Daten laden und helle Grafik erstellen
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+        run: python skripte/ERA5_Jahresmittel_Balken.py
+
+      - name: Dunkle Grafik erstellen (ohne neuen Download)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahresmittel_Balken.py
+
+      - name: Webseite zusammenstellen
+        run: cp site/index.html _site/
+
+      - name: Webseite hochladen
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
