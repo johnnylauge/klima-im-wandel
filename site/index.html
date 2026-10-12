@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klimagrafiken Global</title>
+<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Copernicus Climate Pulse).">
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6b6b70;
+    --line: #e3e1dc;
+    --accent: #b2182b;
+    --accent-soft: #fbeaec;
+    --cool: #2166ac;
+  }
+  /* Dunkel: wenn der Schalter auf "dunkel" steht oder (ohne Wahl) das System dunkel ist */
+  :root[data-theme="dark"] {
+    --bg: #141416; --card: #1e1e21; --text: #ececee; --muted: #a0a0a8;
+    --line: #313136; --accent: #ff6b6b; --accent-soft: #3a2224; --cool: #7fb3e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --card: #1e1e21; --text: #ececee; --muted: #a0a0a8;
+      --line: #313136; --accent: #ff6b6b; --accent-soft: #3a2224; --cool: #7fb3e6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { position: relative; padding-right: 56px; }
+  .schalter {
+    position: absolute; top: 0; right: 0; width: 44px; height: 44px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    font-size: 1.2rem; cursor: pointer; display: grid; place-items: center;
+  }
+  .schalter:hover { border-color: var(--accent); }
+  .schalter:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  header h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: -0.01em; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  .stand {
+    display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 0.9rem;
+  }
+  .kacheln {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px; margin: 24px 0;
+  }
+  .kachel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+  }
+  .kachel .label { color: var(--muted); font-size: 0.85rem; }
+  .kachel .wert { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kachel .zusatz { color: var(--muted); font-size: 0.85rem; }
+  .warm { color: var(--accent); }
+  .kalt { color: var(--cool); }
+  figure {
+    margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; overflow: hidden;
+  }
+  figure img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .downloads a {
+    text-decoration: none; color: var(--text); border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
+  }
+  .downloads a:hover { border-color: var(--accent); color: var(--accent); }
+  footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
+            title="Hell / Dunkel">◐</button>
+    <h1>Globale Jahresmitteltemperatur</h1>
+    <p>Abweichung von der vorindustriellen Zeit (1850–1900) · ERA5 · täglich aktualisiert</p>
+    <span class="stand" id="stand">Daten werden geladen …</span>
+  </header>
+
+  <section class="kacheln" id="kacheln" aria-live="polite"></section>
+
+  <figure>
+    <a id="bild-link" href="daten/Grafiken/ERA5_global_jahreswerte.png">
+      <img id="bild" src="daten/Grafiken/ERA5_global_jahreswerte.png"
+           alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
+    </a>
+    <figcaption>Zum Vergrößern auf die Grafik klicken.</figcaption>
+  </figure>
+
+  <nav class="downloads" aria-label="Downloads">
+    <a id="png-download" href="daten/Grafiken/ERA5_global_jahreswerte.png" download>Grafik (PNG)</a>
+    <a href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
+    <a href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+  </nav>
+
+  <footer>
+    Datenquelle: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
+    Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
+  </footer>
+</main>
+
+<script>
+  // ---------- Hell / Dunkel ----------
+  // Ohne eigene Wahl folgt die Seite der Systemeinstellung; eine Wahl wird im Browser gemerkt.
+  const BILD = "daten/Grafiken/ERA5_global_jahreswerte";
+  let version = "";                                   // wird nach dem Laden auf den Datenstand gesetzt
+  const systemDunkel = window.matchMedia("(prefers-color-scheme: dark)");
+  let wahl = null;                                    // "light", "dark" oder null (= System)
+  try { wahl = localStorage.getItem("thema"); } catch (e) {}
+
+  function anwenden() {
+    const dunkel = wahl ? wahl === "dark" : systemDunkel.matches;
+    if (wahl) document.documentElement.setAttribute("data-theme", wahl);
+    else document.documentElement.removeAttribute("data-theme");
+    const datei = BILD + (dunkel ? "_dunkel" : "") + ".png" + version;
+    document.getElementById("bild").src = datei;
+    document.getElementById("bild-link").href = datei;
+    document.getElementById("png-download").href = datei;
+    const knopf = document.getElementById("schalter");
+    knopf.textContent = dunkel ? "☀" : "☾";
+    knopf.setAttribute("aria-label", dunkel ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
+  }
+  document.getElementById("schalter").addEventListener("click", () => {
+    const dunkel = wahl ? wahl === "dark" : systemDunkel.matches;
+    wahl = dunkel ? "light" : "dark";
+    try { localStorage.setItem("thema", wahl); } catch (e) {}
+    anwenden();
+  });
+  systemDunkel.addEventListener("change", anwenden);
+  anwenden();
+
+  // Zahlen deutsch formatieren: +1,50 K
+  const k = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2).replace(".", ",") + " K";
+
+  fetch("daten/ERA5_global_jahreswerte.txt", { cache: "no-store" })
+    .then(r => r.text())
+    .then(text => {
+      const zeilen = text.split("\n");
+      const stand = (zeilen.find(z => z.startsWith("# Stand:")) || "").replace("# Stand:", "").trim();
+
+      // Datenzeilen: Jahr Temp Abw Rang Tage letzter_Tag
+      const jahre = zeilen
+        .filter(z => /^\d{4}\s/.test(z))
+        .map(z => {
+          const [jahr, temp, abw, rang, tage, letzter] = z.trim().split(/\s+/);
+          return { jahr: +jahr, temp: +temp, abw: +abw, rang: +rang, tage: +tage, letzter };
+        });
+      if (!jahre.length) return;
+
+      const aktuell = jahre[jahre.length - 1];
+      const unvollstaendig = !aktuell.letzter.startsWith("31.12.");
+      const volle = unvollstaendig ? jahre.slice(0, -1) : jahre;
+      const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
+
+      document.getElementById("stand").textContent = "Stand der Daten: " + stand;
+
+      // Bild nach jedem Datenstand neu laden (nicht aus dem Browser-Speicher)
+      version = "?v=" + encodeURIComponent(stand);
+      anwenden();
+
+      const kachel = (label, wert, zusatz, klasse = "") =>
+        `<div class="kachel"><div class="label">${label}</div>` +
+        `<div class="wert ${klasse}">${wert}</div><div class="zusatz">${zusatz}</div></div>`;
+
+      document.getElementById("kacheln").innerHTML =
+        kachel(`${aktuell.jahr}${unvollstaendig ? " bisher" : ""}`, k(aktuell.abw),
+               `${unvollstaendig ? "bisher " : ""}Rang ${aktuell.rang} von ${jahre.length}` +
+               (unvollstaendig ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+               aktuell.abw >= 0 ? "warm" : "kalt") +
+        kachel("Wärmstes Jahr", String(rekord.jahr), k(rekord.abw), "warm") +
+        kachel("Mitteltemperatur " + aktuell.jahr,
+               aktuell.temp.toFixed(2).replace(".", ",") + " °C",
+               unvollstaendig ? "laufendes Jahr, noch unvollständig" : "Jahresmittel");
+    })
+    .catch(() => {
+      document.getElementById("stand").textContent = "Stand der Daten: unbekannt";
+    });
+</script>
+</body>
+</html>
