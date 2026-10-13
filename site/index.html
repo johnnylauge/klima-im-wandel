@@ -79,10 +79,12 @@
   .art button[aria-pressed="true"] { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
   .art svg { width: 22px; height: 22px; display: block; }
   @media (max-width: 480px) {
-    .leiste { gap: 8px; flex-wrap: nowrap; }
-    .reiter button { padding: 8px 10px; }
+    .leiste { gap: 8px; }
+    .reiter, .art { gap: 2px; padding: 3px; }
+    .reiter button { padding: 8px 8px; font-size: 0.95rem; }
     .art .text { display: none; }
-    .art button { padding: 7px 8px; }
+    .art button { padding: 6px 5px; }
+    .art svg { width: 20px; height: 20px; }
   }
   h2 { font-size: 1.35rem; margin: 0 0 4px; }
   .unter { color: var(--muted); margin: 0 0 16px; }
@@ -160,7 +162,7 @@
     <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
             title="Hell / Dunkel">◐</button>
     <h1>Klima im Wandel</h1>
-    <p>Globale Temperatur als Abweichung von der vorindustriellen Zeit (1850–1900) · ERA5 · täglich aktualisiert</p>
+    <p>Globale Temperatur seit 1940 – als Abweichung von der vorindustriellen Zeit (1850–1900) und in °C · ERA5 · täglich aktualisiert</p>
     <span class="stand" id="stand">Daten werden geladen …</span>
   </header>
 
@@ -179,6 +181,10 @@
     <button type="button" id="art-punkte" aria-pressed="false" title="Punktdiagramm: ein Punkt je Tag">
       <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
       <span class="text">Punkte</span>
+    </button>
+    <button type="button" id="art-linien" aria-pressed="false" title="Liniendiagramm: Mitteltemperatur in °C">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><polyline points="5,24 11,20 17,21 23,12 28,7" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5" cy="24" r="2.6" fill="#4393c3"/><circle cx="11" cy="20" r="2.6" fill="#f4a582"/><circle cx="17" cy="21" r="2.6" fill="#f4a582"/><circle cx="23" cy="12" r="2.6" fill="#d6604d"/><circle cx="28" cy="7" r="2.6" fill="#e8313f"/></svg>
+      <span class="text">Linien</span>
     </button>
   </div>
   </div>
@@ -261,8 +267,11 @@
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
-  let art = "balken";        // Darstellung: "balken" (Mittel je Jahr) oder "punkte" (jeder Tag)
-  try { if (localStorage.getItem("art") === "punkte") art = "punkte"; } catch (e) {}
+  let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "punkte" (jeder Tag) oder "linien" (Mittel in °C)
+  const ARTEN = ["balken", "punkte", "linien"];
+  const ART_TEXT = { balken: "ein Balken je Jahr", punkte: "ein Punkt je Tag",
+                     linien: "Mittelwert in °C als Linie" };
+  try { const a = localStorage.getItem("art"); if (a === "punkte" || a === "linien") art = a; } catch (e) {}
 
   // Jahreszeiten: Name, Dateiname, Monate
   const SAISONS = [
@@ -294,8 +303,8 @@
 
   // Dateiname der Grafik je Ansicht und Darstellung
   function grafikName(teil) {
-    const p = art === "punkte" ? "punkte_" : "";
-    if (teil === "jahr") return art === "punkte" ? "ERA5_global_punkte_jahr" : "ERA5_global_jahreswerte";
+    const p = art === "balken" ? "" : art + "_";
+    if (teil === "jahr") return art === "balken" ? "ERA5_global_jahreswerte" : `ERA5_global_${art}_jahr`;
     if (teil === "monat") return `ERA5_global_${p}monat_${nn(monat)}`;
     return `ERA5_global_${p}saison_${SAISONS[saison].datei}`;
   }
@@ -304,6 +313,7 @@
     const wer = teil === "jahr" ? "Jahresmitteltemperatur"
               : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
               : `Mitteltemperatur im ${SAISONS[saison].name}`;
+    if (art === "linien") return `Liniendiagramm der globalen ${wer} seit 1940 in Grad Celsius`;
     return art === "punkte"
       ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit 1940 als Abweichung von 1850–1900, ein Punkt je Tag`
       : `Balkendiagramm der globalen ${wer} seit 1940 als Abweichung von 1850–1900`;
@@ -316,16 +326,14 @@
     knopf.textContent = istDunkel() ? "☀" : "☾";
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
     // Darstellung: Knöpfe, Beschreibung und Bilder
-    document.getElementById("art-balken").setAttribute("aria-pressed", String(art === "balken"));
-    document.getElementById("art-punkte").setAttribute("aria-pressed", String(art === "punkte"));
-    document.querySelectorAll(".art-text").forEach(el =>
-      el.textContent = art === "punkte" ? "ein Punkt je Tag" : "ein Balken je Jahr");
+    ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(art === a)));
+    document.querySelectorAll(".art-text").forEach(el => el.textContent = ART_TEXT[art]);
     setzeBild("jahr", grafikName("jahr"));
     document.getElementById("bild-jahr").alt = bildText("jahr");
     if (monat) { setzeBild("monat", grafikName("monat")); document.getElementById("bild-monat").alt = bildText("monat"); }
     if (saison !== null) { setzeBild("saison", grafikName("saison")); document.getElementById("bild-saison").alt = bildText("saison"); }
   }
-  ["balken", "punkte"].forEach(a => document.getElementById("art-" + a).addEventListener("click", () => {
+  ARTEN.forEach(a => document.getElementById("art-" + a).addEventListener("click", () => {
     if (art === a) return;
     art = a;
     try { localStorage.setItem("art", a); } catch (e) {}
@@ -373,7 +381,7 @@
 
     function fuelle(b) {
       tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
-                       `${grad(b.temp)} | ${k(b.abw)}`;      // "bisher" zeigt das laufende Jahr an
+                       `${b.ca ? "≈ " : ""}${grad(b.temp)} | ${k(b.abw)}`;   // ≈: laufendes Jahr, aufs ganze Jahr umgerechnet      // "bisher" zeigt das laufende Jahr an
       tipp.style.display = "block";
     }
     function ruhe() {                                   // Zustand ohne Maus
