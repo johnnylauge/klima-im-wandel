@@ -7,7 +7,7 @@
 <!-- Symbol im Browser-Tab: steigende Balken von blau nach rot (direkt eingebettet, keine Extradatei) -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231e1e21'/><rect x='4.5' y='20' width='4.5' height='7' rx='1' fill='%234393c3'/><rect x='10.5' y='16' width='4.5' height='11' rx='1' fill='%23f4a582'/><rect x='16.5' y='11' width='4.5' height='16' rx='1' fill='%23d6604d'/><rect x='22.5' y='5' width='4.5' height='22' rx='1' fill='%23e8313f'/></svg>">
 <meta name="theme-color" content="#1e1e21">
-<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Copernicus Climate Pulse).">
+<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Copernicus Climate Pulse, und Berkeley Earth ab 1850).">
 <!-- Vorschaukarte beim Teilen des Links (Bluesky, Mastodon, Messenger …) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Klima im Wandel">
@@ -56,6 +56,24 @@
     display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 999px;
     background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 0.9rem;
   }
+  /* Datenquelle: ERA5 / Berkeley Earth */
+  .kopfzeile { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 12px; }
+  .kopfzeile .stand { margin-top: 0; }
+  .qlabel { color: var(--muted); font-size: 0.85rem; }
+  .quelle {
+    display: inline-flex; gap: 2px; padding: 3px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 999px;
+  }
+  .quelle button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  }
+  .quelle button:hover { color: var(--text); }
+  .quelle button[aria-pressed="true"] { background: var(--text); color: var(--card); }
+  .quelle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .quellinfo { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  .art button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .art button:disabled:hover { color: var(--text); }
   section { margin-top: 24px; }
   section[hidden] { display: none; }
   .leiste { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
@@ -162,8 +180,16 @@
     <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
             title="Hell / Dunkel">◐</button>
     <h1>Klima im Wandel</h1>
-    <p>Globale Temperatur seit 1940 – als Abweichung von der vorindustriellen Zeit (1850–1900) und in °C · ERA5 · täglich aktualisiert</p>
-    <span class="stand" id="stand">Daten werden geladen …</span>
+    <p>Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in °C</p>
+    <div class="kopfzeile">
+      <span class="qlabel" id="qlabel">Datenquelle</span>
+      <div class="quelle" role="group" aria-labelledby="qlabel">
+        <button type="button" id="quelle-era5" aria-pressed="true">ERA5</button>
+        <button type="button" id="quelle-be" aria-pressed="false">Berkeley Earth</button>
+      </div>
+      <span class="stand" id="stand">Daten werden geladen …</span>
+    </div>
+    <p class="quellinfo" id="quellinfo"></p>
   </header>
 
   <div class="leiste">
@@ -192,7 +218,7 @@
   <!-- ======================= JAHR ======================= -->
   <section id="ansicht-jahr" role="tabpanel" aria-labelledby="tab-jahr">
     <h2 id="h-jahr">Globales Jahresmittel</h2>
-    <p class="unter">Jedes Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
+    <p class="unter">Jedes Jahr seit <span class="seit">1940</span> im Vergleich · <span class="art-text"></span></p>
     <div class="kacheln" id="kacheln-jahr" aria-live="polite"></div>
     <figure>
       <div class="bildrahmen">
@@ -205,15 +231,15 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
-      <a href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
-      <a href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+      <a id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
+      <a id="txt-roh" href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
     </nav>
   </section>
 
   <!-- ======================= JAHRESZEITEN ======================= -->
   <section id="ansicht-saison" role="tabpanel" aria-labelledby="tab-saison" hidden>
     <h2 id="h-saison">Globales Jahreszeitenmittel</h2>
-    <p class="unter">Die gewählte Jahreszeit in jedem Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
+    <p class="unter">Die gewählte Jahreszeit in jedem Jahr seit <span class="seit">1940</span> im Vergleich · <span class="art-text"></span></p>
     <div class="saisons" id="saisons" role="group" aria-label="Jahreszeit auswählen"></div>
     <div class="kacheln" id="kacheln-saison" aria-live="polite"></div>
     <figure>
@@ -234,7 +260,7 @@
   <!-- ======================= MONATE ======================= -->
   <section id="ansicht-monat" role="tabpanel" aria-labelledby="tab-monat" hidden>
     <h2 id="h-monat">Globales Monatsmittel</h2>
-    <p class="unter">Der gewählte Monat in jedem Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
+    <p class="unter">Der gewählte Monat in jedem Jahr seit <span class="seit">1940</span> im Vergleich · <span class="art-text"></span></p>
     <div class="monate" id="monate" role="group" aria-label="Monat auswählen"></div>
     <div class="kacheln" id="kacheln-monat" aria-live="polite"></div>
     <figure>
@@ -253,7 +279,8 @@
   </section>
 
   <footer>
-    Datenquelle: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
+    Datenquellen: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
+    <a href="https://berkeleyearth.org/data/">Berkeley Earth</a> ·
     Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
   </footer>
 </main>
@@ -265,6 +292,21 @@
   const nn = m => String(m).padStart(2, "0");
 
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
+  // Datenquelle: "era5" (Tageswerte ab 1940, täglich) oder "be" (Berkeley Earth, Monatswerte ab 1850)
+  let quelle = "era5";
+  try { if (localStorage.getItem("quelle") === "be") quelle = "be"; } catch (e) {}
+  const QUELLEN = {
+    era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tag.txt", "Tageswerte (TXT)"],
+            info: "ERA5 (Copernicus): Tageswerte aus Wettermodell und Messungen ab 1940, täglich aktualisiert." },
+    be:   { praefix: "BE", start: 1850, takt: "monatlich", roh: ["daten/BE_Land_and_Ocean_complete.txt", "Monatswerte (TXT)"],
+            info: "Berkeley Earth: Monatswerte aus Stations- und Schiffsmessungen ab 1850, neue Werte etwa Mitte des Folgemonats. " +
+                  "Die °C-Werte liegen etwas anders als bei ERA5, die Abweichungen sind vergleichbar." },
+  };
+  const Q = () => QUELLEN[quelle];
+  // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
+  const bisText = letzter => (quelle === "be" ? MONATE[parseInt(letzter.split(".")[1], 10) - 1] : letzter.slice(0, 6));
+  // Punkte (Tageswerte) gibt es nur bei ERA5 - bei Berkeley Earth gilt dann Balken
+  const artJetzt = () => (quelle === "be" && art === "punkte" ? "balken" : art);
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
   let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "punkte" (jeder Tag) oder "linien" (Mittel in °C)
@@ -303,20 +345,22 @@
 
   // Dateiname der Grafik je Ansicht und Darstellung
   function grafikName(teil) {
-    const p = art === "balken" ? "" : art + "_";
-    if (teil === "jahr") return art === "balken" ? "ERA5_global_jahreswerte" : `ERA5_global_${art}_jahr`;
-    if (teil === "monat") return `ERA5_global_${p}monat_${nn(monat)}`;
-    return `ERA5_global_${p}saison_${SAISONS[saison].datei}`;
+    const a = artJetzt(), q = Q().praefix;
+    const p = a === "balken" ? "" : a + "_";
+    if (teil === "jahr") return a === "balken" ? `${q}_global_jahreswerte` : `${q}_global_${a}_jahr`;
+    if (teil === "monat") return `${q}_global_${p}monat_${nn(monat)}`;
+    return `${q}_global_${p}saison_${SAISONS[saison].datei}`;
   }
   // Beschreibung zur Grafik (Alternativtext für Screenreader)
   function bildText(teil) {
     const wer = teil === "jahr" ? "Jahresmitteltemperatur"
               : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
               : `Mitteltemperatur im ${SAISONS[saison].name}`;
-    if (art === "linien") return `Liniendiagramm der globalen ${wer} seit 1940 in Grad Celsius`;
-    return art === "punkte"
-      ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit 1940 als Abweichung von 1850–1900, ein Punkt je Tag`
-      : `Balkendiagramm der globalen ${wer} seit 1940 als Abweichung von 1850–1900`;
+    const seit = Q().start, a = artJetzt();
+    if (a === "linien") return `Liniendiagramm der globalen ${wer} seit ${seit} in Grad Celsius`;
+    return a === "punkte"
+      ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit ${seit} als Abweichung von 1850–1900, ein Punkt je Tag`
+      : `Balkendiagramm der globalen ${wer} seit ${seit} als Abweichung von 1850–1900`;
   }
 
   function anwenden() {
@@ -326,8 +370,18 @@
     knopf.textContent = istDunkel() ? "☀" : "☾";
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
     // Darstellung: Knöpfe, Beschreibung und Bilder
-    ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(art === a)));
-    document.querySelectorAll(".art-text").forEach(el => el.textContent = ART_TEXT[art]);
+    ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(artJetzt() === a)));
+    const pk = document.getElementById("art-punkte");
+    pk.disabled = quelle === "be";
+    pk.title = quelle === "be" ? "Punkte gibt es nur bei ERA5 (Tageswerte)" : "Punktdiagramm: ein Punkt je Tag";
+    document.querySelectorAll(".art-text").forEach(el => el.textContent = ART_TEXT[artJetzt()]);
+    // Datenquelle: Knöpfe, Hinweis, Startjahr und Downloads
+    ["era5", "be"].forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
+    document.getElementById("quellinfo").textContent = Q().info;
+    document.querySelectorAll(".seit").forEach(el => el.textContent = Q().start);
+    document.getElementById("txt-jahr").href = `daten/${Q().praefix}_global_jahreswerte.txt`;
+    document.getElementById("txt-roh").href = Q().roh[0];
+    document.getElementById("txt-roh").textContent = Q().roh[1];
     setzeBild("jahr", grafikName("jahr"));
     document.getElementById("bild-jahr").alt = bildText("jahr");
     if (monat) { setzeBild("monat", grafikName("monat")); document.getElementById("bild-monat").alt = bildText("monat"); }
@@ -500,7 +554,7 @@
   // ---------- Jahr ----------
   function zeigeJahr({ stand, reihen }) {
     if (!reihen.length) return;
-    document.getElementById("stand").textContent = "Stand der Daten: " + stand;
+    document.getElementById("stand").textContent = `Stand: ${stand} · ${Q().takt}`;
     const aktuell = reihen[reihen.length - 1];
     const unvollst = !aktuell.letzter.startsWith("31.12.");
     const volle = unvollst ? reihen.slice(0, -1) : reihen;
@@ -511,13 +565,15 @@
              unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", "", aktuell.jahr) +
       kachel(`Abweichung ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-             (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+             (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
              aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr) +
       kachel(`Wärmstes Jahr seit ${reihen[0].jahr}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
       kachel(`Kältestes Jahr seit ${reihen[0].jahr}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
+    // Beim Wechsel der Quelle bleiben Monat und Jahreszeit gewählt - nur neu laden
+    if (monat && saison !== null) { waehleMonat(monat, false); waehleSaison(saison, false); return; }
     // Startmonat: Monat des letzten Datentags (über Adresse #monat-03 auch direkt wählbar)
     const ausAdresse = parseInt((location.hash.match(/monat-(\d+)/) || [])[1], 10);
-    const ausDaten = parseInt(stand.split(".")[1], 10) || 1;
+    const ausDaten = parseInt(aktuell.letzter.split(".")[1], 10) || 1;
     waehleMonat(ausAdresse >= 1 && ausAdresse <= 12 ? ausAdresse : ausDaten, false);
     // Start-Jahreszeit: die des letzten Datentags (über Adresse #saison-sommer auch direkt wählbar)
     const sAdresse = SAISONS.findIndex(x =>
@@ -544,14 +600,15 @@
     if (adresseMerken) history.replaceState(null, "", "#monat-" + nn(m));
     const name = MONATE[m - 1];
     document.getElementById("bild-monat").alt = bildText("monat");
-    document.getElementById("txt-monat").href = `daten/ERA5_global_monat_${nn(m)}.txt`;
+    document.getElementById("txt-monat").href = `daten/${Q().praefix}_global_monat_${nn(m)}.txt`;
     setzeBild("monat", grafikName("monat"));
 
     const ziel = document.getElementById("kacheln-monat");
-    fetch(`daten/ERA5_global_monat_${nn(m)}.txt`, { cache: "no-store" })
+    const q = quelle;
+    fetch(`daten/${Q().praefix}_global_monat_${nn(m)}.txt`, { cache: "no-store" })
       .then(r => r.text())
       .then(text => {
-        if (monat !== m) return;                       // inzwischen anderer Monat gewählt
+        if (monat !== m || quelle !== q) return;      // inzwischen anderer Monat / andere Quelle gewählt
         const { reihen } = lese(text);
         if (!reihen.length) { ziel.innerHTML = ""; return; }
         const aktuell = reihen[reihen.length - 1];
@@ -565,7 +622,7 @@
                  unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", "", aktuell.jahr) +
           kachel(`Abweichung ${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-                 (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+                 (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr) +
           kachel(`Wärmster ${name} seit ${reihen[0].jahr}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
           kachel(`Kältester ${name} seit ${reihen[0].jahr}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
@@ -601,17 +658,18 @@
     [...sLeiste.children].forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
     if (adresseMerken) history.replaceState(null, "", "#jahreszeit-" + x.datei);
     document.getElementById("bild-saison").alt = bildText("saison");
-    document.getElementById("txt-saison").href = `daten/ERA5_global_saison_${x.datei}.txt`;
+    document.getElementById("txt-saison").href = `daten/${Q().praefix}_global_saison_${x.datei}.txt`;
     document.getElementById("hinweis-saison").textContent = x.name === "Winter"
       ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Mit der Maus über die Grafik fahren zeigt die Werte eines Jahres · zum Vergrößern klicken."
       : "Mit der Maus über die Grafik fahren (am Handy antippen) zeigt die Werte eines Jahres · zum Vergrößern klicken.";
     setzeBild("saison", grafikName("saison"));
 
     const ziel = document.getElementById("kacheln-saison");
-    fetch(`daten/ERA5_global_saison_${x.datei}.txt`, { cache: "no-store" })
+    const q = quelle;
+    fetch(`daten/${Q().praefix}_global_saison_${x.datei}.txt`, { cache: "no-store" })
       .then(r => r.text())
       .then(text => {
-        if (saison !== i) return;                      // inzwischen andere Jahreszeit gewählt
+        if (saison !== i || quelle !== q) return;     // inzwischen andere Jahreszeit / Quelle gewählt
         const { reihen } = lese(text);
         if (!reihen.length) { ziel.innerHTML = ""; return; }
         const aktuell = reihen[reihen.length - 1];
@@ -625,7 +683,7 @@
                  unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit", "", aktuell.jahr) +
           kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-                 (unvollst ? ` · bis ${aktuell.letzter.slice(0, 6)}` : ""),
+                 (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr) +
           kachel(`Wärmster ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, rekordJahr, `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
           kachel(`Kältester ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, saisonLabel(x, kaeltest.jahr).split(" ")[1],
@@ -663,20 +721,36 @@
   if (/^#(jahreszeit|saison)/.test(location.hash)) zeigeAnsicht("saison", false);
 
   // ---------- Start ----------
-  anwenden();
-  fetch("daten/ERA5_global_jahreswerte.txt", { cache: "no-store" })
-    .then(r => r.text())
-    .then(text => {
-      const daten = lese(text);
-      version = "?v=" + encodeURIComponent(daten.stand);
-      anwenden();
-      zeigeJahr(daten);
-    })
-    .catch(() => {
-      document.getElementById("stand").textContent = "Stand der Daten: unbekannt";
-      waehleMonat(1, false);
-      waehleSaison(0, false);
-    });
+  // Jahreswerte der gewählten Quelle laden; ihr Datenstand dient auch dazu, dass Bilder
+  // nach einem Update neu geladen werden
+  function ladeQuelle() {
+    const q = quelle;
+    document.getElementById("stand").textContent = "Daten werden geladen …";
+    anwenden();
+    fetch(`daten/${Q().praefix}_global_jahreswerte.txt`, { cache: "no-store" })
+      .then(r => (r.ok ? r.text() : Promise.reject()))
+      .then(text => {
+        if (quelle !== q) return;
+        const daten = lese(text);
+        version = "?v=" + encodeURIComponent(q + daten.stand);
+        anwenden();
+        zeigeJahr(daten);
+      })
+      .catch(() => {
+        if (quelle !== q) return;
+        document.getElementById("stand").textContent = "Stand: unbekannt";
+        ["jahr", "monat", "saison"].forEach(t => document.getElementById("kacheln-" + t).innerHTML = "");
+        if (!monat) waehleMonat(1, false); else waehleMonat(monat, false);
+        if (saison === null) waehleSaison(0, false); else waehleSaison(saison, false);
+      });
+  }
+  ["era5", "be"].forEach(x => document.getElementById("quelle-" + x).addEventListener("click", () => {
+    if (quelle === x) return;
+    quelle = x;
+    try { localStorage.setItem("quelle", x); } catch (e) {}
+    ladeQuelle();
+  }));
+  ladeQuelle();
 </script>
 </body>
 </html>
