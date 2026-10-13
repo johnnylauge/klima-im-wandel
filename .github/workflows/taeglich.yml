@@ -1,4 +1,4 @@
-# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth ab 1850) und veröffentlicht sie auf GitHub Pages.
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth und NOAA ab 1850 und ein Vergleich) und veröffentlicht sie auf GitHub Pages.
 # Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
 
 name: Tägliche Klimagrafik
@@ -125,6 +125,38 @@ jobs:
           ERA5_DUNKEL: "1"
           BE_OHNE_DOWNLOAD: "1"
         run: python skripte/BerkeleyEarth_Grafiken.py
+
+      - name: NOAA-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NOAA_WAHL: alle
+        run: python skripte/NOAA_Grafiken.py
+
+      - name: NOAA-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NOAA_WAHL: alle
+          ERA5_DUNKEL: "1"
+          NOAA_OHNE_DOWNLOAD: "1"
+        run: python skripte/NOAA_Grafiken.py
+
+      # Vergleich: liest die TXT-Dateien von ERA5, Berkeley Earth und NOAA (kein eigener Download)
+      - name: Vergleichsgrafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          VGL_WAHL: alle
+        run: python skripte/Vergleich_Linien.py
+
+      - name: Vergleichsgrafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          VGL_WAHL: alle
+          ERA5_DUNKEL: "1"
+        run: python skripte/Vergleich_Linien.py
 
       - name: Webseite zusammenstellen
         run: cp site/index.html _site/
