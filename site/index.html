@@ -58,8 +58,9 @@
   }
   section { margin-top: 24px; }
   section[hidden] { display: none; }
-  .reiter {
-    display: inline-flex; gap: 4px; margin-top: 24px; padding: 4px;
+  .leiste { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
+  .reiter, .art {
+    display: inline-flex; gap: 4px; padding: 4px;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
   }
   .reiter button {
@@ -68,7 +69,21 @@
   }
   .reiter button:hover { color: var(--accent); }
   .reiter button[aria-selected="true"] { background: var(--accent); color: #fff; }
-  .reiter button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .reiter button:focus-visible, .art button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Umschalter Balken / Punkte */
+  .art button {
+    border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 600; font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .art button:hover { color: var(--accent); }
+  .art button[aria-pressed="true"] { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .art svg { width: 22px; height: 22px; display: block; }
+  @media (max-width: 480px) {
+    .leiste { gap: 8px; flex-wrap: nowrap; }
+    .reiter button { padding: 8px 10px; }
+    .art .text { display: none; }
+    .art button { padding: 7px 8px; }
+  }
   h2 { font-size: 1.35rem; margin: 0 0 4px; }
   .unter { color: var(--muted); margin: 0 0 16px; }
   .kacheln {
@@ -110,7 +125,7 @@
     line-height: 1.35; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     font-variant-numeric: tabular-nums;
   }
-  .hover .tipp.fest { box-shadow: none; }
+  .hover .tipp.fest { box-shadow: none; line-height: 1.2; padding: 0.4em 0.7em; }
   .hover .tipp .klein { font-weight: 400; color: var(--muted); font-size: 0.9em; }
   figcaption { color: var(--muted); font-size: 0.85rem; padding: 10px 4px 2px; }
   .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -130,6 +145,8 @@
   }
   .monate button:hover, .saisons button:hover { border-color: var(--accent); }
   .saisons button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .saisons button { line-height: 1.25; padding: 6px 0; }
+  .saisons .monate-klein { display: block; font-size: 0.75rem; opacity: 0.75; font-weight: 400; }
   .monate button[aria-pressed="true"], .saisons button[aria-pressed="true"] {
     background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
   }
@@ -147,25 +164,38 @@
     <span class="stand" id="stand">Daten werden geladen …</span>
   </header>
 
+  <div class="leiste">
   <div class="reiter" role="tablist" aria-label="Ansicht wählen">
     <button type="button" role="tab" id="tab-jahr" aria-controls="ansicht-jahr" aria-selected="true">Jahr</button>
     <button type="button" role="tab" id="tab-saison" aria-controls="ansicht-saison" aria-selected="false">Jahreszeit</button>
     <button type="button" role="tab" id="tab-monat" aria-controls="ansicht-monat" aria-selected="false">Monat</button>
   </div>
+  <!-- Darstellung: Balken (Mittelwert je Jahr) oder Punkte (jeder einzelne Tag) -->
+  <div class="art" role="group" aria-label="Darstellung wählen">
+    <button type="button" id="art-balken" aria-pressed="true" title="Balkendiagramm: ein Balken je Jahr">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4.5" y="20" width="4.5" height="7" rx="1" fill="#4393c3"/><rect x="10.5" y="16" width="4.5" height="11" rx="1" fill="#f4a582"/><rect x="16.5" y="11" width="4.5" height="16" rx="1" fill="#d6604d"/><rect x="22.5" y="5" width="4.5" height="22" rx="1" fill="#e8313f"/></svg>
+      <span class="text">Balken</span>
+    </button>
+    <button type="button" id="art-punkte" aria-pressed="false" title="Punktdiagramm: ein Punkt je Tag">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
+      <span class="text">Punkte</span>
+    </button>
+  </div>
+  </div>
 
   <!-- ======================= JAHR ======================= -->
   <section id="ansicht-jahr" role="tabpanel" aria-labelledby="tab-jahr">
-    <h2 id="h-jahr">Jahresmittel</h2>
-    <p class="unter">Jedes Jahr seit 1940 im Vergleich</p>
+    <h2 id="h-jahr">Globales Jahresmittel</h2>
+    <p class="unter">Jedes Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
     <div class="kacheln" id="kacheln-jahr" aria-live="polite"></div>
     <figure>
       <div class="bildrahmen">
         <a id="link-jahr" href="#">
-          <img id="bild-jahr" alt="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
+          <img id="bild-jahr" alt="">
         </a>
         <div class="hover" id="hover-jahr"></div>
       </div>
-      <figcaption>Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.</figcaption>
+      <figcaption>Mit der Maus über die Grafik fahren (am Handy antippen) zeigt die Werte eines Jahres · zum Vergrößern klicken.</figcaption>
     </figure>
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
@@ -176,9 +206,8 @@
 
   <!-- ======================= JAHRESZEITEN ======================= -->
   <section id="ansicht-saison" role="tabpanel" aria-labelledby="tab-saison" hidden>
-    <h2 id="h-saison">Jahreszeiten</h2>
-    <p class="unter">Eine Jahreszeit über alle Jahre seit 1940 · meteorologisch: Frühling März–Mai,
-      Sommer Juni–August, Herbst September–November, Winter Dezember–Februar</p>
+    <h2 id="h-saison">Globales Jahreszeitenmittel</h2>
+    <p class="unter">Die gewählte Jahreszeit in jedem Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
     <div class="saisons" id="saisons" role="group" aria-label="Jahreszeit auswählen"></div>
     <div class="kacheln" id="kacheln-saison" aria-live="polite"></div>
     <figure>
@@ -198,8 +227,8 @@
 
   <!-- ======================= MONATE ======================= -->
   <section id="ansicht-monat" role="tabpanel" aria-labelledby="tab-monat" hidden>
-    <h2 id="h-monat">Monatsmittel</h2>
-    <p class="unter">Ein Monat über alle Jahre seit 1940 – z. B. alle Oktobermonate im Vergleich</p>
+    <h2 id="h-monat">Globales Monatsmittel</h2>
+    <p class="unter">Der gewählte Monat in jedem Jahr seit 1940 im Vergleich · <span class="art-text"></span></p>
     <div class="monate" id="monate" role="group" aria-label="Monat auswählen"></div>
     <div class="kacheln" id="kacheln-monat" aria-live="polite"></div>
     <figure>
@@ -209,7 +238,7 @@
         </a>
         <div class="hover" id="hover-monat"></div>
       </div>
-      <figcaption>Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.</figcaption>
+      <figcaption>Mit der Maus über die Grafik fahren (am Handy antippen) zeigt die Werte eines Jahres · zum Vergrößern klicken.</figcaption>
     </figure>
     <nav class="downloads" aria-label="Downloads Monatsmittel">
       <a id="png-monat" href="#" download>Grafik (PNG)</a>
@@ -232,13 +261,15 @@
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
+  let art = "balken";        // Darstellung: "balken" (Mittel je Jahr) oder "punkte" (jeder Tag)
+  try { if (localStorage.getItem("art") === "punkte") art = "punkte"; } catch (e) {}
 
   // Jahreszeiten: Name, Dateiname, Monate
   const SAISONS = [
-    { name: "Frühling", datei: "fruehling", monate: [3, 4, 5] },
-    { name: "Sommer",   datei: "sommer",    monate: [6, 7, 8] },
-    { name: "Herbst",   datei: "herbst",    monate: [9, 10, 11] },
-    { name: "Winter",   datei: "winter",    monate: [12, 1, 2] },
+    { name: "Frühling", datei: "fruehling", monate: [3, 4, 5],   kurz: "Mär–Mai" },
+    { name: "Sommer",   datei: "sommer",    monate: [6, 7, 8],   kurz: "Jun–Aug" },
+    { name: "Herbst",   datei: "herbst",    monate: [9, 10, 11], kurz: "Sep–Nov" },
+    { name: "Winter",   datei: "winter",    monate: [12, 1, 2],  kurz: "Dez–Feb" },
   ];
 
   // ---------- Hell / Dunkel ----------
@@ -261,16 +292,45 @@
     ladeHover(teil, name);
   }
 
+  // Dateiname der Grafik je Ansicht und Darstellung
+  function grafikName(teil) {
+    const p = art === "punkte" ? "punkte_" : "";
+    if (teil === "jahr") return art === "punkte" ? "ERA5_global_punkte_jahr" : "ERA5_global_jahreswerte";
+    if (teil === "monat") return `ERA5_global_${p}monat_${nn(monat)}`;
+    return `ERA5_global_${p}saison_${SAISONS[saison].datei}`;
+  }
+  // Beschreibung zur Grafik (Alternativtext für Screenreader)
+  function bildText(teil) {
+    const wer = teil === "jahr" ? "Jahresmitteltemperatur"
+              : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
+              : `Mitteltemperatur im ${SAISONS[saison].name}`;
+    return art === "punkte"
+      ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit 1940 als Abweichung von 1850–1900, ein Punkt je Tag`
+      : `Balkendiagramm der globalen ${wer} seit 1940 als Abweichung von 1850–1900`;
+  }
+
   function anwenden() {
     if (wahl) document.documentElement.setAttribute("data-theme", wahl);
     else document.documentElement.removeAttribute("data-theme");
     const knopf = document.getElementById("schalter");
     knopf.textContent = istDunkel() ? "☀" : "☾";
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
-    setzeBild("jahr", "ERA5_global_jahreswerte");
-    if (monat) setzeBild("monat", `ERA5_global_monat_${nn(monat)}`);
-    if (saison !== null) setzeBild("saison", `ERA5_global_saison_${SAISONS[saison].datei}`);
+    // Darstellung: Knöpfe, Beschreibung und Bilder
+    document.getElementById("art-balken").setAttribute("aria-pressed", String(art === "balken"));
+    document.getElementById("art-punkte").setAttribute("aria-pressed", String(art === "punkte"));
+    document.querySelectorAll(".art-text").forEach(el =>
+      el.textContent = art === "punkte" ? "ein Punkt je Tag" : "ein Balken je Jahr");
+    setzeBild("jahr", grafikName("jahr"));
+    document.getElementById("bild-jahr").alt = bildText("jahr");
+    if (monat) { setzeBild("monat", grafikName("monat")); document.getElementById("bild-monat").alt = bildText("monat"); }
+    if (saison !== null) { setzeBild("saison", grafikName("saison")); document.getElementById("bild-saison").alt = bildText("saison"); }
   }
+  ["balken", "punkte"].forEach(a => document.getElementById("art-" + a).addEventListener("click", () => {
+    if (art === a) return;
+    art = a;
+    try { localStorage.setItem("art", a); } catch (e) {}
+    anwenden();
+  }));
   document.getElementById("schalter").addEventListener("click", () => {
     wahl = istDunkel() ? "light" : "dark";
     try { localStorage.setItem("thema", wahl); } catch (e) {}
@@ -339,9 +399,17 @@
       tipp.style.top = y + "px";
     }
     const verstecke = ruhe;
+    // Fester Kasten genau so hoch wie der Info-Kasten im Bild: 2 Zeilen à 1,2 + Innenabstand 2 × 0,4
+    // = 3,2 Schrifthöhen -> verdeckt nie die Legende darunter
+    function groesse() {
+      const h = (d.info.y1 - d.info.y0) * schicht.clientHeight - 2;      // ohne Rahmen
+      if (h > 0) tipp.style.fontSize = Math.max(8, h / 3.2) + "px";
+    }
     if (fest) {
       tipp.classList.add("fest");
       Object.assign(tipp.style, { left: pz(d.info.x0), top: pz(d.info.y0) });
+      groesse();
+      new ResizeObserver(groesse).observe(schicht);
       ruhe();
     }
 
@@ -467,10 +535,9 @@
     [...leiste.children].forEach((b, i) => b.setAttribute("aria-pressed", String(i + 1 === m)));
     if (adresseMerken) history.replaceState(null, "", "#monat-" + nn(m));
     const name = MONATE[m - 1];
-    document.getElementById("bild-monat").alt =
-      `Balkendiagramm der globalen Mitteltemperatur im ${name} seit 1940 als Abweichung von 1850–1900`;
+    document.getElementById("bild-monat").alt = bildText("monat");
     document.getElementById("txt-monat").href = `daten/ERA5_global_monat_${nn(m)}.txt`;
-    setzeBild("monat", `ERA5_global_monat_${nn(m)}`);
+    setzeBild("monat", grafikName("monat"));
 
     const ziel = document.getElementById("kacheln-monat");
     fetch(`daten/ERA5_global_monat_${nn(m)}.txt`, { cache: "no-store" })
@@ -503,7 +570,8 @@
   SAISONS.forEach((x, i) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = x.name;
+    b.innerHTML = `${x.name}<span class="monate-klein">${x.kurz}</span>`;
+    b.setAttribute("aria-label", `${x.name} (${x.kurz.replace("–", " bis ")})`);
     b.setAttribute("aria-pressed", "false");
     b.addEventListener("click", () => waehleSaison(i, true));
     sLeiste.appendChild(b);
@@ -524,13 +592,12 @@
     const x = SAISONS[i];
     [...sLeiste.children].forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
     if (adresseMerken) history.replaceState(null, "", "#jahreszeit-" + x.datei);
-    document.getElementById("bild-saison").alt =
-      `Balkendiagramm der globalen Mitteltemperatur im ${x.name} seit 1940 als Abweichung von 1850–1900`;
+    document.getElementById("bild-saison").alt = bildText("saison");
     document.getElementById("txt-saison").href = `daten/ERA5_global_saison_${x.datei}.txt`;
     document.getElementById("hinweis-saison").textContent = x.name === "Winter"
-      ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Mit der Maus über einen Balken fahren zeigt die Werte · zum Vergrößern klicken."
-      : "Mit der Maus über einen Balken fahren (am Handy antippen) zeigt die Werte · zum Vergrößern klicken.";
-    setzeBild("saison", `ERA5_global_saison_${x.datei}`);
+      ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Mit der Maus über die Grafik fahren zeigt die Werte eines Jahres · zum Vergrößern klicken."
+      : "Mit der Maus über die Grafik fahren (am Handy antippen) zeigt die Werte eines Jahres · zum Vergrößern klicken.";
+    setzeBild("saison", grafikName("saison"));
 
     const ziel = document.getElementById("kacheln-saison");
     fetch(`daten/ERA5_global_saison_${x.datei}.txt`, { cache: "no-store" })
