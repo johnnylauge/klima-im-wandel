@@ -4,9 +4,8 @@ Balkendiagramme der Abweichung von 1850-1900 und Liniendiagramme der Mitteltempe
 jeweils für das Jahr, die vier Jahreszeiten und die zwölf Monate.
 
 Ablauf:
-  1. Lädt die Datei Land_and_Ocean_complete.txt von Berkeley Earth und speichert sie als
-     BE_Land_and_Ocean_complete.txt. Genutzt wird die erste Tabelle (Lufttemperatur über
-     Meereis - die Fassung, die Berkeley Earth selbst bevorzugt).
+  1. Lädt die Datei Global_TAVG_monthly.txt von Berkeley Earth (laufend aktualisiert) und
+     speichert sie als BE_Global_TAVG_monthly.txt. Genutzt wird die erste Tabelle.
   2. Rechnet die Abweichungen (Bezug 1951-1980) auf 1850-1900 um: Je Kalendermonat wird das
      Mittel 1850-1900 abgezogen. Die absolute Temperatur in °C ergibt sich aus der Abweichung
      plus dem absoluten Monatsmittel 1951-1980 aus dem Kopf der Datei.
@@ -85,10 +84,13 @@ plt.rcParams.update({
     "figure.facecolor": FARBEN["bg"], "hatch.color": FARBEN["fg"],
 })
 
-URL = "https://berkeley-earth-temperature.s3.us-west-1.amazonaws.com/Global/Land_and_Ocean_complete.txt"
+# Laufend aktualisierte Fassung (hochaufgelöstes Produkt, von Berkeley Earth als "beta" bezeichnet).
+# Die frühere Datei Land_and_Ocean_complete.txt wird seit Mitte 2025 nicht mehr fortgeschrieben
+# und endet im Dezember 2024.
+URL = "https://storage.googleapis.com/berkeley-earth-temperature-hr/global/Global_TAVG_monthly.txt"
 FOLDER = os.environ.get("BE_FOLDER") or os.environ.get(
     "ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\Berkeley_Earth")
-FILE = os.path.join(FOLDER, "BE_Land_and_Ocean_complete.txt")
+FILE = os.path.join(FOLDER, "BE_Global_TAVG_monthly.txt")
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 QUELLE = ("Datenquelle: Berkeley Earth (Land + Ozean)\n"
           "https://berkeleyearth.org/data/\n"
@@ -104,7 +106,7 @@ MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
                "August", "September", "Oktober", "November", "Dezember"]
 # Absolute Monatsmittel 1951-1980 (Lufttemperatur über Meereis) - Ersatz, falls der Dateikopf
 # einmal anders aussieht; normalerweise werden die Werte aus der Datei gelesen
-ABSOLUT_ERSATZ = [12.23, 12.44, 13.06, 13.97, 14.95, 15.67, 15.95, 15.79, 15.19, 14.26, 13.24, 12.49]
+ABSOLUT_ERSATZ = [12.27, 12.48, 13.11, 14.04, 14.98, 15.63, 15.88, 15.72, 15.15, 14.24, 13.25, 12.53]
 
 
 def komma(x, stellen=2):
