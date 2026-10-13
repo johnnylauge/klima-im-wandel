@@ -328,7 +328,7 @@ def erstelle(wahl, anzeigen=True):
     grenze = abstand + 1.5
     if SHOW_1_5_LINE:
         ax.axhline(grenze, color=FARBEN["limit"], ls=":", lw=1.8, zorder=2,
-                   label=f"1,5 K über 1850-1900 (≈ {komma(grenze)} °C)")
+                   label=f"1,5-K-Grenze (Pariser Klimaabkommen, ≈ {komma(grenze)} °C)")
 
     # Info-Kasten
     cur = werte.loc[current_year]
