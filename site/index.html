@@ -7,7 +7,7 @@
 <!-- Symbol im Browser-Tab: steigende Balken von blau nach rot (direkt eingebettet, keine Extradatei) -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231e1e21'/><rect x='4.5' y='20' width='4.5' height='7' rx='1' fill='%234393c3'/><rect x='10.5' y='16' width='4.5' height='11' rx='1' fill='%23f4a582'/><rect x='16.5' y='11' width='4.5' height='16' rx='1' fill='%23d6604d'/><rect x='22.5' y='5' width='4.5' height='22' rx='1' fill='%23e8313f'/></svg>">
 <meta name="theme-color" content="#1e1e21">
-<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Copernicus Climate Pulse, und Berkeley Earth ab 1850).">
+<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Berkeley Earth und NOAA) mit Vergleich der Datensätze.">
 <!-- Vorschaukarte beim Teilen des Links (Bluesky, Mastodon, Messenger …) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Klima im Wandel">
@@ -72,6 +72,8 @@
   .quelle button[aria-pressed="true"] { background: var(--text); color: var(--card); }
   .quelle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .quellinfo { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  @media (max-width: 480px) { .quelle .lang { display: none; } .quelle button { padding: 5px 10px; } }
+  .ausgeblendet { display: none; }
   .art button:disabled { opacity: 0.3; cursor: not-allowed; }
   .art button:disabled:hover { color: var(--text); }
   section { margin-top: 24px; }
@@ -185,7 +187,9 @@
       <span class="qlabel" id="qlabel">Datenquelle</span>
       <div class="quelle" role="group" aria-labelledby="qlabel">
         <button type="button" id="quelle-era5" aria-pressed="true">ERA5</button>
-        <button type="button" id="quelle-be" aria-pressed="false">Berkeley Earth</button>
+        <button type="button" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
+        <button type="button" id="quelle-noaa" aria-pressed="false">NOAA</button>
+        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, Berkeley Earth und NOAA in einer Grafik">Vergleich</button>
       </div>
       <span class="stand" id="stand">Daten werden geladen …</span>
     </div>
@@ -231,8 +235,8 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
-      <a id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
-      <a id="txt-roh" href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+      <a class="nur-quelle" id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
+      <a class="nur-quelle" id="txt-roh" href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
     </nav>
   </section>
 
@@ -253,7 +257,7 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Jahreszeiten">
       <a id="png-saison" href="#" download>Grafik (PNG)</a>
-      <a id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
+      <a class="nur-quelle" id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
     </nav>
   </section>
 
@@ -274,13 +278,14 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Monatsmittel">
       <a id="png-monat" href="#" download>Grafik (PNG)</a>
-      <a id="txt-monat" href="#">Monatswerte (TXT)</a>
+      <a class="nur-quelle" id="txt-monat" href="#">Monatswerte (TXT)</a>
     </nav>
   </section>
 
   <footer>
     Datenquellen: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
     <a href="https://berkeleyearth.org/data/">Berkeley Earth</a> ·
+    <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">NOAA NCEI</a> ·
     Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
   </footer>
 </main>
@@ -294,19 +299,29 @@
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
   // Datenquelle: "era5" (Tageswerte ab 1940, täglich) oder "be" (Berkeley Earth, Monatswerte ab 1850)
   let quelle = "era5";
-  try { if (localStorage.getItem("quelle") === "be") quelle = "be"; } catch (e) {}
   const QUELLEN = {
     era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tag.txt", "Tageswerte (TXT)"],
             info: "ERA5 (Copernicus): Tageswerte aus Wettermodell und Messungen ab 1940, täglich aktualisiert." },
     be:   { praefix: "BE", start: 1850, takt: "monatlich", roh: ["daten/BE_Global_TAVG_monthly.txt", "Monatswerte (TXT)"],
             info: "Berkeley Earth: Monatswerte aus Stations- und Schiffsmessungen ab 1850, neue Werte etwa Mitte des Folgemonats. " +
                   "Die °C-Werte liegen etwas anders als bei ERA5, die Abweichungen sind vergleichbar." },
+    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monat.csv", "Monatswerte (CSV)"],
+            info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
+                  "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
+    vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
+            info: "Vergleich: ERA5, Berkeley Earth und NOAA als Abweichung von 1850–1900 in einer Grafik. ERA5 beginnt 1940; " +
+                  "Berkeley Earth und NOAA enden etwa einen Monat früher." },
   };
+  // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
+  QUELLEN.era5.arten = ["balken", "punkte", "linien"];
+  QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
+  QUELLEN.vgl.arten = ["linien"];
+  try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
   // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
-  const bisText = letzter => (quelle === "be" ? MONATE[parseInt(letzter.split(".")[1], 10) - 1] : letzter.slice(0, 6));
-  // Punkte (Tageswerte) gibt es nur bei ERA5 - bei Berkeley Earth gilt dann Balken
-  const artJetzt = () => (quelle === "be" && art === "punkte" ? "balken" : art);
+  const bisText = letzter => (quelle !== "era5" ? MONATE[parseInt(letzter.split(".")[1], 10) - 1] : letzter.slice(0, 6));
+  // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
+  const artJetzt = () => (Q().arten.includes(art) ? art : Q().arten.includes("balken") ? "balken" : "linien");
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
   let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "punkte" (jeder Tag) oder "linien" (Mittel in °C)
@@ -357,6 +372,7 @@
               : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
               : `Mitteltemperatur im ${SAISONS[saison].name}`;
     const seit = Q().start, a = artJetzt();
+    if (Q().vergleich) return `Liniendiagramm: Abweichung der globalen ${wer} von 1850–1900 nach ERA5, Berkeley Earth und NOAA`;
     if (a === "linien") return `Liniendiagramm der globalen ${wer} seit ${seit} in Grad Celsius`;
     return a === "punkte"
       ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit ${seit} als Abweichung von 1850–1900, ein Punkt je Tag`
@@ -371,17 +387,23 @@
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
     // Darstellung: Knöpfe, Beschreibung und Bilder
     ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(artJetzt() === a)));
-    const pk = document.getElementById("art-punkte");
-    pk.disabled = quelle === "be";
-    pk.title = quelle === "be" ? "Punkte gibt es nur bei ERA5 (Tageswerte)" : "Punktdiagramm: ein Punkt je Tag";
-    document.querySelectorAll(".art-text").forEach(el => el.textContent = ART_TEXT[artJetzt()]);
+    ARTEN.forEach(a => { document.getElementById("art-" + a).disabled = !Q().arten.includes(a); });
+    document.getElementById("art-punkte").title = Q().arten.includes("punkte")
+      ? "Punktdiagramm: ein Punkt je Tag" : "Punkte gibt es nur bei ERA5 (Tageswerte)";
+    document.getElementById("art-balken").title = Q().arten.includes("balken")
+      ? "Balkendiagramm: ein Balken je Jahr" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
+    document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
+    document.querySelectorAll(".art-text").forEach(el => el.textContent =
+      Q().vergleich ? "drei Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
     // Datenquelle: Knöpfe, Hinweis, Startjahr und Downloads
-    ["era5", "be"].forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
+    Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
     document.querySelectorAll(".seit").forEach(el => el.textContent = Q().start);
     document.getElementById("txt-jahr").href = `daten/${Q().praefix}_global_jahreswerte.txt`;
-    document.getElementById("txt-roh").href = Q().roh[0];
-    document.getElementById("txt-roh").textContent = Q().roh[1];
+    if (Q().roh) {
+      document.getElementById("txt-roh").href = Q().roh[0];
+      document.getElementById("txt-roh").textContent = Q().roh[1];
+    }
     setzeBild("jahr", grafikName("jahr"));
     document.getElementById("bild-jahr").alt = bildText("jahr");
     if (monat) { setzeBild("monat", grafikName("monat")); document.getElementById("bild-monat").alt = bildText("monat"); }
@@ -434,6 +456,12 @@
     const neuester = d.balken[d.balken.length - 1];
 
     function fuelle(b) {
+      if (b.werte) {                                    // Vergleich: Wert je Datensatz
+        tipp.innerHTML = `${b.label}<br>` +
+          b.werte.map(w => `${w.q} ${k(w.abw)}${w.laufend ? " bisher" : ""}`).join(" &nbsp;|&nbsp; ");
+        tipp.style.display = "block";
+        return;
+      }
       tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
                        `${b.ca ? "≈ " : ""}${grad(b.temp)} | ${k(b.abw)}`;   // ≈: laufendes Jahr, aufs ganze Jahr umgerechnet      // "bisher" zeigt das laufende Jahr an
       tipp.style.display = "block";
@@ -540,6 +568,39 @@
     `<div class="kachel"${jahr ? ` data-jahr="${jahr}" tabindex="0"` : ""}><div class="label">${label}</div>` +
     `<div class="wert ${klasse}">${wert}</div><div class="zusatz">${zusatz}</div></div>`;
 
+  // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
+  const VGL = [["era5", "ERA5"], ["be", "Berkeley Earth"], ["noaa", "NOAA"]];
+  function kachelnVergleich(teil, dateiteil, bezeichnung, unvollstaendig) {
+    const ziel = document.getElementById("kacheln-" + teil);
+    Promise.all(VGL.map(([qq]) =>
+      fetch(`daten/${QUELLEN[qq].praefix}_global_${dateiteil}.txt`, { cache: "no-store" })
+        .then(r => (r.ok ? r.text() : "")).then(t => lese(t).reihen).catch(() => [])))
+      .then(alle => {
+        if (quelle !== "vgl") return;
+        let html = "";
+        const volleJe = [];
+        alle.forEach((reihen, i) => {
+          if (!reihen.length) { volleJe.push(null); html += kachel(VGL[i][1], "–", "keine Daten"); return; }
+          const a = reihen[reihen.length - 1];
+          const offen = unvollstaendig(a);
+          volleJe.push(offen ? reihen.slice(0, -1) : reihen);
+          html += kachel(`${VGL[i][1]} · ${bezeichnung(a.jahr)}`, k(a.abw),
+                         offen ? `bisher · bis ${QUELLEN[VGL[i][0]].takt === "täglich" ? a.letzter.slice(0, 6) : MONATE[parseInt(a.letzter.split(".")[1], 10) - 1]}`
+                               : `Rang ${a.rang} von ${reihen.length}`,
+                         a.abw >= 0 ? "warm" : "kalt", a.jahr);
+        });
+        // Spanne im neuesten Zeitraum, den alle Datensätze vollständig haben
+        const da = volleJe.filter(Boolean);
+        if (da.length > 1) {
+          const j = Math.min(...da.map(r => r[r.length - 1].jahr));
+          const w = da.map(r => (r.find(x => x.jahr === j) || {}).abw).filter(v => v !== undefined);
+          html += kachel(`Spanne · ${bezeichnung(j)}`, (Math.max(...w) - Math.min(...w)).toFixed(2).replace(".", ",") + " K",
+                         "Unterschied zwischen den Datensätzen", "", j);
+        }
+        ziel.innerHTML = html;
+      });
+  }
+
   // TXT-Datei (Jahr Temp Abw Rang Tage letzter_Tag) einlesen
   function lese(text) {
     const zeilen = text.split("\n");
@@ -569,7 +630,11 @@
              aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr) +
       kachel(`Wärmstes Jahr seit ${reihen[0].jahr}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
       kachel(`Kältestes Jahr seit ${reihen[0].jahr}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
-    // Beim Wechsel der Quelle bleiben Monat und Jahreszeit gewählt - nur neu laden
+    startAuswahl(aktuell);
+  }
+
+  // Monat und Jahreszeit beim Start wählen (beim Wechsel der Quelle bleiben sie gewählt)
+  function startAuswahl(aktuell) {
     if (monat && saison !== null) { waehleMonat(monat, false); waehleSaison(saison, false); return; }
     // Startmonat: Monat des letzten Datentags (über Adresse #monat-03 auch direkt wählbar)
     const ausAdresse = parseInt((location.hash.match(/monat-(\d+)/) || [])[1], 10);
@@ -602,6 +667,11 @@
     document.getElementById("bild-monat").alt = bildText("monat");
     document.getElementById("txt-monat").href = `daten/${Q().praefix}_global_monat_${nn(m)}.txt`;
     setzeBild("monat", grafikName("monat"));
+    if (Q().vergleich) {
+      kachelnVergleich("monat", `monat_${nn(m)}`, j => `${name} ${j}`,
+                       a => a.tage < new Date(a.jahr, m, 0).getDate());
+      return;
+    }
 
     const ziel = document.getElementById("kacheln-monat");
     const q = quelle;
@@ -663,6 +733,10 @@
       ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. Mit der Maus über die Grafik fahren zeigt die Werte eines Jahres · zum Vergrößern klicken."
       : "Mit der Maus über die Grafik fahren (am Handy antippen) zeigt die Werte eines Jahres · zum Vergrößern klicken.";
     setzeBild("saison", grafikName("saison"));
+    if (Q().vergleich) {
+      kachelnVergleich("saison", `saison_${x.datei}`, j => saisonLabel(x, j), a => a.tage < saisonTage(x, a.jahr));
+      return;
+    }
 
     const ziel = document.getElementById("kacheln-saison");
     const q = quelle;
@@ -727,14 +801,19 @@
     const q = quelle;
     document.getElementById("stand").textContent = "Daten werden geladen …";
     anwenden();
-    fetch(`daten/${Q().praefix}_global_jahreswerte.txt`, { cache: "no-store" })
+    // Der Vergleich hat keine eigene TXT-Datei: Datenstand und Startauswahl kommen von ERA5
+    const vgl = !!Q().vergleich;
+    fetch(`daten/${vgl ? "ERA5" : Q().praefix}_global_jahreswerte.txt`, { cache: "no-store" })
       .then(r => (r.ok ? r.text() : Promise.reject()))
       .then(text => {
         if (quelle !== q) return;
         const daten = lese(text);
         version = "?v=" + encodeURIComponent(q + daten.stand);
         anwenden();
-        zeigeJahr(daten);
+        if (!vgl) { zeigeJahr(daten); return; }
+        document.getElementById("stand").textContent = "ERA5 · Berkeley Earth · NOAA";
+        kachelnVergleich("jahr", "jahreswerte", j => String(j), a => !a.letzter.startsWith("31.12."));
+        startAuswahl(daten.reihen[daten.reihen.length - 1]);
       })
       .catch(() => {
         if (quelle !== q) return;
@@ -744,7 +823,7 @@
         if (saison === null) waehleSaison(0, false); else waehleSaison(saison, false);
       });
   }
-  ["era5", "be"].forEach(x => document.getElementById("quelle-" + x).addEventListener("click", () => {
+  Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).addEventListener("click", () => {
     if (quelle === x) return;
     quelle = x;
     try { localStorage.setItem("quelle", x); } catch (e) {}
