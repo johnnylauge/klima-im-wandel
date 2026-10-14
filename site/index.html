@@ -308,6 +308,7 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
+      <a id="pdf-jahr" href="#" download>Grafik (PDF)</a>
       <a class="nur-quelle" id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
       <a class="nur-quelle" id="txt-roh" href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
     </nav>
@@ -330,6 +331,7 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Jahreszeiten">
       <a id="png-saison" href="#" download>Grafik (PNG)</a>
+      <a id="pdf-saison" href="#" download>Grafik (PDF)</a>
       <a class="nur-quelle" id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
     </nav>
   </section>
@@ -351,6 +353,7 @@
     </figure>
     <nav class="downloads" aria-label="Downloads Monatsmittel">
       <a id="png-monat" href="#" download>Grafik (PNG)</a>
+      <a id="pdf-monat" href="#" download>Grafik (PDF)</a>
       <a class="nur-quelle" id="txt-monat" href="#">Monatswerte (TXT)</a>
     </nav>
   </section>
@@ -359,6 +362,7 @@
     Datenquellen: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
     <a href="https://berkeleyearth.org/data/">Berkeley Earth</a> ·
     <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">NOAA NCEI</a> ·
+    <a href="https://www.metoffice.gov.uk/hadobs/hadcrut5/">Met Office Hadley Centre (HadCRUT5)</a> ·
     Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
   </footer>
 </main>
@@ -439,6 +443,9 @@
     const dl = document.getElementById("png-" + teil);
     dl.href = `${basis}_voll.png${version}`;
     dl.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.png`);
+    const pdf = document.getElementById("pdf-" + teil);           // gleiche Grafik als PDF (zum Drucken)
+    pdf.href = `${basis}_voll.pdf${version}`;
+    pdf.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.pdf`);
     ladeHover(teil, name);
   }
 
