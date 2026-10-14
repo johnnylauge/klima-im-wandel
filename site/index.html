@@ -72,10 +72,10 @@
   .quelle button[aria-pressed="true"] { background: var(--text); color: var(--card); }
   .quelle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .quellinfo { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  /* Handy: alle fünf Quellen in einer Reihe, Schrift wächst mit der Bildschirmbreite */
   @media (max-width: 600px) {
-    .quelle { display: grid; grid-template-columns: repeat(4, auto); border-radius: 16px; width: 100%; }
-    .quelle button { padding: 6px 8px; }
-    #quelle-vgl { grid-column: 1 / -1; }
+    .quelle { display: flex; width: 100%; gap: 1px; padding: 2px; }
+    .quelle button { flex: 1 1 auto; padding: 6px 4px; font-size: clamp(0.68rem, 3.3vw, 0.85rem); }
     .quelle .lang { display: none; }
   }
   .ausgeblendet { display: none; }
@@ -394,7 +394,10 @@
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
   // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
-  const bisText = letzter => (quelle !== "era5" ? MONATE[parseInt(letzter.split(".")[1], 10) - 1] : letzter.slice(0, 6));
+  // Monate abgekürzt, damit die Kacheln gleich hoch bleiben (kurze Monatsnamen ausgeschrieben)
+  const MONATE_KURZ = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
+  const monatKurz = letzter => MONATE_KURZ[parseInt(letzter.split(".")[1], 10) - 1];
+  const bisText = letzter => (quelle !== "era5" ? monatKurz(letzter) : letzter.slice(0, 6));
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
   const artJetzt = () => (Q().arten.includes(art) ? art : Q().arten.includes("balken") ? "balken" : "linien");
   let monat = null;          // gewählter Monat 1..12
@@ -687,13 +690,14 @@
     "vorindustriellen Zeit (1850–1900).";
   // "14,91 °C | +1,59 K" - bei Quellen ohne absolute Werte (HadCRUT5) nur die Abweichung
   const wertText = r => (Q().absolut === false || !isFinite(r.temp) ? k(r.abw) : `${grad(r.temp)} | ${k(r.abw)}`);
-  // Erste Kachel: Mitteltemperatur - oder, ohne absolute Werte, das Mittel der letzten 10 vollständigen Zeiträume
-  function ersteKachel(aktuell, volle, titel, zusatz, bezeichnung) {
+  // Erste Kachel: Mitteltemperatur - oder, ohne absolute Werte (HadCRUT5), die Abweichung des
+  // vorherigen vollständigen Zeitraums (Vorjahr), damit daneben der aktuelle Wert steht
+  function ersteKachel(aktuell, volle, titel, zusatz, bezeichnung, anzahl) {
     if (Q().absolut !== false) return kachel(titel, grad(aktuell.temp), zusatz, "", aktuell.jahr);
-    const letzte = volle.slice(-10);
-    const mittel = letzte.reduce((s, r) => s + r.abw, 0) / letzte.length;
-    return kachel("Mittel der letzten 10 Jahre", k(mittel),
-                  `${bezeichnung(letzte[0].jahr)} bis ${bezeichnung(letzte[letzte.length - 1].jahr)}`, mittel >= 0 ? "warm" : "kalt");
+    const vorher = [...volle].reverse().find(r => r.jahr < aktuell.jahr);
+    if (!vorher) return "";
+    return kachel(`Abweichung ${bezeichnung(vorher.jahr)}`, k(vorher.abw), `Rang ${vorher.rang} von ${anzahl}`,
+                  vorher.abw >= 0 ? "warm" : "kalt", vorher.jahr);
   }
   const kachel = (label, wert, zusatz, klasse = "", jahr = null, info = false) =>
     `<div class="kachel"${jahr ? ` data-jahr="${jahr}" tabindex="0"` : ""}><div class="label">${label}` +
@@ -702,7 +706,7 @@
     (info ? `<div class="k-erkl" role="note" hidden>${K_ERKLAERUNG}</div>` : "") + `</div>`;
 
   // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
-  const VGL = [["era5", "ERA5"], ["be", "Berkeley Earth"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"]];
+  const VGL = [["era5", "ERA5"], ["be", "Berkeley"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"]];   // kurz für die Kacheln
   function kachelnVergleich(teil, dateiteil, bezeichnung, unvollstaendig) {
     const ziel = document.getElementById("kacheln-" + teil);
     Promise.all(VGL.map(([qq]) =>
@@ -718,7 +722,7 @@
           const offen = unvollstaendig(a);
           volleJe.push(offen ? reihen.slice(0, -1) : reihen);
           html += kachel(`${VGL[i][1]} · ${bezeichnung(a.jahr)}`, k(a.abw),
-                         offen ? `bisher · bis ${QUELLEN[VGL[i][0]].takt === "täglich" ? a.letzter.slice(0, 6) : MONATE[parseInt(a.letzter.split(".")[1], 10) - 1]}`
+                         offen ? `bisher · bis ${QUELLEN[VGL[i][0]].takt === "täglich" ? a.letzter.slice(0, 6) : monatKurz(a.letzter)}`
                                : `Rang ${a.rang} von ${reihen.length}`,
                          a.abw >= 0 ? "warm" : "kalt", a.jahr);
         });
@@ -729,7 +733,7 @@
           const w = da.map(r => (r.find(x => x.jahr === j) || {}).abw).filter(v => v !== undefined);
           const mittel = w.reduce((a, b) => a + b, 0) / w.length;
           html += kachel(`Mittel · ${bezeichnung(j)}`, k(mittel),
-                         `aller ${w.length} Datensätze · Spanne ${(Math.max(...w) - Math.min(...w)).toFixed(2).replace(".", ",")} K`,
+                         `aller ${w.length} Datensätze<span class="nur-gross"> · Spanne ${(Math.max(...w) - Math.min(...w)).toFixed(2).replace(".", ",")} K</span>`,
                          mittel >= 0 ? "warm" : "kalt", j, true);
         }
         ziel.innerHTML = html;
@@ -759,7 +763,7 @@
     const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
     document.getElementById("kacheln-jahr").innerHTML =
       ersteKachel(aktuell, volle, "Mitteltemperatur " + aktuell.jahr,
-             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", j => String(j)) +
+             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", j => String(j), reihen.length) +
       kachel(`Abweichung ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
              (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
@@ -804,7 +808,7 @@
     document.getElementById("txt-monat").href = `daten/${Q().praefix}_global_monat_${nn(m)}.txt`;
     setzeBild("monat", grafikName("monat"));
     if (Q().vergleich) {
-      kachelnVergleich("monat", `monat_${nn(m)}`, j => `${name} ${j}`,
+      kachelnVergleich("monat", `monat_${nn(m)}`, j => `${MONATE_KURZ[m - 1]} ${j}`,   // kurz, damit nichts umbricht
                        a => a.tage < new Date(a.jahr, m, 0).getDate());
       return;
     }
@@ -825,7 +829,7 @@
         const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         ziel.innerHTML =
           ersteKachel(aktuell, volle, `Mitteltemperatur ${name} ${aktuell.jahr}`,
-                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => String(j)) +
+                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => `${name} ${j}`, reihen.length) +
           kachel(`Abweichung ${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
@@ -892,7 +896,7 @@
         ziel.innerHTML =
           ersteKachel(aktuell, volle, `Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`,
                  unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit",
-                 j => saisonLabel(x, j).split(" ")[1]) +
+                 j => saisonLabel(x, j), reihen.length) +
           kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
