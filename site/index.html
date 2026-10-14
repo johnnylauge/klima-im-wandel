@@ -240,6 +240,7 @@
     .kachel { padding: 8px 10px; }
     .kachel .label, .kachel .zusatz { font-size: 0.75rem; }
     .kachel .wert { font-size: 1.15rem; }
+    .kacheln.fuenf .kachel:nth-child(5) { display: none; }   /* Vergleich: Kachel "Mittel" am Handy weglassen */
   }
 </style>
 </head>
@@ -540,7 +541,8 @@
       if (b.werte) {                                    // Vergleich: Wert je Datensatz
         const kurz = { "Berkeley Earth": "Berkeley" };
         tipp.innerHTML = `${b.label}${b.werte.some(w => w.laufend) ? " (bisher)" : ""}<br>` +
-          b.werte.map(w => `${kurz[w.q] || w.q} ${k(w.abw)}`).join(" &nbsp;|&nbsp; ");
+          b.werte.map(w => `${kurz[w.q] || w.q} ${k(w.abw)}`).join(" &nbsp;|&nbsp; ") +
+          (b.mittel !== undefined && b.mittel !== null ? ` &nbsp;|&nbsp; <strong>Mittel ${k(b.mittel)}</strong>` : "");
         tipp.style.display = "block";
         passend();
         return;
