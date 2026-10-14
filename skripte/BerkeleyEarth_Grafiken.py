@@ -247,7 +247,7 @@ def berechne(art, name, monate):
         df.loc[df["monat"] == 12, "year"] += 1
     werte = df.groupby("year").agg(temp=("temp", "mean"), anomaly=("ano_pre", "mean"),
                                    n=("monat", "size"), days=("tage", "sum"),
-                                   unsicher=("unsicher", lambda u: float(np.sqrt((u ** 2).mean() / len(u)))),
+                                   unsicher=("unsicher", "mean"),   # vorsichtig: Fehler der Monate hängen zusammen, daher nicht kleiner gerechnet
                                    letzter_jahr=("jahr", "last"), letzter_monat=("monat", "last"))
     current_year = werte.index.max()
     voll = werte["n"] >= len(monate)

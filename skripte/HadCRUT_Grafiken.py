@@ -1,7 +1,8 @@
 """
 Globale Temperatur nach HadCRUT5 (Met Office Hadley Centre und Climatic Research Unit der
 University of East Anglia, Land + Ozean, Monatswerte ab 1850): Balkendiagramme der Abweichung
-von 1850-1900 für das Jahr, die vier Jahreszeiten und die zwölf Monate.
+von 1850-1900 und Liniendiagramme der Mitteltemperatur in °C (geschätzt), jeweils für das Jahr,
+die vier Jahreszeiten und die zwölf Monate.
 
 Ablauf:
   1. Sucht auf der HadCRUT5-Seite die aktuelle Version (z. B. HadCRUT.5.2.0.0) und lädt die
@@ -9,9 +10,12 @@ Ablauf:
      Die Abweichungen beziehen sich dort auf 1961-1990, dazu gibt es die 95-%-Unsicherheit.
   2. Rechnet auf 1850-1900 um: Je Kalendermonat wird das Mittel 1850-1900 abgezogen.
   3. Bildet je Jahr das Mittel des Zeitraums (Jahr, Jahreszeit, Monat), mit Rang.
-  4. Speichert die Werte als TXT (gleicher Aufbau wie bei den anderen Quellen; die Spalte mit
-     der Temperatur in °C bleibt leer, denn HadCRUT5 liefert keine absoluten Werte) und zeichnet
-     Balkendiagramme im gleichen Stil wie die anderen.
+  4. HadCRUT5 liefert keine absoluten Werte. Für °C wird je Monat ein Mittel 1961-1990
+     geschätzt: die Monatsmittel des 20. Jahrhunderts von NOAA, verschoben um das Mittel
+     1901-2000 der HadCRUT5-Abweichungen. Im Jahresmittel ergibt das rund 14,0 °C für
+     1961-1990 - passend zum Wert, den die HadCRUT-Gruppe selbst nennt.
+  5. Speichert die Werte als TXT (gleicher Aufbau wie bei den anderen Quellen) und zeichnet
+     die Grafiken im gleichen Stil wie die anderen.
 
 Läuft lokal (Windows) und auf GitHub:
   - Auf GitHub gibt die Steuerdatei über Umgebungsvariablen vor:
@@ -42,12 +46,12 @@ from matplotlib.ticker import MultipleLocator
 # =========================================================
 WAHL = "alle"                   # "Jahr", eine Jahreszeit ("Herbst"), ein Monat ("Oktober" oder 10),
                                 # eine Liste wie ["Jahr", "Sommer", 7] oder "alle" = alle 17 Zeiträume
-ARTEN = ["balken"]              # nur Balken: HadCRUT5 liefert keine absoluten Werte für °C-Linien
+ARTEN = ["balken", "linien"]    # welche Diagramme: "balken" (Abweichung), "linien" (°C, geschätzt)
 SHOW_TREND = True               # LOESS-Trend (30 Jahre)
 SHOW_1_5_LINE = True            # 1,5-K-Linie
 SHOW_RECORD = True              # wärmsten (vollständigen) Zeitraum markieren
 SHOW_INFO = True                # Info-Kasten oben links
-SHOW_UNSICHERHEIT = False       # nur für Liniendiagramme (bei HadCRUT5 nicht genutzt)
+SHOW_UNSICHERHEIT = True        # Unsicherheitsband (95 %) im Liniendiagramm
 LINIE = 3.0                     # Stärke der farbigen Linie
 X_TICK_STEP = 20                # Abstand der Jahreszahlen auf der x-Achse
 
@@ -62,6 +66,8 @@ AUF_GITHUB = bool(os.environ.get("CI"))
 ANZEIGEN = False                # wird unten gesetzt: nur bei einer Auswahl lokal ein Fenster
 if os.environ.get("HADCRUT_WAHL"):
     WAHL = os.environ["HADCRUT_WAHL"]
+if os.environ.get("HADCRUT_ARTEN"):
+    ARTEN = [a.strip() for a in os.environ["HADCRUT_ARTEN"].split(",")]
 
 FARBEN = {
     False: dict(bg="white",   fg="black",   text="#1d1d1f", box_bg="white",   box_rand="lightgray",
@@ -86,6 +92,8 @@ URL_MUSTER = ("https://www.metoffice.gov.uk/hadobs/hadcrut5/data/{v}/analysis/di
 FOLDER = os.environ.get("HADCRUT_FOLDER") or os.environ.get(
     "ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\HadCRUT5")
 FILE = os.path.join(FOLDER, "HadCRUT5_global_monat.csv")
+# Monatsmittel des 20. Jahrhunderts (NOAA, Land + Ozean) - Grundlage für die geschätzten °C-Werte
+ABSOLUT_20JH = [12.0, 12.1, 12.7, 13.7, 14.8, 15.5, 15.8, 15.6, 15.0, 14.0, 12.9, 12.2]
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 QUELLE = ("Datenquelle: HadCRUT5, Met Office Hadley Centre / CRU (Land + Ozean)\n"
           "https://www.metoffice.gov.uk/hadobs/hadcrut5/\n"
@@ -198,10 +206,15 @@ def lies_hadcrut(datei):
 
 
 MONATE_DF = lies_hadcrut(FILE)
-# Bezug 1850-1900 je Kalendermonat; keine absoluten Werte -> Temperatur bleibt leer (NaN)
+# Bezug 1850-1900 je Kalendermonat
 bezug = MONATE_DF[(MONATE_DF["jahr"] >= 1850) & (MONATE_DF["jahr"] <= 1900)].groupby("monat")["abw_6190"].mean()
 MONATE_DF["ano_pre"] = MONATE_DF["abw_6190"] - MONATE_DF["monat"].map(bezug)
-MONATE_DF["temp"] = np.nan
+# Geschätzte absolute Temperatur: Monatsmittel 1961-1990 = NOAA-Mittel 1901-2000 minus dem
+# HadCRUT5-Mittel 1901-2000 (bezogen auf 1961-1990)
+jh20 = MONATE_DF[(MONATE_DF["jahr"] >= 1901) & (MONATE_DF["jahr"] <= 2000)].groupby("monat")["abw_6190"].mean()
+ABSOLUT_6190 = {m: ABSOLUT_20JH[m - 1] - jh20[m] for m in range(1, 13)}
+MONATE_DF["temp"] = MONATE_DF["abw_6190"] + MONATE_DF["monat"].map(ABSOLUT_6190)
+print(f"Geschätztes Mittel 1961-1990: {np.mean(list(ABSOLUT_6190.values())):.2f} °C")
 MONATE_DF["tage"] = [pd.Period(f"{j}-{m:02d}").days_in_month for j, m in zip(MONATE_DF["jahr"], MONATE_DF["monat"])]
 LETZTER = MONATE_DF.iloc[-1]
 STAND = f"{MONTH_NAMES[int(LETZTER['monat']) - 1]} {int(LETZTER['jahr'])}"
@@ -232,7 +245,7 @@ def berechne(art, name, monate):
         df.loc[df["monat"] == 12, "year"] += 1
     werte = df.groupby("year").agg(temp=("temp", "mean"), anomaly=("ano_pre", "mean"),
                                    n=("monat", "size"), days=("tage", "sum"),
-                                   unsicher=("unsicher", lambda u: float(np.sqrt((u ** 2).mean() / len(u)))),
+                                   unsicher=("unsicher", "mean"),   # vorsichtig: Fehler der Monate hängen zusammen, daher nicht kleiner gerechnet
                                    letzter_jahr=("jahr", "last"), letzter_monat=("monat", "last"))
     current_year = werte.index.max()
     voll = werte["n"] >= len(monate)
@@ -248,7 +261,7 @@ def berechne(art, name, monate):
 
 def speichere_txt(werte, art, name, datei):
     with open(datei, "w", encoding="utf-8") as f:
-        f.write(f"# Temperaturmittel {name} – Global (HadCRUT5, Land + Ozean; keine absoluten Werte)\n"
+        f.write(f"# Temperaturmittel {name} – Global (HadCRUT5, Land + Ozean; °C geschätzt)\n"
                 f"# Abweichung bezogen auf 1850-1900\n"
                 f"# Stand: {STAND}\n"
                 + ("# Jahr = Jahr von Januar/Februar (2026 = Winter 2025/26)\n" if name == "Winter" else "")
@@ -288,8 +301,8 @@ def achsen_beschriften(ax, ylabel):
 def info_kasten(ax, werte, current_year, is_partial, label):
     cur = werte.loc[current_year]
     bis = f" (bis {MONTH_NAMES[int(cur['letzter_monat']) - 1][:3]}.)" if is_partial else ""
-    info = (f"Temperaturabweichung {label(current_year)}{bis}\n"
-            f"{cur['anomaly']:+.2f} K gegenüber 1850-1900  "
+    info = (f"Temperaturmittel {label(current_year)}{bis}: {cur['temp']:.2f} °C\n"
+            f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     t = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                 fontsize=10 * SCHRIFT, fontweight="bold", zorder=10,
@@ -493,7 +506,7 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
     rek = voll["anomaly"].idxmax()
     w = "Wärmstes" if art == "jahr" else "Wärmster"
     rekord = (f"{w} {'Jahr ' if art == 'jahr' else ''}{label(rek)}\n"
-              f"{k_text(voll.loc[rek, 'anomaly'])}", rek, voll.loc[rek, "anomaly"])
+              f"{komma(voll.loc[rek, 'temp'])} °C | {k_text(voll.loc[rek, 'anomaly'])}", rek, voll.loc[rek, "anomaly"])
     layout_und_kaesten(fig, ax, legend, info_text, hindernisse, 1.5, rekord)
 
     def felder():
@@ -501,7 +514,7 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
         r = fig.canvas.get_renderer()
         for b, (jahr, z) in zip(bars, werte.iterrows()):
             e = b.get_window_extent(r)
-            yield dict(jahr=int(jahr), label=label(jahr), rang=int(z["rank"]), temp=None,
+            yield dict(jahr=int(jahr), label=label(jahr), rang=int(z["rank"]), temp=round(float(z["temp"]), 3),
                        abw=round(float(z["anomaly"]), 3), laufend=bool(is_partial and jahr == current_year),
                        px=(e.x0, e.x1, min(e.y0, e.y1), max(e.y0, e.y1)))
     speichern(fig, ax, info_text, f"HADCRUT_global_{teil}", felder)
@@ -644,7 +657,7 @@ for w in auswahl:
     werte, current_year, is_partial = berechne(art, name, monate)
     if not DUNKEL:                              # TXT nur einmal (beim hellen Lauf) schreiben
         speichere_txt(werte, art, name, os.path.join(FOLDER, f"HADCRUT_global_{txt_teil}.txt"))
-    print(f"{label(current_year)}: "
+    print(f"{label(current_year)}: {werte.loc[current_year, 'temp']:.2f} °C | "
           f"{werte.loc[current_year, 'anomaly']:+.2f} K | {'bisher ' if is_partial else ''}"
           f"Rang {werte.loc[current_year, 'rank']}")
     if "balken" in ARTEN:
