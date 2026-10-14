@@ -36,6 +36,15 @@ jobs:
       - name: Pakete installieren
         run: pip install -r requirements.txt
 
+      # Daten und Grafiken vom letzten Lauf zurückholen. Fällt heute eine Quelle aus,
+      # bleiben ihre Grafiken vom letzten erfolgreichen Lauf stehen statt zu fehlen.
+      - name: Letzten Stand wiederherstellen
+        uses: actions/cache/restore@v4
+        with:
+          path: _site/daten
+          key: daten-${{ github.run_id }}
+          restore-keys: daten-
+
       - name: Daten laden und helle Grafik erstellen
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
@@ -176,6 +185,13 @@ jobs:
 
       - name: Webseite zusammenstellen
         run: cp site/index.html _site/
+
+      # Heutigen Stand für den nächsten Lauf sichern (ältere Sicherungen löscht GitHub selbst)
+      - name: Stand sichern
+        uses: actions/cache/save@v4
+        with:
+          path: _site/daten
+          key: daten-${{ github.run_id }}
 
       - name: Webseite hochladen
         uses: actions/upload-pages-artifact@v4
