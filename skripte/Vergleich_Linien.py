@@ -242,7 +242,7 @@ def erstelle(wahl):
     for q in ("ERA5", "BE", "NOAA", "HADCRUT"):                 # Legende in fester Reihenfolge
         if q in reihen:
             handles.append(Line2D([], [], color=QUELLEN[q]["farbe"], lw=LINIE))
-            labels.append(f"{QUELLEN[q]['kurz']} (Daten von {reihen[q][0].index.min()} bis {bis_monat(reihen[q][1])})")
+            labels.append(f"{QUELLEN[q]['kurz']} (Daten von {reihen[q][0].index.min()} bis {bis_monat(reihen[q][0]["letzter"].iloc[-1])})")
     if trend_linie:
         handles.append(Line2D([], [], color=FARBEN["fg"], lw=2.4, ls="--"))
         labels.append("LOESS-Trend (30 Jahre)")
