@@ -248,15 +248,16 @@ def erstelle(wahl):
         if q in reihen:
             df, _ = reihen[q]
             if neuestes in df.index:
-                teile.append(f"{QUELLEN[q]['kurz']} {k_text(df.loc[neuestes, 'abw'])}"
-                             f"{' (bisher)' if df.loc[neuestes, 'laufend'] else ''}")
+                teile.append(f"{QUELLEN[q]['kurz']} {k_text(df.loc[neuestes, 'abw'])}")
             else:
                 teile.append(f"{QUELLEN[q]['kurz']} –")
     # Mittel der vorhandenen Werte des neuesten Zeitraums
     neu = [df.loc[neuestes, "abw"] for df, _ in reihen.values() if neuestes in df.index]
     if len(neu) > 1:
         teile.append(f"Mittel {k_text(float(np.mean(neu)))}")
-    info = f"Temperaturabweichung {label(neuestes)}\n" + "  |  ".join(teile)
+    # "(bisher)" einmal hinter dem Zeitraum, wenn er bei mindestens einer Quelle noch läuft
+    bisher = any(neuestes in df.index and df.loc[neuestes, "laufend"] for df, _ in reihen.values())
+    info = f"Temperaturabweichung {label(neuestes)}{' (bisher)' if bisher else ''}\n" + "  |  ".join(teile)
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", zorder=10,
                         bbox=dict(boxstyle="round,pad=0.5", facecolor=FARBEN["box_bg"],
