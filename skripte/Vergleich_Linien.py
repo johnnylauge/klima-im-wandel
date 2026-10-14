@@ -1,11 +1,12 @@
 """
-Vergleich der Datensätze ERA5 (Copernicus), Berkeley Earth und NOAA als Liniendiagramm:
-Abweichung von 1850-1900 je Jahr, je Jahreszeit oder je Monat - drei Linien in einer Grafik.
+Vergleich der Datensätze ERA5 (Copernicus), Berkeley Earth, NOAA und HadCRUT5 als Liniendiagramm:
+Abweichung von 1850-1900 je Jahr, je Jahreszeit oder je Monat - eine Linie je Datensatz.
 
 Das Skript lädt nichts herunter. Es liest die TXT-Dateien, die die anderen Skripte schreiben:
   ERA5_global_jahreswerte.txt, ERA5_global_monat_10.txt, ERA5_global_saison_herbst.txt ...
   BE_global_...txt   (BerkeleyEarth_Grafiken.py)
   NOAA_global_...txt (NOAA_Grafiken.py)
+  HADCRUT_global_...txt (HadCRUT_Grafiken.py)
 Fehlt eine Quelle, wird sie einfach weggelassen.
 
 Der laufende (unvollständige) Zeitraum jeder Quelle wird gestrichelt angehängt. Die Quellen
@@ -51,6 +52,7 @@ ORDNER = {
     "ERA5": os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "ERA5", "Climate_Pulse")),
     "BE": os.environ.get("BE_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "Berkeley_Earth")),
     "NOAA": os.environ.get("NOAA_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "NOAA")),
+    "HADCRUT": os.environ.get("HADCRUT_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "HadCRUT5")),
 }
 FOLDER = os.environ.get("VGL_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "Vergleich"))
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
@@ -66,6 +68,7 @@ QUELLEN = {
     "ERA5": dict(name="ERA5 (Copernicus)", kurz="ERA5", farbe="#F5B841" if DUNKEL else "#E69F00"),
     "BE":   dict(name="Berkeley Earth",    kurz="Berkeley Earth", farbe="#56B4E9" if DUNKEL else "#0072B2"),
     "NOAA": dict(name="NOAA",              kurz="NOAA", farbe="#3FC79A" if DUNKEL else "#009E73"),
+    "HADCRUT": dict(name="HadCRUT5 (Met Office)", kurz="HadCRUT5", farbe="#E59CC8" if DUNKEL else "#CC79A7"),
 }
 plt.rcParams.update({
     "text.color": FARBEN["text"], "axes.labelcolor": FARBEN["text"],
@@ -162,7 +165,7 @@ def erstelle(wahl):
 
     hindernisse = []
     handles, labels = [], []
-    for q in ("BE", "NOAA", "ERA5"):                 # ERA5 zuletzt, liegt obenauf
+    for q in ("HADCRUT", "BE", "NOAA", "ERA5"):      # ERA5 zuletzt, liegt obenauf
         if q not in reihen:
             continue
         df, _ = reihen[q]
@@ -177,7 +180,7 @@ def erstelle(wahl):
         hindernisse.append(df["abw"].reset_index().to_numpy(float))
         xs = np.linspace(df.index.min(), df.index.max(), len(df) * 6)
         hindernisse.append(np.column_stack([xs, np.interp(xs, df.index, df["abw"])]))
-    for q in ("ERA5", "BE", "NOAA"):                 # Legende in fester Reihenfolge
+    for q in ("ERA5", "BE", "NOAA", "HADCRUT"):                 # Legende in fester Reihenfolge
         if q in reihen:
             handles.append(Line2D([], [], color=QUELLEN[q]["farbe"], lw=LINIE))
             labels.append(f"{QUELLEN[q]['name']} (ab {reihen[q][0].index.min()}, Stand {reihen[q][1]})")
@@ -193,7 +196,7 @@ def erstelle(wahl):
     # Info-Kasten: neuester Zeitraum, Wert je Quelle
     neuestes = max(df.index.max() for df, _ in reihen.values())
     teile = []
-    for q in ("ERA5", "BE", "NOAA"):
+    for q in ("ERA5", "BE", "NOAA", "HADCRUT"):
         if q in reihen:
             df, _ = reihen[q]
             if neuestes in df.index:
@@ -222,7 +225,7 @@ def erstelle(wahl):
     for t in ax.get_xticklabels() + ax.get_yticklabels():
         t.set_fontweight("bold")
     ax.grid(True, alpha=0.2, zorder=0)
-    fig.text(0.99, 0.01, "Datenquellen: Copernicus Climate Pulse (ERA5), Berkeley Earth, NOAA NCEI\n"
+    fig.text(0.99, 0.01, "Datenquellen: Copernicus Climate Pulse (ERA5), Berkeley Earth, NOAA NCEI, Met Office (HadCRUT5)\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
     fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)
@@ -290,7 +293,7 @@ def erstelle(wahl):
         felder = []
         for jahr in range(start, neuestes + 1):
             werte = []
-            for q in ("ERA5", "BE", "NOAA"):
+            for q in ("ERA5", "BE", "NOAA", "HADCRUT"):
                 if q in reihen and jahr in reihen[q][0].index:
                     z = reihen[q][0].loc[jahr]
                     werte.append(dict(q=QUELLEN[q]["kurz"], abw=round(float(z["abw"]), 3),
