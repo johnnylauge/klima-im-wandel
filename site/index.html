@@ -138,9 +138,11 @@
     .kacheln.fuenf .kachel:last-child { grid-column: 1 / -1; }
   }
   .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; position: relative; }
+  /* kleines i direkt hinter dem Wert in K */
   .k-info {
-    display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; margin-left: 4px; padding: 0;
-    vertical-align: 0.05em; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+    display: inline-grid; place-items: center; width: 1.3em; height: 1.3em; margin: 0 0 0 6px; padding: 0;
+    vertical-align: middle; position: relative; top: -0.1em;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--card);
     color: var(--muted); font: 600 0.75rem/1 system-ui, sans-serif; cursor: pointer;
   }
   .k-info:hover, .k-info[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
@@ -702,9 +704,10 @@
                   vorher.abw >= 0 ? "warm" : "kalt", vorher.jahr);
   }
   const kachel = (label, wert, zusatz, klasse = "", jahr = null, info = false) =>
-    `<div class="kachel"${jahr ? ` data-jahr="${jahr}" tabindex="0"` : ""}><div class="label">${label}` +
-    (info ? ` <button type="button" class="k-info" aria-label="Was bedeutet K?" aria-expanded="false">i</button>` : "") +
-    `</div><div class="wert ${klasse}">${wert}</div><div class="zusatz">${zusatz}</div>` +
+    `<div class="kachel"${jahr ? ` data-jahr="${jahr}" tabindex="0"` : ""}><div class="label">${label}</div>` +
+    `<div class="wert ${klasse}">${wert}` +
+    (info ? `<button type="button" class="k-info" aria-label="Was bedeutet K?" aria-expanded="false">i</button>` : "") +
+    `</div><div class="zusatz">${zusatz}</div>` +
     (info ? `<div class="k-erkl" role="note" hidden>${K_ERKLAERUNG}</div>` : "") + `</div>`;
 
   // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
@@ -766,7 +769,7 @@
     document.getElementById("kacheln-jahr").innerHTML =
       ersteKachel(aktuell, volle, "Mitteltemperatur " + aktuell.jahr,
              unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", j => String(j), reihen.length) +
-      kachel(`Abweichung ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+      kachel(`Abweichung ${aktuell.jahr}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
              (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
              aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
@@ -832,7 +835,7 @@
         ziel.innerHTML =
           ersteKachel(aktuell, volle, `Mitteltemperatur ${name} ${aktuell.jahr}`,
                  unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => `${name} ${j}`, reihen.length) +
-          kachel(`Abweichung ${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+          kachel(`Abweichung ${name} ${aktuell.jahr}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
@@ -899,7 +902,7 @@
           ersteKachel(aktuell, volle, `Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`,
                  unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit",
                  j => saisonLabel(x, j), reihen.length) +
-          kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
+          kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
