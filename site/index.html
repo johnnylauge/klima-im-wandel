@@ -399,7 +399,10 @@
   // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
   // Monate abgekürzt, damit die Kacheln gleich hoch bleiben (kurze Monatsnamen ausgeschrieben)
   const MONATE_KURZ = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
-  const monatKurz = letzter => MONATE_KURZ[parseInt(letzter.split(".")[1], 10) - 1];
+  // Am Handy in den Kacheln: Monate mit drei Buchstaben und Punkt (Mai bleibt Mai)
+  const DREI = ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+  const mt = (m, gross) => `<span class="nur-gross">${gross}</span><span class="nur-handy">${DREI[m - 1]}</span>`;
+  const monatKurz = letzter => { const m = parseInt(letzter.split(".")[1], 10); return mt(m, MONATE_KURZ[m - 1]); };
   const bisText = letzter => (quelle !== "era5" ? monatKurz(letzter) : letzter.slice(0, 6));
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
   const artJetzt = () => (Q().arten.includes(art) ? art : Q().arten.includes("balken") ? "balken" : "linien");
@@ -813,7 +816,7 @@
     document.getElementById("txt-monat").href = `daten/${Q().praefix}_global_monat_${nn(m)}.txt`;
     setzeBild("monat", grafikName("monat"));
     if (Q().vergleich) {
-      kachelnVergleich("monat", `monat_${nn(m)}`, j => `${MONATE_KURZ[m - 1]} ${j}`,   // kurz, damit nichts umbricht
+      kachelnVergleich("monat", `monat_${nn(m)}`, j => `${mt(m, MONATE_KURZ[m - 1])} ${j}`,   // kurz, damit nichts umbricht
                        a => a.tage < new Date(a.jahr, m, 0).getDate());
       return;
     }
@@ -833,14 +836,14 @@
         const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
         const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         ziel.innerHTML =
-          ersteKachel(aktuell, volle, `Mitteltemperatur ${name} ${aktuell.jahr}`,
-                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => `${name} ${j}`, reihen.length) +
-          kachel(`Abweichung ${name} ${aktuell.jahr}`, k(aktuell.abw),
+          ersteKachel(aktuell, volle, `Mitteltemperatur ${mt(m, name)} ${aktuell.jahr}`,
+                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => `${mt(m, name)} ${j}`, reihen.length) +
+          kachel(`Abweichung ${mt(m, name)} ${aktuell.jahr}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
-          kachel(`Wärmster ${name} seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
-          kachel(`Kältester ${name} seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
+          kachel(`Wärmster ${mt(m, name)} seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
+          kachel(`Kältester ${mt(m, name)} seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
