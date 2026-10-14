@@ -252,6 +252,10 @@ def erstelle(wahl):
                              f"{' (bisher)' if df.loc[neuestes, 'laufend'] else ''}")
             else:
                 teile.append(f"{QUELLEN[q]['kurz']} –")
+    # Mittel der vorhandenen Werte des neuesten Zeitraums
+    neu = [df.loc[neuestes, "abw"] for df, _ in reihen.values() if neuestes in df.index]
+    if len(neu) > 1:
+        teile.append(f"Mittel {k_text(float(np.mean(neu)))}")
     info = f"Temperaturabweichung {label(neuestes)}\n" + "  |  ".join(teile)
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", zorder=10,
@@ -351,7 +355,8 @@ def erstelle(wahl):
             ys = [ax.transData.transform((jahr, w["abw"]))[1] for w in werte]
             x0 = ax.transData.transform((jahr - 0.45, 0))[0]
             x1 = ax.transData.transform((jahr + 0.45, 0))[0]
-            felder.append(dict(jahr=int(jahr), label=label(jahr), werte=werte,
+            mittel = round(float(np.mean([w["abw"] for w in werte])), 3) if len(werte) > 1 else None
+            felder.append(dict(jahr=int(jahr), label=label(jahr), werte=werte, mittel=mittel,
                                x0=fx(x0), x1=fx(x1), y0=fy(max(ys) + 9), y1=fy(min(ys) - 9)))
         with open(os.path.join(PNG_FOLDER, basis + ".json"), "w", encoding="utf-8") as fh:
             json.dump(dict(achse=dict(x0=fx(achse.x0), x1=fx(achse.x1), y0=fy(achse.y1), y1=fy(achse.y0)),
