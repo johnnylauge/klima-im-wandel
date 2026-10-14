@@ -337,7 +337,7 @@ def erstelle(wahl, anzeigen=True):
 
     ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)",
                  fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte_text = "Global | Tageswerte" if art == "jahr" else f"Global | {name} | Tageswerte"
+    mitte_text = f"Global | {name} | Tageswerte"          # name = "Jahr", Jahreszeit oder Monat
     mitte = ax.annotate(mitte_text, xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
