@@ -419,12 +419,15 @@ def speichern(fig, ax, info_text, name_basis, felder):
     if INFO_ALS_PLATZHALTER:
         voll_file = os.path.splitext(png_file)[0] + "_voll.png"
         fig.savefig(voll_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+        fig.savefig(os.path.splitext(voll_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])   # PDF zum Herunterladen
         print(f"Grafik (mit Kästen) gespeichert unter:\n{voll_file}")
         info_text.set_visible(False)
         for t in ax.texts + ax.collections:
             if t.get_gid() == "rekord":
                 t.set_visible(False)
     fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+    if not INFO_ALS_PLATZHALTER:                  # lokal: PDF neben dem PNG
+        fig.savefig(os.path.splitext(png_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])
     print(f"Grafik gespeichert unter:\n{png_file}")
     if WEB:
         fig.canvas.draw()

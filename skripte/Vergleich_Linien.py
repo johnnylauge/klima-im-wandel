@@ -348,8 +348,11 @@ def erstelle(wahl):
     png_file = os.path.join(PNG_FOLDER, basis + ("_dunkel" if DUNKEL else "") + ".png")
     if INFO_ALS_PLATZHALTER:
         fig.savefig(os.path.splitext(png_file)[0] + "_voll.png", dpi=PNG_DPI, facecolor=FARBEN["bg"])
+        fig.savefig(os.path.splitext(png_file)[0] + "_voll" + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])   # PDF zum Herunterladen
         info_text.set_visible(False)
     fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+    if not INFO_ALS_PLATZHALTER:                  # lokal: PDF neben dem PNG
+        fig.savefig(os.path.splitext(png_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])
     print(f"Grafik gespeichert unter:\n{png_file}")
     if WEB:
         fig.canvas.draw()

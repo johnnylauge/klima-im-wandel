@@ -275,7 +275,8 @@ def erstelle(wahl, anzeigen=True):
     farb_unten = min(df["ano_pre"].min(), -0.3)
     punkte = ax.scatter(df["year"], df["ano_pre"], c=df["ano_pre"], cmap="RdBu_r",
                         norm=TwoSlopeNorm(vmin=farb_unten, vcenter=0, vmax=farb_oben),
-                        s=PUNKT_GROESSE[art], alpha=0.95, edgecolors="none", zorder=2)
+                        s=PUNKT_GROESSE[art], alpha=0.95, edgecolors="none", zorder=2,
+                        rasterized=True)   # im PDF als Bild, sonst würde es mit 30 000 Punkten riesig
 
     # Trend der Mittelwerte (nur vollständige Zeiträume)
     trend_linie = []
@@ -530,6 +531,7 @@ def erstelle(wahl, anzeigen=True):
             # 1) volle Fassung zum Vergrößern und Herunterladen: mit allen Kästen
             voll_file = os.path.splitext(png_file)[0] + "_voll.png"
             fig.savefig(voll_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+            fig.savefig(os.path.splitext(voll_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])   # PDF zum Herunterladen
             print(f"Grafik (mit Kästen) gespeichert unter:\n{voll_file}")
             # 2) interaktive Fassung: Kästen und Ringe ausblenden, die Webseite zeigt die Werte
             info_text.set_visible(False)
@@ -537,6 +539,8 @@ def erstelle(wahl, anzeigen=True):
                 if t.get_gid() == "rekord":
                     t.set_visible(False)
         fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+        if not INFO_ALS_PLATZHALTER:                  # lokal: PDF neben dem PNG
+            fig.savefig(os.path.splitext(png_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])
         print(f"Grafik gespeichert unter:\n{png_file}")
         if WEB:
             speichere_hover_daten(fig, ax, df, werte, label, current_year if is_partial else None,

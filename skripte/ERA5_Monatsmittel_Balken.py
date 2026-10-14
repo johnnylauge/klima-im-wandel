@@ -584,6 +584,7 @@ def erstelle(monat, anzeigen=True):
             # 1) volle Fassung zum Vergrößern und Herunterladen: mit Info- und Rekord-Kasten
             voll_file = os.path.splitext(png_file)[0] + "_voll.png"
             fig.savefig(voll_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+            fig.savefig(os.path.splitext(voll_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])   # PDF zum Herunterladen
             print(f"Grafik (mit Kästen) gespeichert unter:\n{voll_file}")
             # 2) interaktive Fassung: Kästen ausblenden, die Webseite zeigt die Werte selbst an
             info_text.set_visible(False)
@@ -591,6 +592,8 @@ def erstelle(monat, anzeigen=True):
                 if t.get_gid() == "rekord":
                     t.set_visible(False)
         fig.savefig(png_file, dpi=PNG_DPI, facecolor=FARBEN["bg"])
+        if not INFO_ALS_PLATZHALTER:                  # lokal: PDF neben dem PNG
+            fig.savefig(os.path.splitext(png_file)[0] + ".pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])
         print(f"Grafik gespeichert unter:\n{png_file}")
         # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
         speichere_hover_daten(fig, ax, bars, annual, monat_label,
