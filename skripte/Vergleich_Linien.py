@@ -121,6 +121,20 @@ def weich(x, y):
     return np.append(xs, x[-1]), np.append(ys, y[-1])
 
 
+MONATE_KURZ = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."]
+
+
+def bis_monat(stand):
+    """Stand als Monat, z. B. '12.10.2026' (ERA5) oder 'Oktober 2026' -> 'Okt. 2026'."""
+    teile = stand.split(".")
+    if len(teile) == 3 and teile[1].isdigit():
+        return f"{MONATE_KURZ[int(teile[1]) - 1]} {teile[2]}"
+    for i, lang in enumerate(MONTH_NAMES):
+        if stand.startswith(lang):
+            return stand.replace(lang, MONATE_KURZ[i], 1)
+    return stand
+
+
 def komma(x, stellen=2):
     return f"{x:.{stellen}f}".replace(".", ",")
 
@@ -228,13 +242,13 @@ def erstelle(wahl):
     for q in ("ERA5", "BE", "NOAA", "HADCRUT"):                 # Legende in fester Reihenfolge
         if q in reihen:
             handles.append(Line2D([], [], color=QUELLEN[q]["farbe"], lw=LINIE))
-            labels.append(f"{QUELLEN[q]['name']} (ab {reihen[q][0].index.min()}, Stand {reihen[q][1]})")
+            labels.append(f"{QUELLEN[q]['kurz']} (Daten von {reihen[q][0].index.min()} bis {bis_monat(reihen[q][1])})")
     if trend_linie:
         handles.append(Line2D([], [], color=FARBEN["fg"], lw=2.4, ls="--"))
-        labels.append("LOESS-Trend (30 Jahre) aus dem Mittel aller Datensätze")
+        labels.append("LOESS-Trend (30 Jahre)")
     if any(df["laufend"].any() for df, _ in reihen.values()):
         handles.append(Line2D([], [], color=FARBEN["fg"], lw=LINIE, ls=(0, (1.2, 1.4)), dash_capstyle="round"))
-        labels.append("gepunktet: laufender Zeitraum, bisher")
+        labels.append("laufender Zeitraum (bisher)")
     if SHOW_1_5_LINE:
         ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=1.8, zorder=2)
         handles.append(Line2D([], [], color=FARBEN["limit"], ls=":", lw=1.8))

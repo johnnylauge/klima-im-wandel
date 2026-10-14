@@ -228,7 +228,7 @@ def berechne(art, name, monate):
         df.loc[df["monat"] == 12, "year"] += 1
     werte = df.groupby("year").agg(temp=("temp", "mean"), anomaly=("ano_pre", "mean"),
                                    n=("monat", "size"), days=("tage", "sum"),
-                                   unsicher=("unsicher", lambda u: float(np.sqrt((u ** 2).mean() / len(u)))),
+                                   unsicher=("unsicher", "mean"),   # vorsichtig: Fehler der Monate hängen zusammen, daher nicht kleiner gerechnet
                                    letzter_jahr=("jahr", "last"), letzter_monat=("monat", "last"))
     current_year = werte.index.max()
     voll = werte["n"] >= len(monate)
@@ -508,7 +508,7 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
 # =========================================================
 def linien(werte, current_year, is_partial, art, name, label, teil):
     wort = "Jahr" if art == "jahr" else name
-    fig, ax = grundgeruest(f"Global | {wort}", "Absolute Temperatur in °C")
+    fig, ax = grundgeruest(f"Global | {wort}", "Absolute Temperatur")
     voll = werte.drop(current_year) if is_partial else werte
     abstand = float((voll["temp"] - voll["anomaly"]).median())
     werte = werte.copy()
