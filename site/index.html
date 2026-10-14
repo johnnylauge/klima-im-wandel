@@ -378,10 +378,10 @@
     noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monat.csv", "Monatswerte (CSV)"],
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
-    hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich", absolut: false,
+    hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich",
             roh: ["daten/HadCRUT5_global_monat.csv", "Monatswerte (CSV)"],
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
-                  "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. Nur Abweichungen, keine Werte in °C – daher nur Balken." },
+                  "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
             info: "Vergleich: ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900 in einer Grafik, " +
                   "dazu der Trend aus dem Mittel aller Datensätze (vor 1940 ohne ERA5). ERA5 endet täglich aktuell, die anderen etwa einen Monat früher." },
@@ -389,7 +389,7 @@
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
-  QUELLEN.hadcrut.arten = ["balken"];
+  QUELLEN.hadcrut.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
@@ -471,7 +471,7 @@
     document.getElementById("art-balken").title = Q().arten.includes("balken")
       ? "Balkendiagramm: ein Balken je Jahr" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.getElementById("art-linien").title = Q().arten.includes("linien")
-      ? "Liniendiagramm: Mitteltemperatur in °C" : "HadCRUT5 liefert keine Werte in °C – daher keine Linien";
+      ? "Liniendiagramm: Mitteltemperatur in °C" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
     document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("fuenf", !!Q().vergleich));
     document.querySelectorAll(".art-text").forEach(el => el.textContent =
