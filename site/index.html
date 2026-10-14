@@ -72,7 +72,12 @@
   .quelle button[aria-pressed="true"] { background: var(--text); color: var(--card); }
   .quelle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .quellinfo { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
-  @media (max-width: 480px) { .quelle .lang { display: none; } .quelle button { padding: 5px 10px; } }
+  @media (max-width: 600px) {
+    .quelle { display: grid; grid-template-columns: repeat(4, auto); border-radius: 16px; width: 100%; }
+    .quelle button { padding: 6px 8px; }
+    #quelle-vgl { grid-column: 1 / -1; }
+    .quelle .lang { display: none; }
+  }
   .ausgeblendet { display: none; }
   .info-knopf {
     display: none; width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--line);
@@ -126,6 +131,11 @@
     .kacheln { gap: 8px; }
     .kachel { padding: 10px 12px; }
     .kachel .wert { font-size: 1.35rem; }
+  }
+  .kacheln.fuenf { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 900px) {
+    .kacheln.fuenf { grid-template-columns: repeat(2, 1fr); }
+    .kacheln.fuenf .kachel:last-child { grid-column: 1 / -1; }
   }
   .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; position: relative; }
   .k-info {
@@ -246,7 +256,8 @@
         <button type="button" id="quelle-era5" aria-pressed="true">ERA5</button>
         <button type="button" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
         <button type="button" id="quelle-noaa" aria-pressed="false">NOAA</button>
-        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, Berkeley Earth und NOAA in einer Grafik">Vergleich</button>
+        <button type="button" id="quelle-hadcrut" aria-pressed="false">HadCRUT<span class="lang">5</span></button>
+        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, Berkeley Earth, NOAA und HadCRUT5 in einer Grafik">Vergleich</button>
       </div>
       <span class="stand" id="stand">Daten werden geladen …</span>
       <button type="button" class="info-knopf" id="info-knopf" aria-label="Hinweis zur Datenquelle zeigen"
@@ -367,13 +378,18 @@
     noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monat.csv", "Monatswerte (CSV)"],
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
+    hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich", absolut: false,
+            roh: ["daten/HadCRUT5_global_monat.csv", "Monatswerte (CSV)"],
+            info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
+                  "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. Nur Abweichungen, keine Werte in °C – daher nur Balken." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
-            info: "Vergleich: ERA5, Berkeley Earth und NOAA als Abweichung von 1850–1900 in einer Grafik. ERA5 beginnt 1940; " +
-                  "Berkeley Earth und NOAA enden etwa einen Monat früher." },
+            info: "Vergleich: ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900 in einer Grafik. " +
+                  "ERA5 beginnt 1940; die anderen enden etwa einen Monat früher." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
+  QUELLEN.hadcrut.arten = ["balken"];
   QUELLEN.vgl.arten = ["linien"];
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
@@ -451,9 +467,12 @@
       ? "Punktdiagramm: ein Punkt je Tag" : "Punkte gibt es nur bei ERA5 (Tageswerte)";
     document.getElementById("art-balken").title = Q().arten.includes("balken")
       ? "Balkendiagramm: ein Balken je Jahr" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
+    document.getElementById("art-linien").title = Q().arten.includes("linien")
+      ? "Liniendiagramm: Mitteltemperatur in °C" : "HadCRUT5 liefert keine Werte in °C – daher keine Linien";
     document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
+    document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("fuenf", !!Q().vergleich));
     document.querySelectorAll(".art-text").forEach(el => el.textContent =
-      Q().vergleich ? "drei Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
+      Q().vergleich ? "vier Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
     // Datenquelle: Knöpfe, Hinweis, Startjahr und Downloads
     Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
@@ -516,14 +535,25 @@
 
     function fuelle(b) {
       if (b.werte) {                                    // Vergleich: Wert je Datensatz
-        tipp.innerHTML = `${b.label}<br>` +
-          b.werte.map(w => `${w.q} ${k(w.abw)}${w.laufend ? " bisher" : ""}`).join(" &nbsp;|&nbsp; ");
+        const kurz = { "Berkeley Earth": "Berkeley" };
+        tipp.innerHTML = `${b.label}${b.werte.some(w => w.laufend) ? " (bisher)" : ""}<br>` +
+          b.werte.map(w => `${kurz[w.q] || w.q} ${k(w.abw)}`).join(" &nbsp;|&nbsp; ");
         tipp.style.display = "block";
+        passend();
         return;
       }
       tipp.innerHTML = `${b.label} (${b.laufend ? "bisher " : ""}Rang ${b.rang})<br>` +
-                       `${b.ca ? "≈ " : ""}${grad(b.temp)} | ${k(b.abw)}`;   // ≈: laufendes Jahr, aufs ganze Jahr umgerechnet      // "bisher" zeigt das laufende Jahr an
+                       (b.temp === null || b.temp === undefined ? k(b.abw) : `${b.ca ? "≈ " : ""}${grad(b.temp)} | ${k(b.abw)}`);   // ≈: laufendes Jahr, aufs ganze Jahr umgerechnet      // "bisher" zeigt das laufende Jahr an
       tipp.style.display = "block";
+    }
+    // Fester Kasten zu breit (Vergleich am Handy)? Dann Schrift so weit verkleinern, dass er passt
+    function passend() {
+      if (!fest) return;
+      groesse();
+      const platz = schicht.clientWidth * (1 - d.info.x0) - 6;
+      if (tipp.offsetWidth > platz) {
+        tipp.style.fontSize = parseFloat(tipp.style.fontSize || getComputedStyle(tipp).fontSize) * platz / tipp.offsetWidth + "px";
+      }
     }
     function ruhe() {                                   // Zustand ohne Maus
       aktiv = null;
@@ -552,13 +582,13 @@
     // = 3,2 Schrifthöhen -> verdeckt nie die Legende darunter
     function groesse() {
       const h = (d.info.y1 - d.info.y0) * schicht.clientHeight - 2;      // ohne Rahmen
-      if (h > 0) tipp.style.fontSize = Math.max(8, h / 3.2) + "px";
+      if (h > 0) tipp.style.fontSize = Math.max(6, h / 3.2) + "px";
     }
     if (fest) {
       tipp.classList.add("fest");
       Object.assign(tipp.style, { left: pz(d.info.x0), top: pz(d.info.y0) });
       groesse();
-      new ResizeObserver(groesse).observe(schicht);
+      new ResizeObserver(passend).observe(schicht);
       ruhe();
     }
 
@@ -655,6 +685,16 @@
     "In der Wissenschaft schreibt man Abweichungen in Kelvin, damit klar ist: Das ist ein Temperatur" +
     "<em>unterschied</em>, keine Temperatur. +1,50&nbsp;K heißt also: 1,5&nbsp;°C wärmer als im Mittel der " +
     "vorindustriellen Zeit (1850–1900).";
+  // "14,91 °C | +1,59 K" - bei Quellen ohne absolute Werte (HadCRUT5) nur die Abweichung
+  const wertText = r => (Q().absolut === false || !isFinite(r.temp) ? k(r.abw) : `${grad(r.temp)} | ${k(r.abw)}`);
+  // Erste Kachel: Mitteltemperatur - oder, ohne absolute Werte, das Mittel der letzten 10 vollständigen Zeiträume
+  function ersteKachel(aktuell, volle, titel, zusatz, bezeichnung) {
+    if (Q().absolut !== false) return kachel(titel, grad(aktuell.temp), zusatz, "", aktuell.jahr);
+    const letzte = volle.slice(-10);
+    const mittel = letzte.reduce((s, r) => s + r.abw, 0) / letzte.length;
+    return kachel("Mittel der letzten 10 Jahre", k(mittel),
+                  `${bezeichnung(letzte[0].jahr)} bis ${bezeichnung(letzte[letzte.length - 1].jahr)}`, mittel >= 0 ? "warm" : "kalt");
+  }
   const kachel = (label, wert, zusatz, klasse = "", jahr = null, info = false) =>
     `<div class="kachel"${jahr ? ` data-jahr="${jahr}" tabindex="0"` : ""}><div class="label">${label}` +
     (info ? ` <button type="button" class="k-info" aria-label="Was bedeutet K?" aria-expanded="false">i</button>` : "") +
@@ -662,7 +702,7 @@
     (info ? `<div class="k-erkl" role="note" hidden>${K_ERKLAERUNG}</div>` : "") + `</div>`;
 
   // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
-  const VGL = [["era5", "ERA5"], ["be", "Berkeley Earth"], ["noaa", "NOAA"]];
+  const VGL = [["era5", "ERA5"], ["be", "Berkeley Earth"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"]];
   function kachelnVergleich(teil, dateiteil, bezeichnung, unvollstaendig) {
     const ziel = document.getElementById("kacheln-" + teil);
     Promise.all(VGL.map(([qq]) =>
@@ -691,6 +731,7 @@
                          "Unterschied zwischen den Datensätzen", "", j, true);
         }
         ziel.innerHTML = html;
+        ziel.classList.add("fuenf");
       });
   }
 
@@ -715,14 +756,14 @@
     const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
     const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
     document.getElementById("kacheln-jahr").innerHTML =
-      kachel("Mitteltemperatur " + aktuell.jahr, grad(aktuell.temp),
-             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", "", aktuell.jahr) +
+      ersteKachel(aktuell, volle, "Mitteltemperatur " + aktuell.jahr,
+             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", j => String(j)) +
       kachel(`Abweichung ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
              (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
              aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
-      kachel(`Wärmstes Jahr seit ${reihen[0].jahr}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
-      kachel(`Kältestes Jahr seit ${reihen[0].jahr}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
+      kachel(`Wärmstes Jahr seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
+      kachel(`Kältestes Jahr seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
     startAuswahl(aktuell);
   }
 
@@ -781,14 +822,14 @@
         const rekord = volle.reduce((a, b) => (b.abw > a.abw ? b : a));
         const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         ziel.innerHTML =
-          kachel(`Mitteltemperatur ${name} ${aktuell.jahr}`, grad(aktuell.temp),
-                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", "", aktuell.jahr) +
+          ersteKachel(aktuell, volle, `Mitteltemperatur ${name} ${aktuell.jahr}`,
+                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => String(j)) +
           kachel(`Abweichung ${name} ${aktuell.jahr}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
-          kachel(`Wärmster ${name} seit ${reihen[0].jahr}`, String(rekord.jahr), `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
-          kachel(`Kältester ${name} seit ${reihen[0].jahr}`, String(kaeltest.jahr), `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
+          kachel(`Wärmster ${name} seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
+          kachel(`Kältester ${name} seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
@@ -847,15 +888,16 @@
         const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         const rekordJahr = saisonLabel(x, rekord.jahr).split(" ")[1];
         ziel.innerHTML =
-          kachel(`Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`, grad(aktuell.temp),
-                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit", "", aktuell.jahr) +
+          ersteKachel(aktuell, volle, `Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`,
+                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit",
+                 j => saisonLabel(x, j).split(" ")[1]) +
           kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}${unvollst ? " bisher" : ""}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
                  (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
-          kachel(`Wärmster ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, rekordJahr, `${grad(rekord.temp)} | ${k(rekord.abw)}`, "warm", rekord.jahr) +
+          kachel(`Wärmster ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, rekordJahr, wertText(rekord), "warm", rekord.jahr) +
           kachel(`Kältester ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, saisonLabel(x, kaeltest.jahr).split(" ")[1],
-                 `${grad(kaeltest.temp)} | ${k(kaeltest.abw)}`, "kalt", kaeltest.jahr);
+                 wertText(kaeltest), "kalt", kaeltest.jahr);
       })
       .catch(() => { ziel.innerHTML = ""; });
   }
@@ -905,7 +947,7 @@
         version = "?v=" + encodeURIComponent(q + daten.stand);
         anwenden();
         if (!vgl) { zeigeJahr(daten); return; }
-        document.getElementById("stand").textContent = "ERA5 · Berkeley Earth · NOAA";
+        document.getElementById("stand").textContent = "Vergleich von 4 Datensätzen";
         kachelnVergleich("jahr", "jahreswerte", j => String(j), a => !a.letzter.startsWith("31.12."));
         startAuswahl(daten.reihen[daten.reihen.length - 1]);
       })
