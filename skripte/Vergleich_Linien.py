@@ -9,6 +9,9 @@ Das Skript lädt nichts herunter. Es liest die TXT-Dateien, die die anderen Skri
   HADCRUT_global_...txt (HadCRUT_Grafiken.py)
 Fehlt eine Quelle, wird sie einfach weggelassen.
 
+Dazu kommt ein LOESS-Trend (30 Jahre) durch das Mittel aller Datensätze: je Jahr der
+Durchschnitt der vorhandenen vollständigen Werte (vor 1940 ohne ERA5).
+
 Der laufende (unvollständige) Zeitraum jeder Quelle wird gestrichelt angehängt. Die Quellen
 enden unterschiedlich: ERA5 täglich, Berkeley Earth und NOAA etwa Mitte des Folgemonats.
 
@@ -85,6 +88,37 @@ SEASONS = {
 }
 MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
                "August", "September", "Oktober", "November", "Dezember"]
+
+
+def loess(reihe, fenster=30):
+    """LOESS-Glättung: lokale Gerade durch die 'fenster' nächstgelegenen Jahre (Tricube-Gewichte)."""
+    x = reihe.index.to_numpy(float)
+    y = reihe.to_numpy(float)
+    q = min(fenster, len(x))
+    werte = []
+    for x0 in x:
+        d = np.abs(x - x0)
+        h = np.sort(d)[q - 1] * 1.000001 or 1.0
+        w = np.clip(1 - (d / h) ** 3, 0, None) ** 3
+        A = np.vstack([np.ones_like(x), x - x0]).T * np.sqrt(w)[:, None]
+        werte.append(np.linalg.lstsq(A, y * np.sqrt(w), rcond=None)[0][0])
+    return pd.Series(werte, index=reihe.index)
+
+
+def weich(x, y):
+    """Weiche Kurve (Catmull-Rom-Spline) durch die Jahreswerte."""
+    if len(x) < 3:
+        return x, y
+    px = np.concatenate([[2 * x[0] - x[1]], x, [2 * x[-1] - x[-2]]])
+    py = np.concatenate([[2 * y[0] - y[1]], y, [2 * y[-1] - y[-2]]])
+    t = np.linspace(0, 1, 20, endpoint=False)[:, None]
+    xs, ys = [], []
+    for p in ((px, xs), (py, ys)):
+        p0, p1, p2, p3 = p[0][:-3], p[0][1:-2], p[0][2:-1], p[0][3:]
+        seg = 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t**2
+                     + (3 * p1 - p0 - 3 * p2 + p3) * t**3)
+        p[1].extend(seg.T.ravel())
+    return np.append(xs, x[-1]), np.append(ys, y[-1])
 
 
 def komma(x, stellen=2):
@@ -180,13 +214,27 @@ def erstelle(wahl):
         hindernisse.append(df["abw"].reset_index().to_numpy(float))
         xs = np.linspace(df.index.min(), df.index.max(), len(df) * 6)
         hindernisse.append(np.column_stack([xs, np.interp(xs, df.index, df["abw"])]))
+    # LOESS-Trend durch das Mittel aller Datensätze (nur vollständige Zeiträume)
+    volle = pd.concat([df.loc[~df["laufend"], "abw"].rename(q) for q, (df, _) in reihen.items()], axis=1)
+    mittel = volle.mean(axis=1, skipna=True).dropna().sort_index()
+    trend_linie = []
+    if len(mittel) > 10:
+        t = loess(mittel, 30)
+        x, y = weich(t.index.to_numpy(float), t.to_numpy(float))
+        trend_linie = ax.plot(x, y, color=FARBEN["fg"], lw=2.4, ls="--", zorder=5,
+                              path_effects=[pe.Stroke(linewidth=4.4, foreground=FARBEN["linie_rand"]), pe.Normal()])
+        hindernisse.append(np.column_stack([x, y]))
+
     for q in ("ERA5", "BE", "NOAA", "HADCRUT"):                 # Legende in fester Reihenfolge
         if q in reihen:
             handles.append(Line2D([], [], color=QUELLEN[q]["farbe"], lw=LINIE))
             labels.append(f"{QUELLEN[q]['name']} (ab {reihen[q][0].index.min()}, Stand {reihen[q][1]})")
+    if trend_linie:
+        handles.append(Line2D([], [], color=FARBEN["fg"], lw=2.4, ls="--"))
+        labels.append("LOESS-Trend (30 Jahre) aus dem Mittel aller Datensätze")
     if any(df["laufend"].any() for df, _ in reihen.values()):
         handles.append(Line2D([], [], color=FARBEN["fg"], lw=LINIE, ls=(0, (1.2, 1.4)), dash_capstyle="round"))
-        labels.append("gestrichelt: laufender Zeitraum, bisher")
+        labels.append("gepunktet: laufender Zeitraum, bisher")
     if SHOW_1_5_LINE:
         ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=1.8, zorder=2)
         handles.append(Line2D([], [], color=FARBEN["limit"], ls=":", lw=1.8))
