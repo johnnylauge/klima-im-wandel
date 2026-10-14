@@ -383,8 +383,8 @@
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. Nur Abweichungen, keine Werte in °C – daher nur Balken." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
-            info: "Vergleich: ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900 in einer Grafik. " +
-                  "ERA5 beginnt 1940; die anderen enden etwa einen Monat früher." },
+            info: "Vergleich: ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900 in einer Grafik, " +
+                  "dazu der Trend aus dem Mittel aller Datensätze (vor 1940 ohne ERA5). ERA5 endet täglich aktuell, die anderen etwa einen Monat früher." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
@@ -722,13 +722,15 @@
                                : `Rang ${a.rang} von ${reihen.length}`,
                          a.abw >= 0 ? "warm" : "kalt", a.jahr);
         });
-        // Spanne im neuesten Zeitraum, den alle Datensätze vollständig haben
+        // Mittel und Spanne im neuesten Zeitraum, den alle Datensätze vollständig haben
         const da = volleJe.filter(Boolean);
         if (da.length > 1) {
           const j = Math.min(...da.map(r => r[r.length - 1].jahr));
           const w = da.map(r => (r.find(x => x.jahr === j) || {}).abw).filter(v => v !== undefined);
-          html += kachel(`Spanne · ${bezeichnung(j)}`, (Math.max(...w) - Math.min(...w)).toFixed(2).replace(".", ",") + " K",
-                         "Unterschied zwischen den Datensätzen", "", j, true);
+          const mittel = w.reduce((a, b) => a + b, 0) / w.length;
+          html += kachel(`Mittel · ${bezeichnung(j)}`, k(mittel),
+                         `aller ${w.length} Datensätze · Spanne ${(Math.max(...w) - Math.min(...w)).toFixed(2).replace(".", ",")} K`,
+                         mittel >= 0 ? "warm" : "kalt", j, true);
         }
         ziel.innerHTML = html;
         ziel.classList.add("fuenf");
