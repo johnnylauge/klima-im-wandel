@@ -1,6 +1,6 @@
 """
-Globale Mitteltemperatur (ERA5) als Liniendiagramm in °C (absolut), ab 1940:
-je Jahr ein Punkt mit dem Mittel des Zeitraums, verbunden zu einer Linie.
+Globale Mitteltemperatur (ERA5) als Liniendiagramm, ab 1940: Abweichung von 1850-1900 in K
+(wie Balken und Vergleich). Je Jahr das Mittel des Zeitraums, verbunden zu einer Linie, dazu ein LOESS-Trend.
 
 Wahlweise für das ganze Jahr, eine Jahreszeit oder einen Monat:
   Jahr      Jahresmittel
@@ -8,10 +8,9 @@ Wahlweise für das ganze Jahr, eine Jahreszeit oder einen Monat:
   Winter    Dezember-Februar (zählt zum Jahr von Januar/Februar, z. B. Winter 2025/26)
   Monat     z. B. Oktobermittel jedes Jahres
 
-Der laufende (unvollständige) Zeitraum: Sein bisheriges Mittel in °C ist mit den vollen
-Zeiträumen nicht vergleichbar (beim Jahr fehlen z. B. die kühleren Monate am Jahresende).
-Er wird deshalb über seine bisherige Abweichung aufs ganze Jahr umgerechnet und als
-offener Punkt gezeigt. Die Abweichung ist schon früh mit den vollen Zeiträumen vergleichbar.
+Der laufende (unvollständige) Zeitraum wird mit seiner bisherigen Abweichung gestrichelt
+angehängt. Die Abweichung ist schon früh mit den vollen Zeiträumen vergleichbar; sein °C-Wert
+(Rekord-Kasten, Maus-Anzeige) wird über die Abweichung aufs ganze Jahr umgerechnet.
 
 Läuft lokal (Windows) und auf GitHub:
   - Lokal gelten die Einstellungen unten; die Grafik wird im Fenster gezeigt.
@@ -48,7 +47,7 @@ SHOW_CURRENT_YEAR = True        # laufenden Zeitraum (umgerechnet, offener Punkt
 SHOW_TREND = True               # Trendlinie
 TREND = "loess30"               # "loess30" = LOESS-Glättung über 30 Jahre, "5jahre" = gleitendes Mittel
 RUNNING_WINDOW = 5              # Fensterbreite in Jahren (nur für TREND = "5jahre")
-SHOW_1_5_LINE = True            # 1,5 K über 1850-1900, umgerechnet in °C
+SHOW_1_5_LINE = True            # 1,5-K-Grenze (über 1850-1900)
 SHOW_RECORD = True              # wärmsten (vollständigen) Zeitraum markieren
 SHOW_INFO = True                # Info-Kasten oben links (aktueller Wert und Rang)
 SHOW_VALUES = False             # Temperatur als Zahl an jedem Jahr (lokal zum Posten)
@@ -246,16 +245,17 @@ def erstelle(wahl, anzeigen=True):
     # Abstand zwischen Temperatur und Abweichung: bei vollen Zeiträumen (fast) gleich
     # -> damit lässt sich die 1,5-K-Grenze in °C angeben und der laufende Zeitraum umrechnen
     abstand = float((voll["temp"] - voll["anomaly"]).median())
-    werte["plot"] = werte["temp"]
-    if is_partial:
-        werte.loc[current_year, "plot"] = werte.loc[current_year, "anomaly"] + abstand
+    werte["plot"] = werte["anomaly"]                  # gezeichnet wird die Abweichung (K)
+    werte["c"] = werte["temp"]                        # °C für Rekord-Kasten und Maus-Anzeige
+    if is_partial:                                    # laufender Zeitraum: °C umgerechnet
+        werte.loc[current_year, "c"] = werte.loc[current_year, "anomaly"] + abstand
     voll = werte.drop(current_year) if is_partial else werte
 
     print(f"\n{'=' * 60}\nTEMPERATURMITTEL GLOBAL – {name.upper()} (°C)\n{'=' * 60}")
     for jahr, z in werte.tail(5).iterrows():
         extra = (f"  (bisher {z['temp']:.2f} °C bis {z['last_date']:%d.%m.}, umgerechnet)"
                  if jahr == current_year and is_partial else "")
-        print(f"{label(jahr)}: {z['plot']:.2f} °C | {z['anomaly']:+.2f} K | Rang {z['rank']}{extra}")
+        print(f"{label(jahr)}: {z['c']:.2f} °C | {z['anomaly']:+.2f} K | Rang {z['rank']}{extra}")
 
     zeige_laufend = is_partial and SHOW_CURRENT_YEAR
     gezeigt = werte if (zeige_laufend or not is_partial) else voll
@@ -300,7 +300,7 @@ def erstelle(wahl, anzeigen=True):
     if zeige_laufend:
         laufend_handle = (Line2D([], [], color=cmap(norm(werte.loc[current_year, "anomaly"])), lw=LINIE,
                                  ls=(0, (1.2, 1.4)), dash_capstyle="round"),
-                          f"{label(current_year)} unvollständig (bis {last_date:%d.%m.}), umgerechnet")
+                          f"{label(current_year)} unvollständig (bis {last_date:%d.%m.})")
 
     # Zahlen an den Punkten (nur lokal, zum Posten)
     if SHOW_VALUES:
@@ -324,11 +324,12 @@ def erstelle(wahl, anzeigen=True):
                                             pe.Normal()],
                               label=trend_name, zorder=4)
 
-    # 1,5 K über 1850-1900, in °C umgerechnet
-    grenze = abstand + 1.5
+    # 1,5 K über 1850-1900
+    grenze = 1.5
     if SHOW_1_5_LINE:
         ax.axhline(grenze, color=FARBEN["limit"], ls=":", lw=1.8, zorder=2,
-                   label=f"1,5-K-Grenze (Pariser Klimaabkommen, ≈ {komma(grenze)} °C)")
+                   label="1,5-K-Grenze (Pariser Klimaabkommen)")
+    ax.axhline(0, color=FARBEN["fg"], lw=0.8, zorder=2)
 
     # Info-Kasten
     cur = werte.loc[current_year]
@@ -352,7 +353,7 @@ def erstelle(wahl, anzeigen=True):
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: komma(v)))
     ax.set_xticks(range((START_YEAR // 10) * 10, current_year + 1, 10))
 
-    ax.set_title("Absolute Temperatur", fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
+    ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)", fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
     mitte = ax.annotate(f"Global | {wort}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
@@ -360,15 +361,15 @@ def erstelle(wahl, anzeigen=True):
                 textcoords="offset points", ha="center", va="bottom",
                 fontsize=24 * SCHRIFT, fontweight="bold")
     ax.set_xlabel("Jahr", fontsize=18 * SCHRIFT, fontweight="bold")
-    ax.set_ylabel("Temperatur [°C]", fontsize=18 * SCHRIFT, fontweight="bold")
+    ax.set_ylabel("Temperaturabweichung [K]", fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for t in ax.get_xticklabels() + ax.get_yticklabels():
         t.set_fontweight("bold")
     ax.grid(True, alpha=0.2, zorder=0)
 
     fig.text(0.99, 0.01,
-             "Datenquelle: Copernicus Climate Pulse (ERA5)\n"
-             "https://pulse.climate.copernicus.eu/\n"
+             "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
+             "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
@@ -474,7 +475,7 @@ def erstelle(wahl, anzeigen=True):
 
         def rekord_kasten(links, dy, dx):
             return ax.annotate(f"{waermst} {'Jahr ' if art == 'jahr' else ''}{label(rek)}\n"
-                               f"{komma(rz['plot'])} °C | {k_text(rz['anomaly'])}",
+                               f"{komma(rz['c'])} °C | {k_text(rz['anomaly'])}",
                                xy=(rek, rz["plot"]), xytext=(-dx if links else dx, dy),
                                textcoords="offset points", ha="right" if links else "left", va="center",
                                fontsize=10 * SCHRIFT, fontweight="bold", linespacing=1.3, gid="rekord",
@@ -560,7 +561,7 @@ def speichere_hover_daten(fig, ax, werte, beschriftung, laufend_jahr, datei, inf
         felder.append(dict(
             jahr=int(jahr), label=beschriftung(jahr), rang=int(z["rank"]),
             # laufender Zeitraum: Wert wie im Bild (umgerechnet) -> ca=True, die Webseite zeigt "≈"
-            temp=round(float(z["plot"]), 3), abw=round(float(z["anomaly"]), 3),
+            temp=round(float(z["c"]), 3), abw=round(float(z["anomaly"]), 3),
             laufend=bool(jahr == laufend_jahr), ca=bool(jahr == laufend_jahr),
             x0=fx(min(x0, px - 9)), x1=fx(max(x1, px + 9)), y0=fy(py + 9), y1=fy(py - 9),
         ))

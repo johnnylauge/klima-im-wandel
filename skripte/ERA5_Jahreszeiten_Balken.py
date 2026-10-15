@@ -474,8 +474,8 @@ def erstelle(season, anzeigen=True):
     ax.grid(True, axis="y", alpha=0.2, zorder=0)
 
     fig.text(0.99, 0.01,
-            "Datenquelle: Copernicus Climate Pulse (ERA5)\n"
-            "https://pulse.climate.copernicus.eu/\n"
+            "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
+            "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
             "Visualisierung: JohnnyLauge.bsky.social",
             ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 

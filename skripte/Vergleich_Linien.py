@@ -292,7 +292,8 @@ def erstelle(wahl):
     for t in ax.get_xticklabels() + ax.get_yticklabels():
         t.set_fontweight("bold")
     ax.grid(True, alpha=0.2, zorder=0)
-    fig.text(0.99, 0.01, "Datenquellen: Copernicus Climate Pulse (ERA5), Berkeley Earth, NOAA NCEI, Met Office (HadCRUT5)\n"
+    fig.text(0.99, 0.01, "Datenquellen: C3S/ECMWF (ERA5, CC BY 4.0) · Berkeley Earth (CC BY-NC 4.0) · NOAA NCEI ·\n"
+             "HadCRUT5 (© British Crown Copyright, Met Office, OGL v3.0) · eigene Berechnung\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
     fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)

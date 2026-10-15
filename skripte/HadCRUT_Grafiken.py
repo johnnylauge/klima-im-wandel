@@ -1,7 +1,7 @@
 """
 Globale Temperatur nach HadCRUT5 (Met Office Hadley Centre und Climatic Research Unit der
 University of East Anglia, Land + Ozean, Monatswerte ab 1850): Balkendiagramme der Abweichung
-von 1850-1900 und Liniendiagramme der Mitteltemperatur in °C (geschätzt), jeweils für das Jahr,
+von 1850-1900 und Liniendiagramme der Abweichung, jeweils für das Jahr,
 die vier Jahreszeiten und die zwölf Monate.
 
 Ablauf:
@@ -92,11 +92,12 @@ URL_MUSTER = ("https://www.metoffice.gov.uk/hadobs/hadcrut5/data/{v}/analysis/di
 FOLDER = os.environ.get("HADCRUT_FOLDER") or os.environ.get(
     "ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\HadCRUT5")
 FILE = os.path.join(FOLDER, "HadCRUT5_global_monat.csv")
+HERKUNFT = os.path.join(FOLDER, "HadCRUT5_herkunft.txt")   # Version und Abrufdatum (für den Lizenzhinweis)
 # Monatsmittel des 20. Jahrhunderts (NOAA, Land + Ozean) - Grundlage für die geschätzten °C-Werte
 ABSOLUT_20JH = [12.0, 12.1, 12.7, 13.7, 14.8, 15.5, 15.8, 15.6, 15.0, 14.0, 12.9, 12.2]
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
-QUELLE = ("Datenquelle: HadCRUT5, Met Office Hadley Centre / CRU (Land + Ozean)\n"
-          "https://www.metoffice.gov.uk/hadobs/hadcrut5/\n"
+QUELLE = ("Datenquelle: HadCRUT5 · © British Crown Copyright, Met Office · Open Government Licence v3.0\n"
+          "https://www.metoffice.gov.uk/hadobs/hadcrut5/ · eigene Berechnung\n"
           "Visualisierung: JohnnyLauge.bsky.social")
 
 SEASONS = {
@@ -179,7 +180,17 @@ else:
             time.sleep(60)
     with open(FILE, "wb") as f:
         f.write(response.content)
+    # Version (aus der tatsächlich genutzten Adresse) und Abrufdatum merken - die Lizenz verlangt beides
+    genutzt = re.search(r"HadCRUT\.5\.\d+\.\d+\.\d+", URL).group(0)
+    with open(HERKUNFT, "w", encoding="utf-8") as f:
+        f.write(f"{genutzt}\n{pd.Timestamp.now():%d.%m.%Y}\n")
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
+
+# Version und Abrufdatum (auch wenn ohne neuen Download gerechnet wird)
+try:
+    VERSION_GENUTZT, ABGERUFEN = open(HERKUNFT, encoding="utf-8").read().split()[:2]
+except (OSError, ValueError):
+    VERSION_GENUTZT, ABGERUFEN = VERSION_ERSATZ, f"{pd.Timestamp.now():%d.%m.%Y}"
 
 
 # =========================================================
@@ -264,6 +275,8 @@ def speichere_txt(werte, art, name, datei):
         f.write(f"# Temperaturmittel {name} – Global (HadCRUT5, Land + Ozean; °C geschätzt)\n"
                 f"# Abweichung bezogen auf 1850-1900\n"
                 f"# Stand: {STAND}\n"
+                f"# Version: {VERSION_GENUTZT}\n"
+                f"# Abgerufen: {ABGERUFEN}\n"
                 + ("# Jahr = Jahr von Januar/Februar (2026 = Winter 2025/26)\n" if name == "Winter" else "")
                 + "#\n"
                 f"{'Jahr':>4}  {'Temp_°C':>8}  {'Abw_K':>6}  {'Rang':>4}  {'Tage':>4}  {'letzter_Tag':>11}\n")
@@ -524,17 +537,18 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
 
 
 # =========================================================
-# LINIENDIAGRAMM (Mitteltemperatur in °C)
+# LINIENDIAGRAMM (Abweichung von 1850-1900 in K)
 # =========================================================
 def linien(werte, current_year, is_partial, art, name, label, teil):
     wort = "Jahr" if art == "jahr" else name
-    fig, ax = grundgeruest(f"Global | {wort}", "Absolute Temperatur")
+    fig, ax = grundgeruest(f"Global | {wort}", "Abweichung von der vorindustriellen Zeit (1850-1900)")
     voll = werte.drop(current_year) if is_partial else werte
     abstand = float((voll["temp"] - voll["anomaly"]).median())
     werte = werte.copy()
-    werte["plot"] = werte["temp"]
-    if is_partial:                             # laufender Zeitraum: über die Abweichung umgerechnet
-        werte.loc[current_year, "plot"] = werte.loc[current_year, "anomaly"] + abstand
+    werte["plot"] = werte["anomaly"]                  # gezeichnet wird die Abweichung (K)
+    werte["c"] = werte["temp"]                        # °C für Rekord-Kasten und Maus-Anzeige
+    if is_partial:                             # laufender Zeitraum: °C über die Abweichung umgerechnet
+        werte.loc[current_year, "c"] = werte.loc[current_year, "anomaly"] + abstand
     voll = werte.drop(current_year) if is_partial else werte
     lim = werte["anomaly"].abs().max()
     norm = TwoSlopeNorm(vmin=-lim, vcenter=0, vmax=lim)
@@ -571,10 +585,11 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
         ax.plot(x, y, color=FARBEN["fg"], lw=2.2, ls="--",
                 path_effects=[pe.Stroke(linewidth=4, foreground=FARBEN["linie_rand"]), pe.Normal()],
                 label="LOESS-Trend (30 Jahre)", zorder=5)
-    grenze = abstand + 1.5
+    grenze = 1.5
     if SHOW_1_5_LINE:
         ax.axhline(grenze, color=FARBEN["limit"], ls=":", lw=1.8, zorder=2,
-                   label=f"1,5-K-Grenze (Pariser Klimaabkommen, ≈ {komma(grenze)} °C)")
+                   label="1,5-K-Grenze (Pariser Klimaabkommen)")
+    ax.axhline(0, color=FARBEN["fg"], lw=0.8, zorder=2)
     info_text = info_kasten(ax, werte, current_year, is_partial, label)
 
     ax.set_xlim(werte.index.min() - 1, werte.index.max() + 1)
@@ -585,7 +600,7 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: komma(v)))
     ax.set_xticks(range((werte.index.min() // X_TICK_STEP) * X_TICK_STEP + X_TICK_STEP
                         if werte.index.min() % X_TICK_STEP else werte.index.min(), current_year + 1, X_TICK_STEP))
-    achsen_beschriften(ax, "Temperatur [°C]")
+    achsen_beschriften(ax, "Temperaturabweichung [K]")
     ax.grid(True, alpha=0.2, zorder=0)
 
     class Verlauf(HandlerBase):
@@ -604,7 +619,7 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
         handles.append(Line2D([], [], color=cmap(norm(werte.loc[current_year, "anomaly"])), lw=LINIE,
                               ls=(0, (1.2, 1.4)), dash_capstyle="round"))
         labels.append(f"{label(current_year)} unvollständig "
-                      f"(bis {MONTH_NAMES[int(werte.loc[current_year, 'letzter_monat']) - 1]}), umgerechnet")
+                      f"(bis {MONTH_NAMES[int(werte.loc[current_year, 'letzter_monat']) - 1]})")
     legend = ax.legend(handles, labels, handler_map={verlauf: Verlauf()}, loc="upper left",
                        bbox_to_anchor=(0.01, 0.80), frameon=True, fontsize=10 * SCHRIFT, fancybox=True,
                        framealpha=0.85, edgecolor=FARBEN["box_rand"], facecolor=FARBEN["box_bg"],
@@ -621,7 +636,7 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
                linewidth=1.6, zorder=6, gid="rekord")
     w = "Wärmstes" if art == "jahr" else "Wärmster"
     rekord = (f"{w} {'Jahr ' if art == 'jahr' else ''}{label(rek)}\n"
-              f"{komma(voll.loc[rek, 'plot'])} °C | {k_text(voll.loc[rek, 'anomaly'])}", rek, voll.loc[rek, "plot"])
+              f"{komma(voll.loc[rek, 'c'])} °C | {k_text(voll.loc[rek, 'anomaly'])}", rek, voll.loc[rek, "plot"])
     layout_und_kaesten(fig, ax, legend, info_text, hindernisse, grenze, rekord)
 
     def felder():
@@ -630,7 +645,7 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
             x0 = ax.transData.transform((jahr - 0.45, 0))[0]
             x1 = ax.transData.transform((jahr + 0.45, 0))[0]
             lauf = bool(is_partial and jahr == current_year)
-            yield dict(jahr=int(jahr), label=label(jahr), rang=int(z["rank"]), temp=round(float(z["plot"]), 3),
+            yield dict(jahr=int(jahr), label=label(jahr), rang=int(z["rank"]), temp=round(float(z["c"]), 3),
                        abw=round(float(z["anomaly"]), 3), laufend=lauf, ca=lauf,
                        px=(min(x0, px - 8), max(x1, px + 8), py - 9, py + 9))
     speichern(fig, ax, info_text, f"HADCRUT_global_linien_{teil}", felder)
