@@ -7,17 +7,17 @@
 <!-- Symbol im Browser-Tab: steigende Balken von blau nach rot (direkt eingebettet, keine Extradatei) -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231e1e21'/><rect x='4.5' y='20' width='4.5' height='7' rx='1' fill='%234393c3'/><rect x='10.5' y='16' width='4.5' height='11' rx='1' fill='%23f4a582'/><rect x='16.5' y='11' width='4.5' height='16' rx='1' fill='%23d6604d'/><rect x='22.5' y='5' width='4.5' height='22' rx='1' fill='%23e8313f'/></svg>">
 <meta name="theme-color" content="#1e1e21">
-<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur (ERA5, Berkeley Earth und NOAA) mit Vergleich der Datensätze.">
+<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur seit 1850: ERA5, Berkeley Earth, NOAA und HadCRUT5 im Vergleich.">
 <!-- Vorschaukarte beim Teilen des Links (Bluesky, Mastodon, Messenger …) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Klima im Wandel">
 <meta property="og:title" content="Klima im Wandel – globale Temperatur, täglich aktualisiert">
-<meta property="og:description" content="Wie warm ist die Erde gegenüber der vorindustriellen Zeit? Jahre, Jahreszeiten und Monate seit 1940 – ERA5, Copernicus Climate Pulse.">
+<meta property="og:description" content="Wie warm ist die Erde gegenüber der vorindustriellen Zeit? Jahre, Jahreszeiten und Monate seit 1850 – vier Datensätze im Vergleich.">
 <meta property="og:url" content="https://johnnylauge.github.io/klima-im-wandel/">
-<meta property="og:image" content="https://johnnylauge.github.io/klima-im-wandel/daten/Grafiken/ERA5_global_jahreswerte_voll.png">
+<meta property="og:image" content="https://johnnylauge.github.io/klima-im-wandel/daten/Grafiken/VGL_global_linien_jahr_dunkel_voll.png">
 <meta property="og:image:width" content="3000">
-<meta property="og:image:height" content="1688">
-<meta property="og:image:alt" content="Balkendiagramm der globalen Jahresmitteltemperatur seit 1940 als Abweichung von 1850–1900">
+<meta property="og:image:height" content="1687">
+<meta property="og:image:alt" content="Liniendiagramm der globalen Jahresmitteltemperatur seit 1850 nach ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary_large_image">
 <style>
@@ -206,6 +206,15 @@
   .monate button[aria-pressed="true"], .saisons button[aria-pressed="true"] {
     background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
   }
+  /* Daten und Lizenzen (aufklappbar am Seitenende) */
+  .lizenzen { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .lizenzen summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 0.85rem; }
+  .lizenzen summary:hover { color: var(--accent); }
+  .lizenzen ul { margin: 10px 0 0; padding-left: 18px; }
+  .lizenzen li { margin: 6px 0; line-height: 1.45; }
+  .lizenzen .lz { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px;
+                  font-size: 0.75rem; margin-left: 4px; white-space: nowrap; }
+  .lizenzen p { margin: 10px 0 0; }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
   footer a { color: inherit; }
   /* ---------- Handy: kompakter, Grafik vor den Kacheln ---------- */
@@ -275,19 +284,19 @@
     <button type="button" role="tab" id="tab-saison" aria-controls="ansicht-saison" aria-selected="false">Jahreszeit</button>
     <button type="button" role="tab" id="tab-monat" aria-controls="ansicht-monat" aria-selected="false">Monat</button>
   </div>
-  <!-- Darstellung: Balken (Mittelwert je Jahr) oder Punkte (jeder einzelne Tag) -->
+  <!-- Darstellung: Linien (Abweichung mit Trend), Balken (Mittelwert je Jahr) oder Punkte (jeder einzelne Tag) -->
   <div class="art" role="group" aria-label="Darstellung wählen">
-    <button type="button" id="art-balken" aria-pressed="true" title="Balkendiagramm: ein Balken je Jahr">
+    <button type="button" id="art-linien" aria-pressed="true" title="Liniendiagramm: Abweichung mit Trend">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><polyline points="5,24 11,20 17,21 23,12 28,7" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5" cy="24" r="2.6" fill="#4393c3"/><circle cx="11" cy="20" r="2.6" fill="#f4a582"/><circle cx="17" cy="21" r="2.6" fill="#f4a582"/><circle cx="23" cy="12" r="2.6" fill="#d6604d"/><circle cx="28" cy="7" r="2.6" fill="#e8313f"/></svg>
+      <span class="text">Linien</span>
+    </button>
+    <button type="button" id="art-balken" aria-pressed="false" title="Balkendiagramm: ein Balken je Jahr">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4.5" y="20" width="4.5" height="7" rx="1" fill="#4393c3"/><rect x="10.5" y="16" width="4.5" height="11" rx="1" fill="#f4a582"/><rect x="16.5" y="11" width="4.5" height="16" rx="1" fill="#d6604d"/><rect x="22.5" y="5" width="4.5" height="22" rx="1" fill="#e8313f"/></svg>
       <span class="text">Balken</span>
     </button>
     <button type="button" id="art-punkte" aria-pressed="false" title="Punktdiagramm: ein Punkt je Tag">
       <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
       <span class="text">Punkte</span>
-    </button>
-    <button type="button" id="art-linien" aria-pressed="false" title="Liniendiagramm: Mitteltemperatur in °C">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><polyline points="5,24 11,20 17,21 23,12 28,7" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5" cy="24" r="2.6" fill="#4393c3"/><circle cx="11" cy="20" r="2.6" fill="#f4a582"/><circle cx="17" cy="21" r="2.6" fill="#f4a582"/><circle cx="23" cy="12" r="2.6" fill="#d6604d"/><circle cx="28" cy="7" r="2.6" fill="#e8313f"/></svg>
-      <span class="text">Linien</span>
     </button>
   </div>
   </div>
@@ -364,6 +373,30 @@
     <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">NOAA NCEI</a> ·
     <a href="https://www.metoffice.gov.uk/hadobs/hadcrut5/">Met Office Hadley Centre (HadCRUT5)</a> ·
     Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
+    <details class="lizenzen">
+      <summary>Daten und Lizenzen</summary>
+      <ul>
+        <li><strong>ERA5</strong> – Copernicus Climate Change Service (C3S) / ECMWF, über
+          <a href="https://pulse.climate.copernicus.eu/">Climate Pulse</a>.
+          „Generated using Copernicus Climate Change Service information <span id="lz-jahr">2026</span>.“
+          <a class="lz" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></li>
+        <li><strong>Berkeley Earth</strong> – <a href="https://berkeleyearth.org/data/">berkeleyearth.org</a>,
+          Global Land and Ocean (High Resolution).
+          <a class="lz" href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a> nur nicht-kommerzielle Nutzung</li>
+        <li><strong>NOAA</strong> – NOAA National Centers for Environmental Information (NCEI), NOAAGlobalTemp v6.1,
+          <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">Climate at a Glance</a>.
+          <span class="lz">gemeinfrei (U.S. Government)</span></li>
+        <li><strong>HadCRUT5</strong> – <span id="lz-hc-version">HadCRUT.5.2.0.0</span> data were obtained from
+          <a href="https://www.metoffice.gov.uk/hadobs/hadcrut5/">http://www.metoffice.gov.uk/hadobs/hadcrut5</a>
+          on <span id="lz-hc-datum">–</span> and are © British Crown Copyright, Met Office <span id="lz-hc-jahr">2026</span>,
+          provided under an <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government License</a>.
+          Morice et al. (2021), <a href="https://doi.org/10.1029/2019JD032361">doi:10.1029/2019JD032361</a>.
+          <span class="lz">OGL v3.0</span></li>
+      </ul>
+      <p><strong>Bearbeitung:</strong> Alle Werte und Grafiken sind eigene Berechnungen auf Basis dieser Daten –
+        Umrechnung auf den Bezug 1850–1900, Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von NOAA und
+        HadCRUT5 sind geschätzt. Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
+    </details>
   </footer>
 </main>
 
@@ -409,14 +442,14 @@
   const monatKurz = letzter => { const m = parseInt(letzter.split(".")[1], 10); return mt(m, MONATE_KURZ[m - 1]); };
   const bisText = letzter => (quelle !== "era5" ? monatKurz(letzter) : letzter.slice(0, 6));
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
-  const artJetzt = () => (Q().arten.includes(art) ? art : Q().arten.includes("balken") ? "balken" : "linien");
+  const artJetzt = () => (Q().arten.includes(art) ? art : "linien");
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
-  let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "punkte" (jeder Tag) oder "linien" (Mittel in °C)
-  const ARTEN = ["balken", "punkte", "linien"];
+  let art = "linien";        // Darstellung: "linien" (Abweichung mit Trend), "balken" (Mittel je Jahr) oder "punkte" (jeder Tag)
+  const ARTEN = ["linien", "balken", "punkte"];
   const ART_TEXT = { balken: "ein Balken je Jahr", punkte: "ein Punkt je Tag",
-                     linien: "Mittelwert in °C als Linie" };
-  try { const a = localStorage.getItem("art"); if (a === "punkte" || a === "linien") art = a; } catch (e) {}
+                     linien: "Abweichung als Linie mit Trend" };
+  try { const a = localStorage.getItem("art"); if (ARTEN.includes(a)) art = a; } catch (e) {}
 
   // Jahreszeiten: Name, Dateiname, Monate
   const SAISONS = [
@@ -484,7 +517,7 @@
     document.getElementById("art-balken").title = Q().arten.includes("balken")
       ? "Balkendiagramm: ein Balken je Jahr" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.getElementById("art-linien").title = Q().arten.includes("linien")
-      ? "Liniendiagramm: Mitteltemperatur in °C" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
+      ? "Liniendiagramm: Abweichung mit Trend" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
     document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("fuenf", !!Q().vergleich));
     document.querySelectorAll(".art-text").forEach(el => el.textContent =
@@ -992,6 +1025,18 @@
     e.currentTarget.setAttribute("aria-expanded", String(offen));
   });
   ladeQuelle();
+
+  // Lizenzhinweise: Jahr sowie HadCRUT5-Version und Abrufdatum aus den Daten eintragen
+  document.getElementById("lz-jahr").textContent = new Date().getFullYear();
+  document.getElementById("lz-hc-jahr").textContent = new Date().getFullYear();
+  fetch("daten/HADCRUT_global_jahreswerte.txt", { cache: "no-store" })
+    .then(r => (r.ok ? r.text() : ""))
+    .then(t => {
+      const wert = key => ((t.split("\n").find(z => z.startsWith("# " + key + ":")) || "").split(":")[1] || "").trim();
+      if (wert("Version")) document.getElementById("lz-hc-version").textContent = wert("Version");
+      if (wert("Abgerufen")) document.getElementById("lz-hc-datum").textContent = wert("Abgerufen");
+    })
+    .catch(() => {});
 </script>
 </body>
 </html>
