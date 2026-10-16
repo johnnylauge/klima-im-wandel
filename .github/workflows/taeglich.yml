@@ -201,6 +201,13 @@ jobs:
           ERA5_DUNKEL: "1"
         run: python skripte/Vergleich_Linien.py
 
+      # Daten-Downloads: ERA5-Tageswerte im einheitlichen Stil und zu jeder TXT eine CSV für Excel
+      - name: Daten als TXT und CSV aufbereiten
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+        run: python skripte/Daten_Export.py
+
       - name: Webseite zusammenstellen
         run: cp site/index.html _site/
 
