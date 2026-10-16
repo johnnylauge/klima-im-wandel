@@ -317,8 +317,10 @@
     <nav class="downloads" aria-label="Downloads Jahresmittel">
       <a id="png-jahr" href="#" download>Grafik (PNG)</a>
       <a id="pdf-jahr" href="#" download>Grafik (PDF)</a>
-      <a class="nur-quelle" id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
-      <a class="nur-quelle" id="txt-roh" href="daten/ERA5_global_tag.txt">Tageswerte (TXT)</a>
+      <a id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
+      <a id="csv-jahr" href="daten/ERA5_global_jahreswerte.csv" download>Jahreswerte (CSV)</a>
+      <a class="nur-quelle" id="txt-roh" href="daten/ERA5_global_tageswerte.txt">Tageswerte (TXT)</a>
+      <a class="nur-quelle" id="csv-roh" href="daten/ERA5_global_tageswerte.csv" download>Tageswerte (CSV)</a>
     </nav>
   </section>
 
@@ -340,7 +342,8 @@
     <nav class="downloads" aria-label="Downloads Jahreszeiten">
       <a id="png-saison" href="#" download>Grafik (PNG)</a>
       <a id="pdf-saison" href="#" download>Grafik (PDF)</a>
-      <a class="nur-quelle" id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
+      <a id="txt-saison" href="#">Jahreszeitenwerte (TXT)</a>
+      <a id="csv-saison" href="#" download>Jahreszeitenwerte (CSV)</a>
     </nav>
   </section>
 
@@ -362,7 +365,8 @@
     <nav class="downloads" aria-label="Downloads Monatsmittel">
       <a id="png-monat" href="#" download>Grafik (PNG)</a>
       <a id="pdf-monat" href="#" download>Grafik (PDF)</a>
-      <a class="nur-quelle" id="txt-monat" href="#">Monatswerte (TXT)</a>
+      <a id="txt-monat" href="#">Monatswerte (TXT)</a>
+      <a id="csv-monat" href="#" download>Monatswerte (CSV)</a>
     </nav>
   </section>
 
@@ -415,20 +419,20 @@
   // Datenquelle: "era5" (Tageswerte ab 1940, täglich), "nasa", "noaa", "hadcrut", "be" (Monatswerte) oder "vgl"
   let quelle = "era5";
   const QUELLEN = {
-    era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tag.txt", "Tageswerte (TXT)"],
+    era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tageswerte", "Tageswerte"],
             info: "ERA5 (Copernicus): Tageswerte aus Wettermodell und Messungen ab 1940, täglich aktualisiert." },
-    be:   { praefix: "BE", start: 1850, takt: "monatlich", roh: ["daten/BE_Global_TAVG_monthly.txt", "Monatswerte (TXT)"],
+    be:   { praefix: "BE", start: 1850, takt: "monatlich", roh: ["daten/BE_global_monatsreihe", "Monatsreihe"],
             info: "Berkeley Earth: Monatswerte aus Stations- und Schiffsmessungen ab 1850, neue Werte etwa Mitte des Folgemonats. " +
                   "Die °C-Werte liegen etwas anders als bei ERA5, die Abweichungen sind vergleichbar." },
-    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monat.csv", "Monatswerte (CSV)"],
+    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monatsreihe", "Monatsreihe"],
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
-    nasa: { praefix: "NASA", start: 1880, takt: "monatlich", roh: ["daten/NASA_GISTEMP_global_monat.csv", "Monatswerte (CSV)"],
+    nasa: { praefix: "NASA", start: 1880, takt: "monatlich", roh: ["daten/NASA_global_monatsreihe", "Monatsreihe"],
             info: "NASA GISTEMP v4 (Goddard Institute for Space Studies): Monatswerte aus Stations- und Schiffsmessungen ab 1880, " +
                   "neue Werte etwa Mitte des Folgemonats. Da die Reihe erst 1880 beginnt, ist sie über 1951–1980 an den Bezug " +
                   "1850–1900 der anderen Datensätze angeschlossen; die °C-Werte sind geschätzt." },
     hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich",
-            roh: ["daten/HadCRUT5_global_monat.csv", "Monatswerte (CSV)"],
+            roh: ["daten/HADCRUT_global_monatsreihe", "Monatsreihe"],
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
@@ -442,6 +446,11 @@
   QUELLEN.vgl.arten = ["linien"];
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
+  // Daten-Downloads eines Abschnitts: dieselbe Tabelle als TXT und als CSV (für Excel)
+  const datenLinks = (teil, basis) => {
+    document.getElementById("txt-" + teil).href = basis + ".txt";
+    document.getElementById("csv-" + teil).href = basis + ".csv";
+  };
   // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
   // Monate abgekürzt, damit die Kacheln gleich hoch bleiben (kurze Monatsnamen ausgeschrieben)
   const MONATE_KURZ = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
@@ -537,10 +546,13 @@
     Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
     document.querySelectorAll(".seit").forEach(el => el.textContent = Q().start);
-    document.getElementById("txt-jahr").href = `daten/${Q().praefix}_global_jahreswerte.txt`;
-    if (Q().roh) {
-      document.getElementById("txt-roh").href = Q().roh[0];
-      document.getElementById("txt-roh").textContent = Q().roh[1];
+    datenLinks("jahr", `daten/${Q().praefix}_global_jahreswerte`);
+    if (Q().roh) {                       // alle Tage (ERA5) bzw. alle Monate als eine Reihe
+      ["txt", "csv"].forEach(e => {
+        const a = document.getElementById(e + "-roh");
+        a.href = `${Q().roh[0]}.${e}`;
+        a.textContent = `${Q().roh[1]} (${e.toUpperCase()})`;
+      });
     }
     setzeBild("jahr", grafikName("jahr"));
     document.getElementById("bild-jahr").alt = bildText("jahr");
@@ -864,7 +876,7 @@
     if (adresseMerken) history.replaceState(null, "", "#monat-" + nn(m));
     const name = MONATE[m - 1];
     document.getElementById("bild-monat").alt = bildText("monat");
-    document.getElementById("txt-monat").href = `daten/${Q().praefix}_global_monat_${nn(m)}.txt`;
+    datenLinks("monat", `daten/${Q().praefix}_global_monat_${nn(m)}`);
     setzeBild("monat", grafikName("monat"));
     if (Q().vergleich) {
       kachelnVergleich("monat", `monat_${nn(m)}`, j => `${mt(m, MONATE_KURZ[m - 1])} ${j}`,   // kurz, damit nichts umbricht
@@ -927,7 +939,7 @@
     [...sLeiste.children].forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
     if (adresseMerken) history.replaceState(null, "", "#jahreszeit-" + x.datei);
     document.getElementById("bild-saison").alt = bildText("saison");
-    document.getElementById("txt-saison").href = `daten/${Q().praefix}_global_saison_${x.datei}.txt`;
+    datenLinks("saison", `daten/${Q().praefix}_global_saison_${x.datei}`);
     // Bildunterschrift: am Handy kürzer; beim Winter mit Hinweis zur Jahreszählung
     document.getElementById("hinweis-saison").innerHTML =
       (x.name === "Winter" ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. " : "") +
