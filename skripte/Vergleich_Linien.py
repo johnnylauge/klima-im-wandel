@@ -1,5 +1,5 @@
 """
-Vergleich der Datensätze ERA5 (Copernicus), Berkeley Earth, NOAA und HadCRUT5 als Liniendiagramm:
+Vergleich der Datensätze ERA5 (Copernicus), NASA GISTEMP, NOAA, HadCRUT5 und Berkeley Earth als Liniendiagramm:
 Abweichung von 1850-1900 je Jahr, je Jahreszeit oder je Monat - eine Linie je Datensatz.
 
 Das Skript lädt nichts herunter. Es liest die TXT-Dateien, die die anderen Skripte schreiben:
@@ -7,17 +7,18 @@ Das Skript lädt nichts herunter. Es liest die TXT-Dateien, die die anderen Skri
   BE_global_...txt   (BerkeleyEarth_Grafiken.py)
   NOAA_global_...txt (NOAA_Grafiken.py)
   HADCRUT_global_...txt (HadCRUT_Grafiken.py)
+  NASA_global_...txt (NASA_Grafiken.py)
 Fehlt eine Quelle, wird sie einfach weggelassen.
 
 Dazu kommt ein LOESS-Trend (30 Jahre) durch das Mittel aller Datensätze: je Jahr der
 Durchschnitt der vorhandenen vollständigen Werte (vor 1940 ohne ERA5).
 
 Der laufende (unvollständige) Zeitraum jeder Quelle wird gestrichelt angehängt. Die Quellen
-enden unterschiedlich: ERA5 täglich, Berkeley Earth und NOAA etwa Mitte des Folgemonats.
+enden unterschiedlich: ERA5 täglich, die anderen etwa Mitte des Folgemonats.
 
 Läuft lokal (Windows) und auf GitHub:
   - Auf GitHub liegen alle TXT-Dateien in ERA5_FOLDER; die Grafiken kommen nach ERA5_FOLDER/Grafiken.
-  - Umgebungsvariablen: ERA5_FOLDER, BE_FOLDER, NOAA_FOLDER, VGL_FOLDER, VGL_WAHL, ERA5_DUNKEL=1
+  - Umgebungsvariablen: ERA5_FOLDER, BE_FOLDER, NOAA_FOLDER, HADCRUT_FOLDER, NASA_FOLDER, VGL_FOLDER, VGL_WAHL, ERA5_DUNKEL=1
 """
 
 import os
@@ -56,6 +57,7 @@ ORDNER = {
     "BE": os.environ.get("BE_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "Berkeley_Earth")),
     "NOAA": os.environ.get("NOAA_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "NOAA")),
     "HADCRUT": os.environ.get("HADCRUT_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "HadCRUT5")),
+    "NASA": os.environ.get("NASA_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "NASA")),
 }
 FOLDER = os.environ.get("VGL_FOLDER") or os.environ.get("ERA5_FOLDER", os.path.join(BASIS, "Vergleich"))
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
@@ -69,10 +71,12 @@ FARBEN = {
 # Je Quelle eine eigene, gut unterscheidbare Farbe (auch bei Farbsehschwäche)
 QUELLEN = {
     "ERA5": dict(name="ERA5 (Copernicus)", kurz="ERA5", farbe="#F5B841" if DUNKEL else "#E69F00"),
-    "BE":   dict(name="Berkeley Earth",    kurz="Berkeley Earth", farbe="#56B4E9" if DUNKEL else "#0072B2"),
+    "NASA": dict(name="NASA GISTEMP",      kurz="NASA", farbe="#FF7F50" if DUNKEL else "#D55E00"),
     "NOAA": dict(name="NOAA",              kurz="NOAA", farbe="#3FC79A" if DUNKEL else "#009E73"),
     "HADCRUT": dict(name="HadCRUT5 (Met Office)", kurz="HadCRUT5", farbe="#E59CC8" if DUNKEL else "#CC79A7"),
+    "BE":   dict(name="Berkeley Earth",    kurz="Berkeley Earth", farbe="#56B4E9" if DUNKEL else "#0072B2"),
 }
+REIHENFOLGE = tuple(QUELLEN)          # Legende, Info-Kasten: ERA5, NASA, NOAA, HadCRUT5, Berkeley Earth
 plt.rcParams.update({
     "text.color": FARBEN["text"], "axes.labelcolor": FARBEN["text"],
     "xtick.color": FARBEN["text"], "ytick.color": FARBEN["text"],
@@ -213,7 +217,7 @@ def erstelle(wahl):
 
     hindernisse = []
     handles, labels = [], []
-    for q in ("HADCRUT", "BE", "NOAA", "ERA5"):      # ERA5 zuletzt, liegt obenauf
+    for q in REIHENFOLGE[::-1]:                     # ERA5 zuletzt, liegt obenauf
         if q not in reihen:
             continue
         df, _ = reihen[q]
@@ -239,7 +243,7 @@ def erstelle(wahl):
                               path_effects=[pe.Stroke(linewidth=4.4, foreground=FARBEN["linie_rand"]), pe.Normal()])
         hindernisse.append(np.column_stack([x, y]))
 
-    for q in ("ERA5", "BE", "NOAA", "HADCRUT"):                 # Legende in fester Reihenfolge
+    for q in REIHENFOLGE:                                       # Legende in fester Reihenfolge
         if q in reihen:
             handles.append(Line2D([], [], color=QUELLEN[q]["farbe"], lw=LINIE))
             labels.append(f"{QUELLEN[q]['kurz']} (Daten von {reihen[q][0].index.min()} bis {bis_monat(reihen[q][0]["letzter"].iloc[-1])})")
@@ -258,7 +262,7 @@ def erstelle(wahl):
     # Info-Kasten: neuester Zeitraum, Wert je Quelle
     neuestes = max(df.index.max() for df, _ in reihen.values())
     teile = []
-    for q in ("ERA5", "BE", "NOAA", "HADCRUT"):
+    for q in REIHENFOLGE:
         if q in reihen:
             df, _ = reihen[q]
             if neuestes in df.index:
@@ -292,8 +296,8 @@ def erstelle(wahl):
     for t in ax.get_xticklabels() + ax.get_yticklabels():
         t.set_fontweight("bold")
     ax.grid(True, alpha=0.2, zorder=0)
-    fig.text(0.99, 0.01, "Datenquellen: C3S/ECMWF (ERA5, CC BY 4.0) · Berkeley Earth (CC BY-NC 4.0) · NOAA NCEI ·\n"
-             "HadCRUT5 (© British Crown Copyright, Met Office, OGL v3.0) · eigene Berechnung\n"
+    fig.text(0.99, 0.01, "Datenquellen: C3S/ECMWF (ERA5, CC BY 4.0) · NASA GISS (GISTEMP v4) · NOAA NCEI ·\n"
+             "HadCRUT5 (© British Crown Copyright, Met Office, OGL v3.0) · Berkeley Earth (CC BY-NC 4.0) · eigene Berechnung\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
     fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)
@@ -364,7 +368,7 @@ def erstelle(wahl):
         felder = []
         for jahr in range(start, neuestes + 1):
             werte = []
-            for q in ("ERA5", "BE", "NOAA", "HADCRUT"):
+            for q in REIHENFOLGE:
                 if q in reihen and jahr in reihen[q][0].index:
                     z = reihen[q][0].loc[jahr]
                     werte.append(dict(q=QUELLEN[q]["kurz"], abw=round(float(z["abw"]), 3),
