@@ -203,6 +203,16 @@ LETZTER = MONATE_DF.iloc[-1]
 STAND = f"{MONTH_NAMES[int(LETZTER['monat']) - 1]} {int(LETZTER['jahr'])}"
 print(f"NOAA: {MONATE_DF['jahr'].min()}-{STAND}, {len(MONATE_DF)} Monate")
 
+# Alle Monate als eine Reihe (Download auf der Webseite, gleicher Aufbau wie die anderen TXT) - nur beim hellen Lauf
+if not DUNKEL:
+    with open(os.path.join(FOLDER, "NOAA_global_monatsreihe.txt"), "w", encoding="utf-8") as f:
+        f.write("# Monatsmittel – Global (NOAA NOAAGlobalTemp, Land + Ozean)\n" + "# Abweichung bezogen auf 1850-1900\n" + f"# Stand: {STAND}\n"
+                + "#\n" + f"{'Jahr':>4}  {'Monat':>5}  {'Temp_°C':>8}  {'Abw_K':>6}  {'Tage':>4}  {'letzter_Tag':>11}\n")
+        for _, z in MONATE_DF.iterrows():
+            ende = pd.Timestamp(int(z["jahr"]), int(z["monat"]), 1) + pd.offsets.MonthEnd(0)
+            f.write(f"{int(z['jahr']):>4}  {int(z['monat']):>5}  {z['temp']:>8.3f}  {z['ano_pre']:>+6.3f}  "
+                    f"{ende.day:>4}  {ende:%d.%m.%Y}\n")
+
 
 def zeitraum(wahl):
     """(Art, Name, Monate, Dateiteil) für TXT und Grafiken."""

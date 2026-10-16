@@ -180,6 +180,37 @@ def lies_txt(datei):
     return df, stand
 
 
+def speichere_tabelle(reihen, name, txt_teil):
+    """Tabelle für den Download: je Jahr die Abweichung jedes Datensatzes und das Mittel."""
+    kurz = {"ERA5": "ERA5", "NASA": "NASA", "NOAA": "NOAA", "HADCRUT": "HadCRUT5", "BE": "Berkeley"}
+    spalten = [q for q in REIHENFOLGE if q in reihen]
+    jahre = sorted(set().union(*[set(df.index) for df, _ in reihen.values()]))
+    datei = os.path.join(FOLDER, f"VGL_global_{txt_teil}.txt")
+    with open(datei, "w", encoding="utf-8") as f:
+        f.write(f"# Temperaturabweichung {name} – Global, Vergleich der Datensätze\n"
+                f"# Abweichung bezogen auf 1850-1900 (je Datensatz)\n"
+                f"# Stand: {' · '.join(f'{kurz[q]} {reihen[q][1]}' for q in spalten)}\n"
+                "# Mittel = Durchschnitt der vorhandenen Werte; vollständig = nein: mindestens ein Wert gilt\n"
+                "#   für einen noch laufenden Zeitraum; - = kein Wert\n"
+                + ("# Jahr = Jahr von Januar/Februar (2026 = Winter 2025/26)\n" if name == "Winter" else "")
+                + "#\n" + f"{'Jahr':>4}" + "".join(f"  {kurz[q]:>8}" for q in spalten)
+                + f"  {'Mittel':>8}  {'vollständig':>11}\n")
+        for j in jahre:
+            werte, voll = [], True
+            zeile = f"{j:>4}"
+            for q in spalten:
+                df = reihen[q][0]
+                if j in df.index:
+                    werte.append(df.loc[j, "abw"])
+                    voll = voll and not df.loc[j, "laufend"]
+                    zeile += f"  {df.loc[j, 'abw']:>+8.3f}"
+                else:
+                    zeile += f"  {'-':>8}"
+            zeile += f"  {np.mean(werte):>+8.3f}  {'ja' if voll else 'nein':>11}\n"
+            f.write(zeile)
+    print(f"Tabelle gespeichert unter:\n{datei}")
+
+
 def erstelle(wahl):
     art, name, monate, txt_teil, bild_teil = zeitraum(wahl)
 
@@ -204,6 +235,8 @@ def erstelle(wahl):
     if not reihen:
         print(f"Keine Daten für {name} - übersprungen")
         return
+    if not DUNKEL:                              # Tabelle nur einmal (beim hellen Lauf) schreiben
+        speichere_tabelle(reihen, name, txt_teil)
 
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
     ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)",
