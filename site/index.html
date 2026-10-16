@@ -7,17 +7,17 @@
 <!-- Symbol im Browser-Tab: steigende Balken von blau nach rot (direkt eingebettet, keine Extradatei) -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231e1e21'/><rect x='4.5' y='20' width='4.5' height='7' rx='1' fill='%234393c3'/><rect x='10.5' y='16' width='4.5' height='11' rx='1' fill='%23f4a582'/><rect x='16.5' y='11' width='4.5' height='16' rx='1' fill='%23d6604d'/><rect x='22.5' y='5' width='4.5' height='22' rx='1' fill='%23e8313f'/></svg>">
 <meta name="theme-color" content="#1e1e21">
-<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur seit 1850: ERA5, Berkeley Earth, NOAA und HadCRUT5 im Vergleich.">
+<meta name="description" content="Täglich aktualisierte Grafiken zur globalen Temperatur seit 1850: ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth im Vergleich.">
 <!-- Vorschaukarte beim Teilen des Links (Bluesky, Mastodon, Messenger …) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Klima im Wandel">
 <meta property="og:title" content="Klima im Wandel – globale Temperatur, täglich aktualisiert">
-<meta property="og:description" content="Wie warm ist die Erde gegenüber der vorindustriellen Zeit? Jahre, Jahreszeiten und Monate seit 1850 – vier Datensätze im Vergleich.">
+<meta property="og:description" content="Wie warm ist die Erde gegenüber der vorindustriellen Zeit? Jahre, Jahreszeiten und Monate seit 1850 – fünf Datensätze im Vergleich.">
 <meta property="og:url" content="https://johnnylauge.github.io/klima-im-wandel/">
 <meta property="og:image" content="https://johnnylauge.github.io/klima-im-wandel/daten/Grafiken/VGL_global_linien_jahr_dunkel_voll.png">
 <meta property="og:image:width" content="3000">
 <meta property="og:image:height" content="1687">
-<meta property="og:image:alt" content="Liniendiagramm der globalen Jahresmitteltemperatur seit 1850 nach ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900">
+<meta property="og:image:alt" content="Liniendiagramm der globalen Jahresmitteltemperatur seit 1850 nach ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth als Abweichung von 1850–1900">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary_large_image">
 <style>
@@ -75,7 +75,7 @@
   /* Handy: alle fünf Quellen in einer Reihe, Schrift wächst mit der Bildschirmbreite */
   @media (max-width: 600px) {
     .quelle { display: flex; width: 100%; gap: 1px; padding: 2px; }
-    .quelle button { flex: 1 1 auto; padding: 6px 4px; font-size: clamp(0.68rem, 3.3vw, 0.85rem); }
+    .quelle button { flex: 1 1 auto; min-width: 0; padding: 6px 2px; font-size: clamp(0.62rem, 2.95vw, 0.85rem); }
     .quelle .lang { display: none; }
   }
   .ausgeblendet { display: none; }
@@ -132,10 +132,9 @@
     .kachel { padding: 10px 12px; }
     .kachel .wert { font-size: 1.35rem; }
   }
-  .kacheln.fuenf { grid-template-columns: repeat(5, 1fr); }
-  @media (max-width: 900px) {
-    .kacheln.fuenf { grid-template-columns: repeat(2, 1fr); }
-    .kacheln.fuenf .kachel:last-child { grid-column: 1 / -1; }
+  .kacheln.sechs { grid-template-columns: repeat(3, 1fr); }      /* Vergleich: 5 Datensätze + Mittel */
+  @media (max-width: 600px) {
+    .kacheln.sechs { grid-template-columns: repeat(2, 1fr); }
   }
   .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; position: relative; }
   /* kleines i direkt hinter dem Wert in K */
@@ -251,7 +250,6 @@
     .kachel { padding: 8px 10px; }
     .kachel .label, .kachel .zusatz { font-size: 0.75rem; }
     .kachel .wert { font-size: 1.15rem; }
-    .kacheln.fuenf .kachel:nth-child(5) { display: none; }   /* Vergleich: Kachel "Mittel" am Handy weglassen */
   }
 </style>
 </head>
@@ -266,10 +264,11 @@
       <span class="qlabel" id="qlabel">Datenquelle</span>
       <div class="quelle" role="group" aria-labelledby="qlabel">
         <button type="button" id="quelle-era5" aria-pressed="true">ERA5</button>
-        <button type="button" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
+        <button type="button" id="quelle-nasa" aria-pressed="false">NASA</button>
         <button type="button" id="quelle-noaa" aria-pressed="false">NOAA</button>
         <button type="button" id="quelle-hadcrut" aria-pressed="false">HadCRUT<span class="lang">5</span></button>
-        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, Berkeley Earth, NOAA und HadCRUT5 in einer Grafik">Vergleich</button>
+        <button type="button" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
+        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth in einer Grafik">Vergleich</button>
       </div>
       <span class="stand" id="stand">Daten werden geladen …</span>
       <button type="button" class="info-knopf" id="info-knopf" aria-label="Hinweis zur Datenquelle zeigen"
@@ -369,9 +368,10 @@
 
   <footer>
     Datenquellen: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
-    <a href="https://berkeleyearth.org/data/">Berkeley Earth</a> ·
+    <a href="https://data.giss.nasa.gov/gistemp/">NASA GISS (GISTEMP)</a> ·
     <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">NOAA NCEI</a> ·
     <a href="https://www.metoffice.gov.uk/hadobs/hadcrut5/">Met Office Hadley Centre (HadCRUT5)</a> ·
+    <a href="https://berkeleyearth.org/data/">Berkeley Earth</a> ·
     Visualisierung: <a href="https://bsky.app/profile/johnnylauge.bsky.social">JohnnyLauge.bsky.social</a>
     <details class="lizenzen">
       <summary>Daten und Lizenzen</summary>
@@ -380,9 +380,10 @@
           <a href="https://pulse.climate.copernicus.eu/">Climate Pulse</a>.
           „Generated using Copernicus Climate Change Service information <span id="lz-jahr">2026</span>.“
           <a class="lz" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></li>
-        <li><strong>Berkeley Earth</strong> – <a href="https://berkeleyearth.org/data/">berkeleyearth.org</a>,
-          Global Land and Ocean (High Resolution).
-          <a class="lz" href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a> nur nicht-kommerzielle Nutzung</li>
+        <li><strong>NASA GISTEMP</strong> – GISTEMP Team: GISS Surface Temperature Analysis (GISTEMP), version 4.
+          NASA Goddard Institute for Space Studies, <a href="https://data.giss.nasa.gov/gistemp/">data.giss.nasa.gov/gistemp</a>,
+          abgerufen am <span id="lz-nasa-datum">–</span>.
+          <span class="lz">gemeinfrei (U.S. Government)</span></li>
         <li><strong>NOAA</strong> – NOAA National Centers for Environmental Information (NCEI), NOAAGlobalTemp v6.1,
           <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">Climate at a Glance</a>.
           <span class="lz">gemeinfrei (U.S. Government)</span></li>
@@ -392,10 +393,14 @@
           provided under an <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government License</a>.
           Morice et al. (2021), <a href="https://doi.org/10.1029/2019JD032361">doi:10.1029/2019JD032361</a>.
           <span class="lz">OGL v3.0</span></li>
+        <li><strong>Berkeley Earth</strong> – <a href="https://berkeleyearth.org/data/">berkeleyearth.org</a>,
+          Global Land and Ocean (High Resolution).
+          <a class="lz" href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a> nur nicht-kommerzielle Nutzung</li>
       </ul>
       <p><strong>Bearbeitung:</strong> Alle Werte und Grafiken sind eigene Berechnungen auf Basis dieser Daten –
-        Umrechnung auf den Bezug 1850–1900, Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von NOAA und
-        HadCRUT5 sind geschätzt. Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
+        Umrechnung auf den Bezug 1850–1900 (NASA GISTEMP beginnt 1880 und ist über 1951–1980 an das Mittel von
+        NOAA, HadCRUT5 und Berkeley Earth angeschlossen), Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von
+        NASA, NOAA und HadCRUT5 sind geschätzt. Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
     </details>
   </footer>
 </main>
@@ -407,7 +412,7 @@
   const nn = m => String(m).padStart(2, "0");
 
   let version = "";          // Datenstand, damit Bilder nach jedem Update neu geladen werden
-  // Datenquelle: "era5" (Tageswerte ab 1940, täglich) oder "be" (Berkeley Earth, Monatswerte ab 1850)
+  // Datenquelle: "era5" (Tageswerte ab 1940, täglich), "nasa", "noaa", "hadcrut", "be" (Monatswerte) oder "vgl"
   let quelle = "era5";
   const QUELLEN = {
     era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tag.txt", "Tageswerte (TXT)"],
@@ -418,18 +423,22 @@
     noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monat.csv", "Monatswerte (CSV)"],
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
+    nasa: { praefix: "NASA", start: 1880, takt: "monatlich", roh: ["daten/NASA_GISTEMP_global_monat.csv", "Monatswerte (CSV)"],
+            info: "NASA GISTEMP v4 (Goddard Institute for Space Studies): Monatswerte aus Stations- und Schiffsmessungen ab 1880, " +
+                  "neue Werte etwa Mitte des Folgemonats. Da die Reihe erst 1880 beginnt, ist sie über 1951–1980 an den Bezug " +
+                  "1850–1900 der anderen Datensätze angeschlossen; die °C-Werte sind geschätzt." },
     hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich",
             roh: ["daten/HadCRUT5_global_monat.csv", "Monatswerte (CSV)"],
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
-            info: "Vergleich: ERA5, Berkeley Earth, NOAA und HadCRUT5 als Abweichung von 1850–1900 in einer Grafik, " +
+            info: "Vergleich: ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth als Abweichung von 1850–1900 in einer Grafik, " +
                   "dazu der Trend aus dem Mittel aller Datensätze (vor 1940 ohne ERA5). ERA5 endet täglich aktuell, die anderen etwa einen Monat früher." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
-  QUELLEN.hadcrut.arten = ["balken", "linien"];
+  QUELLEN.hadcrut.arten = QUELLEN.nasa.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
@@ -519,9 +528,9 @@
     document.getElementById("art-linien").title = Q().arten.includes("linien")
       ? "Liniendiagramm: Abweichung mit Trend" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
-    document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("fuenf", !!Q().vergleich));
+    document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("sechs", !!Q().vergleich));
     document.querySelectorAll(".art-text").forEach(el => el.textContent =
-      Q().vergleich ? "vier Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
+      Q().vergleich ? "fünf Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
     // Datenquelle: Knöpfe, Hinweis, Startjahr und Downloads
     Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
@@ -754,7 +763,7 @@
     (info ? `<div class="k-erkl" role="note" hidden>${K_ERKLAERUNG}</div>` : "") + `</div>`;
 
   // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
-  const VGL = [["era5", "ERA5"], ["be", "Berkeley"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"]];   // kurz für die Kacheln
+  const VGL = [["era5", "ERA5"], ["nasa", "NASA"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"], ["be", "Berkeley"]];   // kurz für die Kacheln
   function kachelnVergleich(teil, dateiteil, bezeichnung, unvollstaendig) {
     const ziel = document.getElementById("kacheln-" + teil);
     Promise.all(VGL.map(([qq]) =>
@@ -785,7 +794,7 @@
                          mittel >= 0 ? "warm" : "kalt", j, true);
         }
         ziel.innerHTML = html;
-        ziel.classList.add("fuenf");
+        ziel.classList.add("sechs");
       });
   }
 
@@ -1001,7 +1010,7 @@
         version = "?v=" + encodeURIComponent(q + daten.stand);
         anwenden();
         if (!vgl) { zeigeJahr(daten); return; }
-        document.getElementById("stand").textContent = "Vergleich von 4 Datensätzen";
+        document.getElementById("stand").textContent = "Vergleich von 5 Datensätzen";
         kachelnVergleich("jahr", "jahreswerte", j => String(j), a => !a.letzter.startsWith("31.12."));
         startAuswahl(daten.reihen[daten.reihen.length - 1]);
       })
@@ -1026,9 +1035,16 @@
   });
   ladeQuelle();
 
-  // Lizenzhinweise: Jahr sowie HadCRUT5-Version und Abrufdatum aus den Daten eintragen
+  // Lizenzhinweise: Jahr, HadCRUT5-Version und Abrufdatum (HadCRUT5, NASA) aus den Daten eintragen
   document.getElementById("lz-jahr").textContent = new Date().getFullYear();
   document.getElementById("lz-hc-jahr").textContent = new Date().getFullYear();
+  fetch("daten/NASA_global_jahreswerte.txt", { cache: "no-store" })
+    .then(r => (r.ok ? r.text() : ""))
+    .then(t => {
+      const z = t.split("\n").find(z => z.startsWith("# Abgerufen:"));
+      if (z) document.getElementById("lz-nasa-datum").textContent = z.split(":")[1].trim();
+    })
+    .catch(() => {});
   fetch("daten/HADCRUT_global_jahreswerte.txt", { cache: "no-store" })
     .then(r => (r.ok ? r.text() : ""))
     .then(t => {
