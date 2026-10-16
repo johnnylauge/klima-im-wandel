@@ -1,4 +1,4 @@
-# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850 und ein Vergleich) und veröffentlicht sie auf GitHub Pages.
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880 und ein Vergleich) und veröffentlicht sie auf GitHub Pages.
 # Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
 
 name: Tägliche Klimagrafik
@@ -167,7 +167,25 @@ jobs:
           HADCRUT_OHNE_DOWNLOAD: "1"
         run: python skripte/HadCRUT_Grafiken.py
 
-      # Vergleich: liest die TXT-Dateien von ERA5, Berkeley Earth, NOAA und HadCRUT5 (kein eigener Download)
+      # NASA GISTEMP (ab 1880): nach NOAA, HadCRUT5 und Berkeley Earth, weil der Anschluss an
+      # 1850-1900 deren TXT-Dateien nutzt (fehlen sie, gilt die zuletzt gemerkte Verschiebung)
+      - name: NASA-GISTEMP-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NASA_WAHL: alle
+        run: python skripte/NASA_Grafiken.py
+
+      - name: NASA-GISTEMP-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NASA_WAHL: alle
+          ERA5_DUNKEL: "1"
+          NASA_OHNE_DOWNLOAD: "1"
+        run: python skripte/NASA_Grafiken.py
+
+      # Vergleich: liest die TXT-Dateien von ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth (kein eigener Download)
       - name: Vergleichsgrafiken erstellen (hell)
         continue-on-error: true
         env:
