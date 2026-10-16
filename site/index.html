@@ -449,7 +449,9 @@
   const DREI = ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
   const mt = (m, gross) => `<span class="nur-gross">${gross}</span><span class="nur-handy">${DREI[m - 1]}</span>`;
   const monatKurz = letzter => { const m = parseInt(letzter.split(".")[1], 10); return mt(m, MONATE_KURZ[m - 1]); };
-  const bisText = letzter => (quelle !== "era5" ? monatKurz(letzter) : letzter.slice(0, 6));
+  // "bis 14. Okt." / "bis 30. Sep." - bei allen Quellen Tag und Monat (Monatswerte: letzter Tag des Monats)
+  const tagKurz = letzter => { const [t, m] = letzter.split("."); return `${parseInt(t, 10)}. ${DREI[parseInt(m, 10) - 1]}`; };
+  const bisText = letzter => tagKurz(letzter);
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
   const artJetzt = () => (Q().arten.includes(art) ? art : "linien");
   let monat = null;          // gewählter Monat 1..12
@@ -779,7 +781,7 @@
           const offen = unvollstaendig(a);
           volleJe.push(offen ? reihen.slice(0, -1) : reihen);
           html += kachel(`${VGL[i][1]} · ${bezeichnung(a.jahr)}`, k(a.abw),
-                         offen ? `bisher · bis ${QUELLEN[VGL[i][0]].takt === "täglich" ? a.letzter.slice(0, 6) : monatKurz(a.letzter)}`
+                         offen ? `bisher · bis ${tagKurz(a.letzter)}`
                                : `Rang ${a.rang} von ${reihen.length}`,
                          a.abw >= 0 ? "warm" : "kalt", a.jahr);
         });
