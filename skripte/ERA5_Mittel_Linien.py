@@ -27,6 +27,13 @@ import json
 import time
 import requests
 import numpy as np
+
+
+def tag_monat(d):
+    """Datum kurz wie auf der Webseite, z. B. '14. Okt.' (Mai ohne Punkt)."""
+    return f"{d.day}. " + ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.",
+                           "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
@@ -258,6 +265,7 @@ def erstelle(wahl, anzeigen=True):
         print(f"{label(jahr)}: {z['c']:.2f} °C | {z['anomaly']:+.2f} K | Rang {z['rank']}{extra}")
 
     zeige_laufend = is_partial and SHOW_CURRENT_YEAR
+    bis_tag = f"{last_date.day}." if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
     gezeigt = werte if (zeige_laufend or not is_partial) else voll
 
     # =========================================================
@@ -300,7 +308,7 @@ def erstelle(wahl, anzeigen=True):
     if zeige_laufend:
         laufend_handle = (Line2D([], [], color=cmap(norm(werte.loc[current_year, "anomaly"])), lw=LINIE,
                                  ls=(0, (1.2, 1.4)), dash_capstyle="round"),
-                          f"{label(current_year)} unvollständig (bis {last_date:%d.%m.})")
+                          f"{label(current_year)} unvollständig (bis {bis_tag})")
 
     # Zahlen an den Punkten (nur lokal, zum Posten)
     if SHOW_VALUES:
@@ -334,7 +342,7 @@ def erstelle(wahl, anzeigen=True):
     # Info-Kasten
     cur = werte.loc[current_year]
     info = (f"Temperaturmittel {label(current_year)}"
-            f"{f' (bis {last_date:%d.%m.})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+            f"{f' (bis {bis_tag})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",

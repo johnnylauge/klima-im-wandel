@@ -38,6 +38,13 @@ import os
 import time
 import requests
 import numpy as np
+
+
+def tag_monat(d):
+    """Datum kurz wie auf der Webseite, z. B. '14. Okt.' (Mai ohne Punkt)."""
+    return f"{d.day}. " + ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.",
+                           "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
@@ -420,7 +427,7 @@ def erstelle(season, anzeigen=True):
     full_years = annual.drop(current_year) if is_partial else annual
     warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Jahreszeiten
     info = (f"Temperaturmittel {season_label(current_year)}"
-            f"{f' (bis {last_date:%d.%m.})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+            f"{f' (bis {tag_monat(last_date)})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung {BASELINE}: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     if not SHOW_RECORD:   # sonst steht die wärmste Jahreszeit schon als Markierung in der Grafik
@@ -488,7 +495,7 @@ def erstelle(season, anzeigen=True):
     if is_partial:
         handles.append(Patch(facecolor=colors[-1] if LAUFEND_FARBIG else FARBEN["bg"],
                              edgecolor=FARBEN["fg"], hatch="///", linewidth=1.2))
-        labels.append(f"{season_label(current_year)} unvollständig (bis {last_date:%d.%m.})")
+        labels.append(f"{season_label(current_year)} unvollständig (bis {tag_monat(last_date)})")
     if handles:
         legend = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(0.01, 0.80),
                            frameon=True, fontsize=10 * SCHRIFT, fancybox=True,

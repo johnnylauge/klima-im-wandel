@@ -34,6 +34,13 @@ import json
 import time
 import requests
 import numpy as np
+
+
+def tag_monat(d):
+    """Datum kurz wie auf der Webseite, z. B. '14. Okt.' (Mai ohne Punkt)."""
+    return f"{d.day}. " + ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.",
+                           "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
@@ -318,7 +325,8 @@ def erstelle(wahl, anzeigen=True):
     # Info-Kasten
     cur = werte.loc[current_year]
     titel_info = "Temperaturmittel " + label(current_year)
-    info = (f"{titel_info}{f' (bis {last_date:%d.%m.})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+    bis_tag = f"{last_date.day}." if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
+    info = (f"{titel_info}{f' (bis {bis_tag})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
