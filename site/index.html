@@ -189,7 +189,7 @@
     border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
   }
   .downloads a:hover { border-color: var(--accent); color: var(--accent); }
-  .downloads .mehr, .downloads .teilen { display: none; }
+  .downloads .mehr { display: none; }
   .monate, .saisons {
     display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-bottom: 16px;
   }
@@ -252,19 +252,15 @@
     .kachel .label, .kachel .zusatz { font-size: 0.75rem; }
     .kachel .wert { font-size: 1.15rem; }
   }
-  /* Handy: PNG (und Teilen) direkt, PDF und Daten hinter "Mehr …" */
+  /* Handy: nur das PNG direkt, TXT und CSV hinter "Daten …", kein PDF */
   @media (max-width: 600px) {
     .downloads:not(.offen) a:not([id^="png-"]) { display: none; }
+    .downloads a[id^="pdf-"] { display: none; }          /* PDF am Handy gar nicht (zum Posten ungeeignet) */
     .downloads .mehr {
       display: inline-block; font: inherit; font-size: 0.9rem; color: var(--muted); background: none;
       border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer;
     }
     .downloads.offen .mehr { order: 99; }
-    /* "Teilen" nur, wenn das Handy Bilder über das Teilen-Menü weitergeben kann */
-    .kann-teilen .downloads .teilen {
-      display: inline-block; font: inherit; font-size: 0.9rem; color: var(--text); background: var(--card);
-      border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer;
-    }
   }
 </style>
 </head>
@@ -1064,50 +1060,17 @@
   });
   ladeQuelle();
 
-  // Handy: "Teilen" gibt die Grafik (PNG) direkt an das Teilen-Menü (Bluesky, WhatsApp, Fotos ...)
-  const kannTeilen = (() => {
-    try { return matchMedia("(max-width: 600px)").matches && !!(navigator.canShare &&
-                 navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] })); }
-    catch (e) { return false; }
-  })();
-  if (kannTeilen) document.documentElement.classList.add("kann-teilen");
-  const vorrat = {};                       // Grafik schon vorab laden: Safari teilt nur direkt nach dem Antippen
-  const holeBild = href => (vorrat[href] = vorrat[href] || fetch(href).then(r => r.blob()).catch(() => null));
-
+  // Handy: "Daten …" klappt TXT und CSV auf bzw. wieder zu
   document.querySelectorAll("nav.downloads").forEach(nav => {
-    const png = nav.querySelector('a[id^="png-"]');
-    if (kannTeilen) {
-      const t = document.createElement("button");
-      t.type = "button";
-      t.className = "teilen";
-      t.textContent = "Teilen";
-      png.after(t);
-      // sobald die Grafik wechselt (Quelle, Darstellung, Monat ...), die neue vorab laden
-      new MutationObserver(() => { if (png.getAttribute("href") !== "#") holeBild(png.href); })
-        .observe(png, { attributes: true, attributeFilter: ["href"] });
-      if (png.getAttribute("href") !== "#") holeBild(png.href);
-      t.addEventListener("click", async () => {
-        const blob = await holeBild(png.href);
-        if (!blob) { png.click(); return; }
-        const datei = new File([blob], png.getAttribute("download") || "grafik.png", { type: "image/png" });
-        try {
-          await navigator.share({ files: [datei], title: "Klima im Wandel",
-                                  text: "Klima im Wandel – https://johnnylauge.github.io/klima-im-wandel/" });
-        } catch (e) {
-          if (e.name !== "AbortError") png.click();      // Teilen geht nicht -> normal herunterladen
-        }
-      });
-    }
-    // "Mehr" klappt PDF, TXT und CSV auf bzw. wieder zu
     const b = document.createElement("button");
     b.type = "button";
     b.className = "mehr";
-    b.textContent = "Mehr …";
+    b.textContent = "Daten …";
     b.setAttribute("aria-expanded", "false");
     b.setAttribute("aria-label", "Weitere Downloads");
     b.addEventListener("click", () => {
       const offen = nav.classList.toggle("offen");
-      b.textContent = offen ? "Weniger" : "Mehr …";
+      b.textContent = offen ? "Weniger" : "Daten …";
       b.setAttribute("aria-expanded", String(offen));
     });
     nav.appendChild(b);
