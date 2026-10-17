@@ -265,7 +265,7 @@ def erstelle(wahl, anzeigen=True):
         print(f"{label(jahr)}: {z['c']:.2f} °C | {z['anomaly']:+.2f} K | Rang {z['rank']}{extra}")
 
     zeige_laufend = is_partial and SHOW_CURRENT_YEAR
-    bis_tag = f"{last_date.day}." if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
+    bis_tag = f"Tag {last_date.day}" if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
     gezeigt = werte if (zeige_laufend or not is_partial) else voll
 
     # =========================================================

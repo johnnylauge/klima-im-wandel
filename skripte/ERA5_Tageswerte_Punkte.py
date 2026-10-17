@@ -325,7 +325,7 @@ def erstelle(wahl, anzeigen=True):
     # Info-Kasten
     cur = werte.loc[current_year]
     titel_info = "Temperaturmittel " + label(current_year)
-    bis_tag = f"{last_date.day}." if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
+    bis_tag = f"Tag {last_date.day}" if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
     info = (f"{titel_info}{f' (bis {bis_tag})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")

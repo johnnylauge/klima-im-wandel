@@ -392,7 +392,7 @@ def erstelle(monat, anzeigen=True):
     full_years = annual.drop(current_year) if is_partial else annual
     warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Monaten
     info = (f"Temperaturmittel {monat_label(current_year)}"
-            f"{f' (bis {last_date.day}.)' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+            f"{f' (bis Tag {last_date.day})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung {BASELINE}: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     if not SHOW_RECORD:   # sonst steht der wärmste Monat schon als Markierung in der Grafik
@@ -459,7 +459,7 @@ def erstelle(monat, anzeigen=True):
     if is_partial:
         handles.append(Patch(facecolor=colors[-1] if LAUFEND_FARBIG else FARBEN["bg"],
                              edgecolor=FARBEN["fg"], hatch="///", linewidth=1.2))
-        labels.append(f"{monat_label(current_year)} unvollständig (bis {last_date.day}.)")
+        labels.append(f"{monat_label(current_year)} unvollständig (bis Tag {last_date.day})")
     if handles:
         legend = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(0.01, 0.80),
                            frameon=True, fontsize=10 * SCHRIFT, fancybox=True,

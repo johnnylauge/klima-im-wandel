@@ -32,6 +32,13 @@ import json
 import time
 import requests
 import numpy as np
+
+
+def tag_monat(d):
+    """Datum kurz wie auf der Webseite, z. B. '31. Aug.' (Mai ohne Punkt)."""
+    return f"{d.day}. " + ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.",
+                           "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
@@ -272,15 +279,6 @@ LETZTER = MONATE_DF.iloc[-1]
 STAND = f"{MONTH_NAMES[int(LETZTER['monat']) - 1]} {int(LETZTER['jahr'])}"
 print(f"GISTEMP: {MONATE_DF['jahr'].min()}-{STAND}, {len(MONATE_DF)} Monate")
 
-# Alle Monate als eine Reihe (Download auf der Webseite, gleicher Aufbau wie die anderen TXT) - nur beim hellen Lauf
-if not DUNKEL:
-    with open(os.path.join(FOLDER, "NASA_global_monatsreihe.txt"), "w", encoding="utf-8") as f:
-        f.write("# Monatsmittel – Global (NASA GISTEMP v4, Land + Ozean; °C geschätzt)\n" + f"# Abweichung bezogen auf 1850-1900 (angeschlossen über {ANSCHLUSS_VON}-{ANSCHLUSS_BIS})\n" + f"# Stand: {STAND}\n" + f"# Version: {VERSION_GENUTZT}\n# Abgerufen: {ABGERUFEN}\n"
-                + "#\n" + f"{'Jahr':>4}  {'Monat':>5}  {'Temp_°C':>8}  {'Abw_K':>6}  {'Tage':>4}  {'letzter_Tag':>11}\n")
-        for _, z in MONATE_DF.iterrows():
-            ende = pd.Timestamp(int(z["jahr"]), int(z["monat"]), 1) + pd.offsets.MonthEnd(0)
-            f.write(f"{int(z['jahr']):>4}  {int(z['monat']):>5}  {z['temp']:>8.3f}  {z['ano_pre']:>+6.3f}  "
-                    f"{ende.day:>4}  {ende:%d.%m.%Y}\n")
 
 
 def zeitraum(wahl):
@@ -364,7 +362,7 @@ def achsen_beschriften(ax, ylabel):
 
 def info_kasten(ax, werte, current_year, is_partial, label):
     cur = werte.loc[current_year]
-    bis = f" (bis {MONTH_NAMES[int(cur['letzter_monat']) - 1][:3]}.)" if is_partial else ""
+    bis = f" (bis {tag_monat(cur['last_date'])})" if is_partial else ""
     info = (f"Temperaturmittel {label(current_year)}{bis}: {cur['temp']:.2f} °C\n"
             f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
@@ -555,7 +553,7 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
     handles, labels = ax.get_legend_handles_labels()
     if is_partial:
         handles.append(Patch(facecolor=farben[-1], edgecolor=FARBEN["fg"], hatch="///", linewidth=1.0))
-        labels.append(f"{label(current_year)} unvollständig (bis {MONTH_NAMES[int(werte.loc[current_year, 'letzter_monat']) - 1]})")
+        labels.append(f"{label(current_year)} unvollständig (bis {tag_monat(werte.loc[current_year, 'last_date'])})")
     legend = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(0.01, 0.80), frameon=True,
                        fontsize=10 * SCHRIFT, fancybox=True, framealpha=0.85, edgecolor=FARBEN["box_rand"],
                        facecolor=FARBEN["box_bg"], borderpad=0.6, borderaxespad=0)
@@ -670,7 +668,7 @@ def linien(werte, current_year, is_partial, art, name, label, teil):
         handles.append(Line2D([], [], color=cmap(norm(werte.loc[current_year, "anomaly"])), lw=LINIE,
                               ls=(0, (1.2, 1.4)), dash_capstyle="round"))
         labels.append(f"{label(current_year)} unvollständig "
-                      f"(bis {MONTH_NAMES[int(werte.loc[current_year, 'letzter_monat']) - 1]})")
+                      f"(bis {tag_monat(werte.loc[current_year, 'last_date'])})")
     legend = ax.legend(handles, labels, handler_map={verlauf: Verlauf()}, loc="upper left",
                        bbox_to_anchor=(0.01, 0.80), frameon=True, fontsize=10 * SCHRIFT, fancybox=True,
                        framealpha=0.85, edgecolor=FARBEN["box_rand"], facecolor=FARBEN["box_bg"],
