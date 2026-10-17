@@ -189,6 +189,7 @@
     border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
   }
   .downloads a:hover { border-color: var(--accent); color: var(--accent); }
+  .downloads .mehr, .downloads .teilen { display: none; }
   .monate, .saisons {
     display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-bottom: 16px;
   }
@@ -251,6 +252,20 @@
     .kachel .label, .kachel .zusatz { font-size: 0.75rem; }
     .kachel .wert { font-size: 1.15rem; }
   }
+  /* Handy: PNG (und Teilen) direkt, PDF und Daten hinter "Mehr …" */
+  @media (max-width: 600px) {
+    .downloads:not(.offen) a:not([id^="png-"]) { display: none; }
+    .downloads .mehr {
+      display: inline-block; font: inherit; font-size: 0.9rem; color: var(--muted); background: none;
+      border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    }
+    .downloads.offen .mehr { order: 99; }
+    /* "Teilen" nur, wenn das Handy Bilder über das Teilen-Menü weitergeben kann */
+    .kann-teilen .downloads .teilen {
+      display: inline-block; font: inherit; font-size: 0.9rem; color: var(--text); background: var(--card);
+      border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    }
+  }
 </style>
 </head>
 <body>
@@ -283,15 +298,15 @@
     <button type="button" role="tab" id="tab-saison" aria-controls="ansicht-saison" aria-selected="false">Jahreszeit</button>
     <button type="button" role="tab" id="tab-monat" aria-controls="ansicht-monat" aria-selected="false">Monat</button>
   </div>
-  <!-- Darstellung: Linien (Abweichung mit Trend), Balken (Mittelwert je Jahr) oder Punkte (jeder einzelne Tag) -->
+  <!-- Darstellung: Balken (Mittelwert je Jahr), Linien (Abweichung mit Trend) oder Punkte (jeder einzelne Tag) -->
   <div class="art" role="group" aria-label="Darstellung wählen">
-    <button type="button" id="art-linien" aria-pressed="true" title="Liniendiagramm: Abweichung mit Trend">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><polyline points="5,24 11,20 17,21 23,12 28,7" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5" cy="24" r="2.6" fill="#4393c3"/><circle cx="11" cy="20" r="2.6" fill="#f4a582"/><circle cx="17" cy="21" r="2.6" fill="#f4a582"/><circle cx="23" cy="12" r="2.6" fill="#d6604d"/><circle cx="28" cy="7" r="2.6" fill="#e8313f"/></svg>
-      <span class="text">Linien</span>
-    </button>
-    <button type="button" id="art-balken" aria-pressed="false" title="Balkendiagramm: ein Balken je Jahr">
+    <button type="button" id="art-balken" aria-pressed="true" title="Balkendiagramm: ein Balken je Jahr">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4.5" y="20" width="4.5" height="7" rx="1" fill="#4393c3"/><rect x="10.5" y="16" width="4.5" height="11" rx="1" fill="#f4a582"/><rect x="16.5" y="11" width="4.5" height="16" rx="1" fill="#d6604d"/><rect x="22.5" y="5" width="4.5" height="22" rx="1" fill="#e8313f"/></svg>
       <span class="text">Balken</span>
+    </button>
+    <button type="button" id="art-linien" aria-pressed="false" title="Liniendiagramm: Abweichung mit Trend">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><polyline points="5,24 11,20 17,21 23,12 28,7" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5" cy="24" r="2.6" fill="#4393c3"/><circle cx="11" cy="20" r="2.6" fill="#f4a582"/><circle cx="17" cy="21" r="2.6" fill="#f4a582"/><circle cx="23" cy="12" r="2.6" fill="#d6604d"/><circle cx="28" cy="7" r="2.6" fill="#e8313f"/></svg>
+      <span class="text">Linien</span>
     </button>
     <button type="button" id="art-punkte" aria-pressed="false" title="Punktdiagramm: ein Punkt je Tag">
       <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
@@ -319,8 +334,6 @@
       <a id="pdf-jahr" href="#" download>Grafik (PDF)</a>
       <a id="txt-jahr" href="daten/ERA5_global_jahreswerte.txt">Jahreswerte (TXT)</a>
       <a id="csv-jahr" href="daten/ERA5_global_jahreswerte.csv" download>Jahreswerte (CSV)</a>
-      <a class="nur-quelle" id="txt-roh" href="daten/ERA5_global_tageswerte.txt">Tageswerte (TXT)</a>
-      <a class="nur-quelle" id="csv-roh" href="daten/ERA5_global_tageswerte.csv" download>Tageswerte (CSV)</a>
     </nav>
   </section>
 
@@ -419,20 +432,19 @@
   // Datenquelle: "era5" (Tageswerte ab 1940, täglich), "nasa", "noaa", "hadcrut", "be" (Monatswerte) oder "vgl"
   let quelle = "era5";
   const QUELLEN = {
-    era5: { praefix: "ERA5", start: 1940, takt: "täglich", roh: ["daten/ERA5_global_tageswerte", "Tageswerte"],
+    era5: { praefix: "ERA5", start: 1940, takt: "täglich",
             info: "ERA5 (Copernicus): Tageswerte aus Wettermodell und Messungen ab 1940, täglich aktualisiert." },
-    be:   { praefix: "BE", start: 1850, takt: "monatlich", roh: ["daten/BE_global_monatsreihe", "Monatsreihe"],
+    be:   { praefix: "BE", start: 1850, takt: "monatlich",
             info: "Berkeley Earth: Monatswerte aus Stations- und Schiffsmessungen ab 1850, neue Werte etwa Mitte des Folgemonats. " +
                   "Die °C-Werte liegen etwas anders als bei ERA5, die Abweichungen sind vergleichbar." },
-    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich", roh: ["daten/NOAA_global_monatsreihe", "Monatsreihe"],
+    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich",
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
-    nasa: { praefix: "NASA", start: 1880, takt: "monatlich", roh: ["daten/NASA_global_monatsreihe", "Monatsreihe"],
+    nasa: { praefix: "NASA", start: 1880, takt: "monatlich",
             info: "NASA GISTEMP v4 (Goddard Institute for Space Studies): Monatswerte aus Stations- und Schiffsmessungen ab 1880, " +
                   "neue Werte etwa Mitte des Folgemonats. Da die Reihe erst 1880 beginnt, ist sie über 1951–1980 an den Bezug " +
                   "1850–1900 der anderen Datensätze angeschlossen; die °C-Werte sind geschätzt." },
     hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich",
-            roh: ["daten/HADCRUT_global_monatsreihe", "Monatsreihe"],
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
     vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
@@ -446,10 +458,18 @@
   QUELLEN.vgl.arten = ["linien"];
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
-  // Daten-Downloads eines Abschnitts: dieselbe Tabelle als TXT und als CSV (für Excel)
-  const datenLinks = (teil, basis) => {
-    document.getElementById("txt-" + teil).href = basis + ".txt";
-    document.getElementById("csv-" + teil).href = basis + ".csv";
+  // Daten-Downloads eines Abschnitts, passend zur Grafik: Jahres-, Jahreszeiten- bzw. Monatswerte,
+  // bei den Punkten (ERA5) die Tageswerte dieses Zeitraums - jeweils als TXT und als CSV (für Excel)
+  const DATEN_TEXT = { jahr: "Jahreswerte", saison: "Jahreszeitenwerte", monat: "Monatswerte" };
+  const datenLinks = (teil, rest) => {        // rest: "jahreswerte", "saison_herbst", "monat_10"
+    const tage = artJetzt() === "punkte";
+    const basis = tage ? `daten/ERA5_global_tageswerte${teil === "jahr" ? "" : "_" + rest}`
+                       : `daten/${Q().praefix}_global_${rest}`;
+    ["txt", "csv"].forEach(e => {
+      const a = document.getElementById(e + "-" + teil);
+      a.href = `${basis}.${e}`;
+      a.textContent = `${tage ? "Tageswerte" : DATEN_TEXT[teil]} (${e.toUpperCase()})`;
+    });
   };
   // "bis 04.10." (ERA5, Tageswerte) bzw. "bis August" (Berkeley Earth, Monatswerte)
   // Monate abgekürzt, damit die Kacheln gleich hoch bleiben (kurze Monatsnamen ausgeschrieben)
@@ -462,11 +482,11 @@
   const tagKurz = letzter => { const [t, m] = letzter.split("."); return `${parseInt(t, 10)}. ${DREI[parseInt(m, 10) - 1]}`; };
   const bisText = letzter => tagKurz(letzter);
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
-  const artJetzt = () => (Q().arten.includes(art) ? art : "linien");
+  const artJetzt = () => (Q().arten.includes(art) ? art : Q().arten.includes("balken") ? "balken" : "linien");
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
-  let art = "linien";        // Darstellung: "linien" (Abweichung mit Trend), "balken" (Mittel je Jahr) oder "punkte" (jeder Tag)
-  const ARTEN = ["linien", "balken", "punkte"];
+  let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "linien" (Abweichung mit Trend) oder "punkte" (jeder Tag)
+  const ARTEN = ["balken", "linien", "punkte"];
   const ART_TEXT = { balken: "ein Balken je Jahr", punkte: "ein Punkt je Tag",
                      linien: "Abweichung als Linie mit Trend" };
   try { const a = localStorage.getItem("art"); if (ARTEN.includes(a)) art = a; } catch (e) {}
@@ -546,14 +566,9 @@
     Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
     document.querySelectorAll(".seit").forEach(el => el.textContent = Q().start);
-    datenLinks("jahr", `daten/${Q().praefix}_global_jahreswerte`);
-    if (Q().roh) {                       // alle Tage (ERA5) bzw. alle Monate als eine Reihe
-      ["txt", "csv"].forEach(e => {
-        const a = document.getElementById(e + "-roh");
-        a.href = `${Q().roh[0]}.${e}`;
-        a.textContent = `${Q().roh[1]} (${e.toUpperCase()})`;
-      });
-    }
+    datenLinks("jahr", "jahreswerte");
+    if (monat) datenLinks("monat", `monat_${nn(monat)}`);
+    if (saison !== null) datenLinks("saison", `saison_${SAISONS[saison].datei}`);
     setzeBild("jahr", grafikName("jahr"));
     document.getElementById("bild-jahr").alt = bildText("jahr");
     if (monat) { setzeBild("monat", grafikName("monat")); document.getElementById("bild-monat").alt = bildText("monat"); }
@@ -876,7 +891,7 @@
     if (adresseMerken) history.replaceState(null, "", "#monat-" + nn(m));
     const name = MONATE[m - 1];
     document.getElementById("bild-monat").alt = bildText("monat");
-    datenLinks("monat", `daten/${Q().praefix}_global_monat_${nn(m)}`);
+    datenLinks("monat", `monat_${nn(m)}`);
     setzeBild("monat", grafikName("monat"));
     if (Q().vergleich) {
       kachelnVergleich("monat", `monat_${nn(m)}`, j => `${mt(m, MONATE_KURZ[m - 1])} ${j}`,   // kurz, damit nichts umbricht
@@ -939,7 +954,7 @@
     [...sLeiste.children].forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
     if (adresseMerken) history.replaceState(null, "", "#jahreszeit-" + x.datei);
     document.getElementById("bild-saison").alt = bildText("saison");
-    datenLinks("saison", `daten/${Q().praefix}_global_saison_${x.datei}`);
+    datenLinks("saison", `saison_${x.datei}`);
     // Bildunterschrift: am Handy kürzer; beim Winter mit Hinweis zur Jahreszählung
     document.getElementById("hinweis-saison").innerHTML =
       (x.name === "Winter" ? "Der Winter zählt zum Jahr von Januar/Februar, z. B. 2026 = Winter 2025/26. " : "") +
@@ -1048,6 +1063,55 @@
     e.currentTarget.setAttribute("aria-expanded", String(offen));
   });
   ladeQuelle();
+
+  // Handy: "Teilen" gibt die Grafik (PNG) direkt an das Teilen-Menü (Bluesky, WhatsApp, Fotos ...)
+  const kannTeilen = (() => {
+    try { return matchMedia("(max-width: 600px)").matches && !!(navigator.canShare &&
+                 navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] })); }
+    catch (e) { return false; }
+  })();
+  if (kannTeilen) document.documentElement.classList.add("kann-teilen");
+  const vorrat = {};                       // Grafik schon vorab laden: Safari teilt nur direkt nach dem Antippen
+  const holeBild = href => (vorrat[href] = vorrat[href] || fetch(href).then(r => r.blob()).catch(() => null));
+
+  document.querySelectorAll("nav.downloads").forEach(nav => {
+    const png = nav.querySelector('a[id^="png-"]');
+    if (kannTeilen) {
+      const t = document.createElement("button");
+      t.type = "button";
+      t.className = "teilen";
+      t.textContent = "Teilen";
+      png.after(t);
+      // sobald die Grafik wechselt (Quelle, Darstellung, Monat ...), die neue vorab laden
+      new MutationObserver(() => { if (png.getAttribute("href") !== "#") holeBild(png.href); })
+        .observe(png, { attributes: true, attributeFilter: ["href"] });
+      if (png.getAttribute("href") !== "#") holeBild(png.href);
+      t.addEventListener("click", async () => {
+        const blob = await holeBild(png.href);
+        if (!blob) { png.click(); return; }
+        const datei = new File([blob], png.getAttribute("download") || "grafik.png", { type: "image/png" });
+        try {
+          await navigator.share({ files: [datei], title: "Klima im Wandel",
+                                  text: "Klima im Wandel – https://johnnylauge.github.io/klima-im-wandel/" });
+        } catch (e) {
+          if (e.name !== "AbortError") png.click();      // Teilen geht nicht -> normal herunterladen
+        }
+      });
+    }
+    // "Mehr" klappt PDF, TXT und CSV auf bzw. wieder zu
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mehr";
+    b.textContent = "Mehr …";
+    b.setAttribute("aria-expanded", "false");
+    b.setAttribute("aria-label", "Weitere Downloads");
+    b.addEventListener("click", () => {
+      const offen = nav.classList.toggle("offen");
+      b.textContent = offen ? "Weniger" : "Mehr …";
+      b.setAttribute("aria-expanded", String(offen));
+    });
+    nav.appendChild(b);
+  });
 
   // Lizenzhinweise: Jahr, HadCRUT5-Version und Abrufdatum (HadCRUT5, NASA) aus den Daten eintragen
   document.getElementById("lz-jahr").textContent = new Date().getFullYear();
