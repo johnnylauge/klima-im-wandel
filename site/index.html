@@ -79,6 +79,16 @@
     .quelle .lang { display: none; }
   }
   .ausgeblendet { display: none; }
+  /* Gebiet: Global / Europa - Reiter mit Unterstrich, über der Quellenauswahl */
+  .gebiet { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+  .gebiet button {
+    border: 0; background: none; font: inherit; font-weight: 700; font-size: 1rem; color: var(--muted);
+    padding: 6px 14px 8px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer;
+  }
+  .gebiet button:hover { color: var(--text); }
+  .gebiet button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+  .gebiet button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  body:not(.europa) .nur-europa, body.europa .nur-global { display: none; }
   .info-knopf {
     display: none; width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--line);
     background: var(--card); color: var(--muted); font: 600 0.8rem system-ui, sans-serif;
@@ -270,16 +280,22 @@
     <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
             title="Hell / Dunkel">◐</button>
     <h1>Klima im Wandel</h1>
-    <p>Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
+    <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
+    <div class="gebiet" role="tablist" aria-label="Gebiet wählen">
+      <button type="button" role="tab" id="gebiet-global" aria-selected="true">Global</button>
+      <button type="button" role="tab" id="gebiet-europa" aria-selected="false">Europa</button>
+    </div>
     <div class="kopfzeile">
       <span class="qlabel" id="qlabel">Datenquelle</span>
       <div class="quelle" role="group" aria-labelledby="qlabel">
-        <button type="button" id="quelle-era5" aria-pressed="true">ERA5</button>
-        <button type="button" id="quelle-nasa" aria-pressed="false">NASA</button>
-        <button type="button" id="quelle-noaa" aria-pressed="false">NOAA</button>
-        <button type="button" id="quelle-hadcrut" aria-pressed="false">HadCRUT<span class="lang">5</span></button>
-        <button type="button" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
-        <button type="button" id="quelle-vgl" aria-pressed="false" title="ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth in einer Grafik">Vergleich</button>
+        <button type="button" class="nur-global" id="quelle-era5" aria-pressed="true">ERA5</button>
+        <button type="button" class="nur-global" id="quelle-nasa" aria-pressed="false">NASA</button>
+        <button type="button" class="nur-global" id="quelle-noaa" aria-pressed="false">NOAA</button>
+        <button type="button" class="nur-global" id="quelle-hadcrut" aria-pressed="false">HadCRUT<span class="lang">5</span></button>
+        <button type="button" class="nur-global" id="quelle-be" aria-pressed="false">Berkeley<span class="lang"> Earth</span></button>
+        <button type="button" class="nur-global" id="quelle-vgl" aria-pressed="false" title="ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth in einer Grafik">Vergleich</button>
+        <button type="button" class="nur-europa" id="quelle-eu6190" aria-pressed="false" title="Abweichung vom Mittel 1961–1990">Bezug 1961–1990</button>
+        <button type="button" class="nur-europa" id="quelle-eu9120" aria-pressed="false" title="Abweichung vom Mittel 1991–2020">Bezug 1991–2020</button>
       </div>
       <span class="stand" id="stand">Daten werden geladen …</span>
       <button type="button" class="info-knopf" id="info-knopf" aria-label="Hinweis zur Datenquelle zeigen"
@@ -381,6 +397,7 @@
 
   <footer>
     Datenquellen: <a href="https://pulse.climate.copernicus.eu/">Copernicus Climate Pulse (ERA5)</a> ·
+    <a href="https://cds.climate.copernicus.eu/">Copernicus Climate Data Store (ERA5, Europa)</a> ·
     <a href="https://data.giss.nasa.gov/gistemp/">NASA GISS (GISTEMP)</a> ·
     <a href="https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/time-series">NOAA NCEI</a> ·
     <a href="https://www.metoffice.gov.uk/hadobs/hadcrut5/">Met Office Hadley Centre (HadCRUT5)</a> ·
@@ -390,7 +407,8 @@
       <summary>Daten und Lizenzen</summary>
       <ul>
         <li><strong>ERA5</strong> – Copernicus Climate Change Service (C3S) / ECMWF, über
-          <a href="https://pulse.climate.copernicus.eu/">Climate Pulse</a>.
+          <a href="https://pulse.climate.copernicus.eu/">Climate Pulse</a> (global) und den
+          <a href="https://cds.climate.copernicus.eu/">Climate Data Store</a> (Europa: ERA5 post-processed daily statistics).
           „Generated using Copernicus Climate Change Service information <span id="lz-jahr">2026</span>.“
           <a class="lz" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></li>
         <li><strong>NASA GISTEMP</strong> – GISTEMP Team: GISS Surface Temperature Analysis (GISTEMP), version 4.
@@ -413,7 +431,9 @@
       <p><strong>Bearbeitung:</strong> Alle Werte und Grafiken sind eigene Berechnungen auf Basis dieser Daten –
         Umrechnung auf den Bezug 1850–1900 (NASA GISTEMP beginnt 1880 und ist über 1951–1980 an das Mittel von
         NOAA, HadCRUT5 und Berkeley Earth angeschlossen), Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von
-        NASA, NOAA und HadCRUT5 sind geschätzt. Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
+        NASA, NOAA und HadCRUT5 sind geschätzt. Europa: Tagesmittel über die Landflächen 34–72° N, 25° W–40° E
+        (Europa-Gebiet von C3S), flächengewichtet; Abweichung je Kalendertag zum Mittel 1961–1990 bzw. 1991–2020
+        (ERA5 beginnt 1940, ein Bezug auf 1850–1900 ist dort nicht möglich). Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
     </details>
   </footer>
 </main>
@@ -428,30 +448,42 @@
   // Datenquelle: "era5" (Tageswerte ab 1940, täglich), "nasa", "noaa", "hadcrut", "be" (Monatswerte) oder "vgl"
   let quelle = "era5";
   const QUELLEN = {
-    era5: { praefix: "ERA5", start: 1940, takt: "täglich",
+    era5: { stamm: "ERA5_global", start: 1940, takt: "täglich",
             info: "ERA5 (Copernicus): Tageswerte aus Wettermodell und Messungen ab 1940, täglich aktualisiert." },
-    be:   { praefix: "BE", start: 1850, takt: "monatlich",
+    be:   { stamm: "BE_global", start: 1850, takt: "monatlich",
             info: "Berkeley Earth: Monatswerte aus Stations- und Schiffsmessungen ab 1850, neue Werte etwa Mitte des Folgemonats. " +
                   "Die °C-Werte liegen etwas anders als bei ERA5, die Abweichungen sind vergleichbar." },
-    noaa: { praefix: "NOAA", start: 1850, takt: "monatlich",
+    noaa: { stamm: "NOAA_global", start: 1850, takt: "monatlich",
             info: "NOAA (NOAAGlobalTemp): Monatswerte aus Stations- und Schiffsmessungen ab 1850, Lücken mit einem neuronalen Netz gefüllt, " +
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
-    nasa: { praefix: "NASA", start: 1880, takt: "monatlich",
+    nasa: { stamm: "NASA_global", start: 1880, takt: "monatlich",
             info: "NASA GISTEMP v4 (Goddard Institute for Space Studies): Monatswerte aus Stations- und Schiffsmessungen ab 1880, " +
                   "neue Werte etwa Mitte des Folgemonats. Da die Reihe erst 1880 beginnt, ist sie über 1951–1980 an den Bezug " +
                   "1850–1900 der anderen Datensätze angeschlossen; die °C-Werte sind geschätzt." },
-    hadcrut: { praefix: "HADCRUT", start: 1850, takt: "monatlich",
+    hadcrut: { stamm: "HADCRUT_global", start: 1850, takt: "monatlich",
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
-    vgl:  { praefix: "VGL", start: 1850, takt: "", vergleich: true,
+    vgl:  { stamm: "VGL_global", start: 1850, takt: "", vergleich: true,
             info: "Vergleich: ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth als Abweichung von 1850–1900 in einer Grafik, " +
                   "dazu der Trend aus dem Mittel aller Datensätze (vor 1940 ohne ERA5). ERA5 endet täglich aktuell, die anderen etwa einen Monat früher." },
+    eu6190: { stamm: "ERA5_europa_6190", start: 1940, takt: "täglich", europa: true, bezug: "1961–1990",
+            info: "Europa (ERA5, Copernicus Climate Data Store): Tagesmittel über die Landflächen von 34–72° N und 25° W–40° E " +
+                  "ab 1940, als Abweichung vom Mittel 1961–1990. ERA5 liegt hier etwa 5 Tage zurück." },
+    eu9120: { stamm: "ERA5_europa_9120", start: 1940, takt: "täglich", europa: true, bezug: "1991–2020",
+            info: "Europa (ERA5, Copernicus Climate Data Store): Tagesmittel über die Landflächen von 34–72° N und 25° W–40° E " +
+                  "ab 1940, als Abweichung vom Mittel 1991–2020 (Bezug von Copernicus). ERA5 liegt hier etwa 5 Tage zurück." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
   QUELLEN.hadcrut.arten = QUELLEN.nasa.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
+  QUELLEN.eu6190.arten = QUELLEN.eu9120.arten = ["balken", "punkte", "linien"];
+  // Gebiet: zuletzt gewählte Quelle je Gebiet merken (Global: ERA5 ... Vergleich, Europa: Bezugszeitraum)
+  const zuletzt = { global: "era5", europa: "eu6190" };
+  try { Object.assign(zuletzt, JSON.parse(localStorage.getItem("zuletzt") || "{}")); } catch (e) {}
+  const istEuropa = () => !!QUELLEN[quelle].europa;
+  const BEZUG = () => (istEuropa() ? Q().bezug : "1850–1900");
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
   // Daten-Downloads eines Abschnitts, passend zur Grafik: Jahres-, Jahreszeiten- bzw. Monatswerte,
@@ -459,8 +491,8 @@
   const DATEN_TEXT = { jahr: "Jahreswerte", saison: "Jahreszeitenwerte", monat: "Monatswerte" };
   const datenLinks = (teil, rest) => {        // rest: "jahreswerte", "saison_herbst", "monat_10"
     const tage = artJetzt() === "punkte";
-    const basis = tage ? `daten/ERA5_global_tageswerte${teil === "jahr" ? "" : "_" + rest}`
-                       : `daten/${Q().praefix}_global_${rest}`;
+    const basis = tage ? `daten/${Q().stamm}_tageswerte${teil === "jahr" ? "" : "_" + rest}`
+                       : `daten/${Q().stamm}_${rest}`;
     ["txt", "csv"].forEach(e => {
       const a = document.getElementById(e + "-" + teil);
       a.href = `${basis}.${e}`;
@@ -520,11 +552,11 @@
 
   // Dateiname der Grafik je Ansicht und Darstellung
   function grafikName(teil) {
-    const a = artJetzt(), q = Q().praefix;
+    const a = artJetzt(), q = Q().stamm;
     const p = a === "balken" ? "" : a + "_";
-    if (teil === "jahr") return a === "balken" ? `${q}_global_jahreswerte` : `${q}_global_${a}_jahr`;
-    if (teil === "monat") return `${q}_global_${p}monat_${nn(monat)}`;
-    return `${q}_global_${p}saison_${SAISONS[saison].datei}`;
+    if (teil === "jahr") return a === "balken" ? `${q}_jahreswerte` : `${q}_${a}_jahr`;
+    if (teil === "monat") return `${q}_${p}monat_${nn(monat)}`;
+    return `${q}_${p}saison_${SAISONS[saison].datei}`;
   }
   // Beschreibung zur Grafik (Alternativtext für Screenreader)
   function bildText(teil) {
@@ -532,11 +564,12 @@
               : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
               : `Mitteltemperatur im ${SAISONS[saison].name}`;
     const seit = Q().start, a = artJetzt();
-    if (Q().vergleich) return `Liniendiagramm: Abweichung der globalen ${wer} von 1850–1900 nach ERA5, Berkeley Earth und NOAA`;
-    if (a === "linien") return `Liniendiagramm der globalen ${wer} seit ${seit} in Grad Celsius`;
+    const wo = istEuropa() ? "europäischen" : "globalen", bez = BEZUG();
+    if (Q().vergleich) return `Liniendiagramm: Abweichung der globalen ${wer} von 1850–1900 nach ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth`;
+    if (a === "linien") return `Liniendiagramm der ${wo} ${wer} seit ${seit} als Abweichung von ${bez}, mit Trend`;
     return a === "punkte"
-      ? `Punktdiagramm der globalen Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit ${seit} als Abweichung von 1850–1900, ein Punkt je Tag`
-      : `Balkendiagramm der globalen ${wer} seit ${seit} als Abweichung von 1850–1900`;
+      ? `Punktdiagramm der ${wo} Tagestemperaturen (${teil === "jahr" ? "ganzes Jahr" : wer.replace("Mitteltemperatur im ", "")}) seit ${seit} als Abweichung von ${bez}, ein Punkt je Tag`
+      : `Balkendiagramm der ${wo} ${wer} seit ${seit} als Abweichung von ${bez}`;
   }
 
   function anwenden() {
@@ -558,6 +591,18 @@
     document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("sechs", !!Q().vergleich));
     document.querySelectorAll(".art-text").forEach(el => el.textContent =
       Q().vergleich ? "fünf Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
+    // Gebiet: Reiter, Überschriften und Untertitel
+    const eu = istEuropa();
+    document.body.classList.toggle("europa", eu);
+    document.getElementById("gebiet-global").setAttribute("aria-selected", String(!eu));
+    document.getElementById("gebiet-europa").setAttribute("aria-selected", String(eu));
+    document.getElementById("qlabel").textContent = eu ? "Bezugszeitraum" : "Datenquelle";
+    document.getElementById("untertitel").innerHTML = eu
+      ? "Temperatur in Europa (Landflächen) – als Abweichung vom Klimamittel und in&nbsp;°C"
+      : "Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C";
+    document.getElementById("h-jahr").textContent = eu ? "Jahresmittel Europa" : "Globales Jahresmittel";
+    document.getElementById("h-saison").textContent = eu ? "Jahreszeitenmittel Europa" : "Globales Jahreszeitenmittel";
+    document.getElementById("h-monat").textContent = eu ? "Monatsmittel Europa" : "Globales Monatsmittel";
     // Datenquelle: Knöpfe, Hinweis, Startjahr und Downloads
     Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).setAttribute("aria-pressed", String(quelle === x)));
     document.getElementById("quellinfo").textContent = Q().info;
@@ -764,16 +809,23 @@
   const grad = v => v.toFixed(2).replace(".", ",") + " °C";
   // jahr: zu welchem Balken die Kachel gehört - dann wird er beim Darüberfahren markiert
   // info: kleines i an der Kachel, das erklärt, wofür "K" steht
-  const K_ERKLAERUNG =
+  const kErklaerung = () =>
     "<strong>K steht für Kelvin.</strong> Ein Unterschied von 1&nbsp;K ist genau so groß wie 1&nbsp;°C. " +
     "In der Wissenschaft schreibt man Abweichungen in Kelvin, damit klar ist: Das ist ein Temperatur" +
-    "<em>unterschied</em>, keine Temperatur. +1,50&nbsp;K heißt also: 1,5&nbsp;°C wärmer als im Mittel der " +
-    "vorindustriellen Zeit (1850–1900).";
+    "<em>unterschied</em>, keine Temperatur. +1,50&nbsp;K heißt also: 1,5&nbsp;°C wärmer als im Mittel " +
+    (istEuropa() ? `der Jahre ${BEZUG()}.` : "der vorindustriellen Zeit (1850–1900).");
   // "14,91 °C | +1,59 K" - bei Quellen ohne absolute Werte (HadCRUT5) nur die Abweichung
   const wertText = r => (Q().absolut === false || !isFinite(r.temp) ? k(r.abw) : `${grad(r.temp)} | ${k(r.abw)}`);
   // Erste Kachel: Mitteltemperatur - oder, ohne absolute Werte (HadCRUT5), die Abweichung des
   // vorherigen vollständigen Zeitraums (Vorjahr), damit daneben der aktuelle Wert steht
   function ersteKachel(aktuell, volle, titel, zusatz, bezeichnung, anzahl) {
+    // Europa, laufender Zeitraum: der bisherige Mittelwert hängt stark von der Jahreszeit ab -> über die
+    // bisherige Abweichung aufs ganze Jahr bzw. den ganzen Zeitraum hochrechnen (wie in der Grafik)
+    if (istEuropa() && !volle.includes(aktuell) && volle.length) {
+      const d = volle.map(r => r.temp - r.abw).sort((a, b) => a - b);
+      const median = d.length % 2 ? d[(d.length - 1) / 2] : (d[d.length / 2 - 1] + d[d.length / 2]) / 2;
+      return kachel(titel, "≈ " + grad(aktuell.abw + median), zusatz.replace("noch unvollständig", "hochgerechnet"), "", aktuell.jahr);
+    }
     if (Q().absolut !== false) return kachel(titel, grad(aktuell.temp), zusatz, "", aktuell.jahr);
     const vorher = [...volle].reverse().find(r => r.jahr < aktuell.jahr);
     if (!vorher) return "";
@@ -785,14 +837,14 @@
     `<div class="wert ${klasse}">${wert}` +
     (info ? `<button type="button" class="k-info" aria-label="Was bedeutet K?" aria-expanded="false">i</button>` : "") +
     `</div><div class="zusatz">${zusatz}</div>` +
-    (info ? `<div class="k-erkl" role="note" hidden>${K_ERKLAERUNG}</div>` : "") + `</div>`;
+    (info ? `<div class="k-erkl" role="note" hidden>${kErklaerung()}</div>` : "") + `</div>`;
 
   // Kacheln im Vergleich: neuester Wert je Datensatz und die Spanne zwischen ihnen
   const VGL = [["era5", "ERA5"], ["nasa", "NASA"], ["noaa", "NOAA"], ["hadcrut", "HadCRUT5"], ["be", "Berkeley"]];   // kurz für die Kacheln
   function kachelnVergleich(teil, dateiteil, bezeichnung, unvollstaendig) {
     const ziel = document.getElementById("kacheln-" + teil);
     Promise.all(VGL.map(([qq]) =>
-      fetch(`daten/${QUELLEN[qq].praefix}_global_${dateiteil}.txt`, { cache: "no-store" })
+      fetch(`daten/${QUELLEN[qq].stamm}_${dateiteil}.txt`, { cache: "no-store" })
         .then(r => (r.ok ? r.text() : "")).then(t => lese(t).reihen).catch(() => [])))
       .then(alle => {
         if (quelle !== "vgl") return;
@@ -897,7 +949,7 @@
 
     const ziel = document.getElementById("kacheln-monat");
     const q = quelle;
-    fetch(`daten/${Q().praefix}_global_monat_${nn(m)}.txt`, { cache: "no-store" })
+    fetch(`daten/${Q().stamm}_monat_${nn(m)}.txt`, { cache: "no-store" })
       .then(r => r.text())
       .then(text => {
         if (monat !== m || quelle !== q) return;      // inzwischen anderer Monat / andere Quelle gewählt
@@ -963,7 +1015,7 @@
 
     const ziel = document.getElementById("kacheln-saison");
     const q = quelle;
-    fetch(`daten/${Q().praefix}_global_saison_${x.datei}.txt`, { cache: "no-store" })
+    fetch(`daten/${Q().stamm}_saison_${x.datei}.txt`, { cache: "no-store" })
       .then(r => r.text())
       .then(text => {
         if (saison !== i || quelle !== q) return;     // inzwischen andere Jahreszeit / Quelle gewählt
@@ -1027,7 +1079,7 @@
     anwenden();
     // Der Vergleich hat keine eigene TXT-Datei: Datenstand und Startauswahl kommen von ERA5
     const vgl = !!Q().vergleich;
-    fetch(`daten/${vgl ? "ERA5" : Q().praefix}_global_jahreswerte.txt`, { cache: "no-store" })
+    fetch(`daten/${vgl ? "ERA5_global" : Q().stamm}_jahreswerte.txt`, { cache: "no-store" })
       .then(r => (r.ok ? r.text() : Promise.reject()))
       .then(text => {
         if (quelle !== q) return;
@@ -1047,12 +1099,17 @@
         if (saison === null) waehleSaison(0, false); else waehleSaison(saison, false);
       });
   }
-  Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).addEventListener("click", () => {
+  function setzeQuelle(x) {
     if (quelle === x) return;
     quelle = x;
-    try { localStorage.setItem("quelle", x); } catch (e) {}
+    zuletzt[QUELLEN[x].europa ? "europa" : "global"] = x;
+    try { localStorage.setItem("quelle", x); localStorage.setItem("zuletzt", JSON.stringify(zuletzt)); } catch (e) {}
     ladeQuelle();
-  }));
+  }
+  Object.keys(QUELLEN).forEach(x => document.getElementById("quelle-" + x).addEventListener("click", () => setzeQuelle(x)));
+  // Gebiet wechseln: zur zuletzt gewählten Quelle dieses Gebiets
+  ["global", "europa"].forEach(g => document.getElementById("gebiet-" + g).addEventListener("click", () =>
+    setzeQuelle(zuletzt[g])));
   // Handy: Hinweis zur Datenquelle auf- und zuklappen
   document.getElementById("info-knopf").addEventListener("click", e => {
     const offen = document.getElementById("quellinfo").classList.toggle("offen");

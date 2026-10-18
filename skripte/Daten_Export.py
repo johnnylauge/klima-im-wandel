@@ -4,7 +4,8 @@ Bereitet die Daten-Downloads der Webseite einheitlich auf:
   1. ERA5-Tageswerte im gleichen Stil wie die anderen TXT-Dateien (Datum, Temperatur in °C,
      Abweichung von 1850-1900) - passend zu den Punktdiagrammen: alle Tage
      (ERA5_global_tageswerte.txt), je Jahreszeit (..._saison_herbst.txt) und je Monat (..._monat_10.txt).
-  2. Zu jeder TXT-Datei *_global_*.txt (Jahres-, Jahreszeiten-, Monatswerte, Tageswerte,
+     Für Europa genauso je Bezugszeitraum (ERA5_europa_6190_tageswerte..., ERA5_europa_9120_...).
+  2. Zu jeder TXT-Datei *_global_*.txt und ERA5_europa_*.txt (Jahres-, Jahreszeiten-, Monatswerte, Tageswerte,
      Vergleichstabellen) eine CSV-Datei für Excel: Trennzeichen Semikolon, Dezimalkomma,
      UTF-8 mit BOM (damit Excel °C und Umlaute richtig zeigt). Die Kopfzeilen mit # (Quelle,
      Stand, Bezug) stehen als Text in den ersten Zeilen.
@@ -39,10 +40,10 @@ JAHRESZEITEN = {"fruehling": ("Frühling", [3, 4, 5]), "sommer": ("Sommer", [6, 
                 "herbst": ("Herbst", [9, 10, 11]), "winter": ("Winter", [12, 1, 2])}
 
 
-def schreibe_tage(daten, datei, titel, stand):
+def schreibe_tage(daten, datei, titel, stand, gebiet="Global (ERA5, Copernicus Climate Pulse)", bezug="1850-1900"):
     with open(datei, "w", encoding="utf-8") as f:
-        f.write(f"# Tagesmitteltemperatur{titel} – Global (ERA5, Copernicus Climate Pulse)\n"
-                "# Abweichung bezogen auf 1850-1900\n"
+        f.write(f"# Tagesmitteltemperatur{titel} – {gebiet}\n"
+                f"# Abweichung bezogen auf {bezug}\n"
                 f"# Stand: {stand:%d.%m.%Y}\n"
                 "#\n"
                 f"{'Datum':>10}  {'Temp_°C':>8}  {'Abw_K':>6}\n")
@@ -50,21 +51,34 @@ def schreibe_tage(daten, datei, titel, stand):
             f.write(f"{d:%d.%m.%Y}  {t:>8.3f}  {a:>+6.3f}\n")
 
 
+def tage_je_zeitraum(tage, basis, gebiet, bezug):
+    """Alle Tage (zu den Jahres-Punktdiagrammen) sowie nur die Tage je Jahreszeit und je Monat."""
+    stand = tage["date"].max()
+    schreibe_tage(tage, basis + ".txt", "", stand, gebiet, bezug)
+    for datei, (name, monate) in JAHRESZEITEN.items():
+        schreibe_tage(tage[tage["date"].dt.month.isin(monate)], f"{basis}_saison_{datei}.txt", f" {name}",
+                      stand, gebiet, bezug)
+    for m, name in enumerate(MONATE, start=1):
+        schreibe_tage(tage[tage["date"].dt.month == m], f"{basis}_monat_{m:02d}.txt", f" {name}",
+                      stand, gebiet, bezug)
+    print(f"Tageswerte {os.path.basename(basis)} (gesamt, je Jahreszeit, je Monat) gespeichert")
+
+
+# Global: Climate Pulse, Abweichung zu 1991-2020 plus Offset -> 1850-1900
 if os.path.exists(ERA5_ROH):
     tage = pd.read_csv(ERA5_ROH, comment="#", parse_dates=["date"])
     tage["abw"] = tage["ano_91-20"] + tage["date"].dt.month.map(MONTHLY_OFFSETS)
-    stand = tage["date"].max()
-    basis = os.path.splitext(ERA5_TAGE)[0]
-    # alle Tage (zu den Jahres-Punktdiagrammen)
-    schreibe_tage(tage, ERA5_TAGE, "", stand)
-    # nur die Tage einer Jahreszeit bzw. eines Monats (zu deren Punktdiagrammen)
-    for datei, (name, monate) in JAHRESZEITEN.items():
-        schreibe_tage(tage[tage["date"].dt.month.isin(monate)], f"{basis}_saison_{datei}.txt", f" {name}", stand)
-    for m, name in enumerate(MONATE, start=1):
-        schreibe_tage(tage[tage["date"].dt.month == m], f"{basis}_monat_{m:02d}.txt", f" {name}", stand)
-    print(f"Tageswerte (gesamt, je Jahreszeit, je Monat) gespeichert unter:\n{FOLDER}")
+    tage_je_zeitraum(tage, os.path.splitext(ERA5_TAGE)[0], "Global (ERA5, Copernicus Climate Pulse)", "1850-1900")
 else:
-    print(f"Hinweis: {ERA5_ROH} fehlt - keine ERA5-Tageswerte")
+    print(f"Hinweis: {ERA5_ROH} fehlt - keine globalen ERA5-Tageswerte")
+
+# Europa: je Bezugszeitraum (von ERA5_Europa_Daten.py berechnet)
+for kurz, bezug in (("6190", "1961-1990"), ("9120", "1991-2020")):
+    quelle = os.path.join(FOLDER, f"ERA5_europa_tag_{kurz}.txt")
+    if os.path.exists(quelle):
+        tage = pd.read_csv(quelle, comment="#", parse_dates=["date"])
+        tage_je_zeitraum(tage, os.path.join(FOLDER, f"ERA5_europa_{kurz}_tageswerte"),
+                         "Europa (ERA5, Copernicus Climate Data Store, Landflächen)", bezug)
 
 
 # =========================================================
@@ -89,8 +103,9 @@ def als_csv(txt):
 
 
 anzahl = 0
-for txt in sorted(glob.glob(os.path.join(FOLDER, "*_global_*.txt"))):
-    if os.path.abspath(txt) == os.path.abspath(ERA5_ROH):
+ROHDATEIEN = {"ERA5_global_tag.txt", "ERA5_europa_tag.txt", "ERA5_europa_tag_6190.txt", "ERA5_europa_tag_9120.txt"}
+for txt in sorted(glob.glob(os.path.join(FOLDER, "*_global_*.txt")) + glob.glob(os.path.join(FOLDER, "ERA5_europa_*.txt"))):
+    if os.path.basename(txt) in ROHDATEIEN:              # Rohdaten (CSV mit Komma), keine eigene Tabelle
         continue
     anzahl += als_csv(txt)
 print(f"{anzahl} CSV-Dateien geschrieben in:\n{FOLDER}")

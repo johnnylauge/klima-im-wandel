@@ -30,6 +30,7 @@ Läuft lokal (Windows) und auf GitHub:
 """
 
 import os
+import region                   # global oder Europa (region.py)
 import json
 import time
 import requests
@@ -126,7 +127,13 @@ URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
 # Lokal: Windows-Ordner. Auf GitHub setzt die Steuerdatei ERA5_FOLDER auf einen Ordner im Projekt.
 FOLDER = os.environ.get("ERA5_FOLDER",
                         r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
-FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")              # Tageswerte (Original)
+FILE = os.path.join(FOLDER, region.TAG_DATEI)                  # Tageswerte (global: Original)
+if region.EUROPA:            # Europa: Abweichung schon zum gewählten Bezug, kein 1850-1900
+    MONTHLY_OFFSETS = {m: 0.0 for m in range(1, 13)}
+    Y_TICK_STEP = 1.0              # Tageswerte streuen in Europa stark
+    SHOW_1_5_LINE = False
+    THRESHOLDS = []                # Schwellen 1/1,5/2 K beziehen sich auf 1850-1900
+    REFERENCE_LINES = []
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 
 
@@ -176,7 +183,7 @@ def weich(x, y):
 # DOWNLOAD
 # =========================================================
 os.makedirs(FOLDER, exist_ok=True)
-if os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE):
+if region.EUROPA or (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
     print(f"Vorhandene Daten werden genutzt:\n{FILE}")
 else:
     print("Lade aktuelle ERA5-Daten herunter...")
@@ -194,17 +201,17 @@ else:
         f.write(response.content)
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
 
-ALLE_TAGE = pd.read_csv(FILE, comment="#", parse_dates=["date"])
+ALLE_TAGE = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
 ALLE_TAGE["ano_pre"] = ALLE_TAGE["ano_91-20"] + ALLE_TAGE["date"].dt.month.map(MONTHLY_OFFSETS)
 
 
 def zeitraum(wahl):
     """Übersetzt die Wahl in (Art, Name, Monate, Dateiname), z. B. ('monat', 'Oktober', [10], ...)."""
     if str(wahl).lower() == "jahr":
-        return "jahr", "Jahr", list(range(1, 13)), "ERA5_global_punkte_jahr"
+        return "jahr", "Jahr", list(range(1, 13)), f"{region.STAMM}_punkte_jahr"
     for name, (monate, datei) in SEASONS.items():
         if str(wahl).lower() in (name.lower(), datei):
-            return "saison", name, monate, f"ERA5_global_punkte_saison_{datei}"
+            return "saison", name, monate, f"{region.STAMM}_punkte_saison_{datei}"
     if str(wahl).isdigit() and 1 <= int(wahl) <= 12:
         m = int(wahl)
     elif str(wahl).capitalize() in MONTH_NAMES:
@@ -212,7 +219,7 @@ def zeitraum(wahl):
     else:
         raise ValueError(f"Unbekannte Auswahl '{wahl}'. Möglich: Jahr, "
                          f"{', '.join(SEASONS)}, Monatsname oder 1-12")
-    return "monat", MONTH_NAMES[m - 1], [m], f"ERA5_global_punkte_monat_{m:02d}"
+    return "monat", MONTH_NAMES[m - 1], [m], f"{region.STAMM}_punkte_monat_{m:02d}"
 
 
 def erstelle(wahl, anzeigen=True):
@@ -260,7 +267,7 @@ def erstelle(wahl, anzeigen=True):
              for t in THRESHOLDS}
     peak = df.loc[df["ano_pre"].idxmax()]
 
-    print(f"\n{'=' * 60}\nTAGESWERTE GLOBAL – {name.upper()}\n{'=' * 60}")
+    print(f"\n{'=' * 60}\nTAGESWERTE {region.GEBIET.upper()} – {name.upper()}\n{'=' * 60}")
     for t, row in first.items():
         if row is None:
             print(f"{komma(t)} K wurde noch nicht überschritten.")
@@ -326,8 +333,8 @@ def erstelle(wahl, anzeigen=True):
     cur = werte.loc[current_year]
     titel_info = "Temperaturmittel " + label(current_year)
     bis_tag = f"Tag {last_date.day}" if art == "monat" else tag_monat(last_date)   # Monatsgrafik: nur der Tag
-    info = (f"{titel_info}{f' (bis {bis_tag})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
-            f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
+    info = (f"{titel_info}{f' (bis {bis_tag})' if is_partial else ''}: {region.temp_info(werte, current_year, is_partial)}\n"
+            f"Temperaturabweichung {region.BEZUG}: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)
@@ -343,9 +350,9 @@ def erstelle(wahl, anzeigen=True):
     ax.yaxis.set_major_locator(MultipleLocator(Y_TICK_STEP))
     ax.set_xticks(range((START_YEAR // 10) * 10, current_year + 1, 10))
 
-    ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)",
+    ax.set_title(region.UNTERTITEL,
                  fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte_text = f"Global | {name} | Tageswerte"          # name = "Jahr", Jahreszeit oder Monat
+    mitte_text = f"{region.GEBIET} | {name} | Tageswerte"          # name = "Jahr", Jahreszeit oder Monat
     mitte = ax.annotate(mitte_text, xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
@@ -360,8 +367,7 @@ def erstelle(wahl, anzeigen=True):
     ax.grid(True, alpha=0.2, zorder=0)
 
     fig.text(0.99, 0.01,
-             "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
-             "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
+             region.FUSS + "\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
@@ -576,7 +582,7 @@ def speichere_hover_daten(fig, ax, df, werte, beschriftung, laufend_jahr, datei,
                                                      (jahr + 0.4, spanne.loc[jahr, "max"])])
         felder.append(dict(
             jahr=int(jahr), label=beschriftung(jahr), rang=int(z["rank"]),
-            temp=round(float(z["temp"]), 3), abw=round(float(z["anomaly"]), 3),
+            **region.temp_hover(werte, jahr, laufend_jahr), abw=round(float(z["anomaly"]), 3),
             laufend=bool(jahr == laufend_jahr),
             x0=fx(x0), x1=fx(x1), y0=fy(y1 + 4), y1=fy(y0 - 4),   # oben / unten im Bild
         ))

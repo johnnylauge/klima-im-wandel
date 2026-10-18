@@ -23,6 +23,7 @@ Läuft lokal (Windows) und auf GitHub:
 """
 
 import os
+import region                   # global oder Europa (region.py)
 import json
 import time
 import requests
@@ -118,7 +119,10 @@ URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
        "era5_daily_series_2t_global.csv")
 FOLDER = os.environ.get("ERA5_FOLDER",
                         r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
-FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")              # Tageswerte (Original)
+FILE = os.path.join(FOLDER, region.TAG_DATEI)                  # Tageswerte (global: Original)
+if region.EUROPA:            # Europa: Abweichung schon zum gewählten Bezug, kein 1850-1900
+    MONTHLY_OFFSETS = {m: 0.0 for m in range(1, 13)}
+    SHOW_1_5_LINE = False
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 
 
@@ -168,7 +172,7 @@ def weich(x, y):
 # DOWNLOAD
 # =========================================================
 os.makedirs(FOLDER, exist_ok=True)
-if os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE):
+if region.EUROPA or (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
     print(f"Vorhandene Daten werden genutzt:\n{FILE}")
 else:
     print("Lade aktuelle ERA5-Daten herunter...")
@@ -186,17 +190,17 @@ else:
         f.write(response.content)
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
 
-ALLE_TAGE = pd.read_csv(FILE, comment="#", parse_dates=["date"])
+ALLE_TAGE = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
 ALLE_TAGE["ano_pre"] = ALLE_TAGE["ano_91-20"] + ALLE_TAGE["date"].dt.month.map(MONTHLY_OFFSETS)
 
 
 def zeitraum(wahl):
     """Übersetzt die Wahl in (Art, Name, Monate, Dateiname)."""
     if str(wahl).lower() == "jahr":
-        return "jahr", "Jahr", list(range(1, 13)), "ERA5_global_linien_jahr"
+        return "jahr", "Jahr", list(range(1, 13)), f"{region.STAMM}_linien_jahr"
     for name, (monate, datei) in SEASONS.items():
         if str(wahl).lower() in (name.lower(), datei):
-            return "saison", name, monate, f"ERA5_global_linien_saison_{datei}"
+            return "saison", name, monate, f"{region.STAMM}_linien_saison_{datei}"
     if str(wahl).isdigit() and 1 <= int(wahl) <= 12:
         m = int(wahl)
     elif str(wahl).capitalize() in MONTH_NAMES:
@@ -204,7 +208,7 @@ def zeitraum(wahl):
     else:
         raise ValueError(f"Unbekannte Auswahl '{wahl}'. Möglich: Jahr, "
                          f"{', '.join(SEASONS)}, Monatsname oder 1-12")
-    return "monat", MONTH_NAMES[m - 1], [m], f"ERA5_global_linien_monat_{m:02d}"
+    return "monat", MONTH_NAMES[m - 1], [m], f"{region.STAMM}_linien_monat_{m:02d}"
 
 
 def erstelle(wahl, anzeigen=True):
@@ -342,8 +346,8 @@ def erstelle(wahl, anzeigen=True):
     # Info-Kasten
     cur = werte.loc[current_year]
     info = (f"Temperaturmittel {label(current_year)}"
-            f"{f' (bis {bis_tag})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
-            f"Temperaturabweichung 1850-1900: {cur['anomaly']:+.2f} K  "
+            f"{f' (bis {bis_tag})' if is_partial else ''}: {region.temp_info(werte, current_year, is_partial)}\n"
+            f"Temperaturabweichung {region.BEZUG}: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)
@@ -361,8 +365,8 @@ def erstelle(wahl, anzeigen=True):
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: komma(v)))
     ax.set_xticks(range((START_YEAR // 10) * 10, current_year + 1, 10))
 
-    ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)", fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte = ax.annotate(f"Global | {wort}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
+    ax.set_title(region.UNTERTITEL, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
+    mitte = ax.annotate(f"{region.GEBIET} | {wort}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
@@ -376,8 +380,7 @@ def erstelle(wahl, anzeigen=True):
     ax.grid(True, alpha=0.2, zorder=0)
 
     fig.text(0.99, 0.01,
-             "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
-             "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
+             region.FUSS + "\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 

@@ -27,6 +27,7 @@ Läuft lokal (Windows) und auf GitHub:
 """
 
 import os
+import region                   # global oder Europa (region.py)
 import time
 import requests
 import numpy as np
@@ -61,7 +62,7 @@ def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, date
         e = b.get_window_extent(r)
         balken.append(dict(
             jahr=int(jahr), label=beschriftung(jahr), rang=int(z["rank"]),
-            temp=round(float(z["temp"]), 3), abw=round(float(z["anomaly"]), 3),
+            **region.temp_hover(werte, jahr, laufend_jahr), abw=round(float(z["anomaly"]), 3),
             laufend=bool(jahr == laufend_jahr),
             x0=fx(e.x0), x1=fx(e.x1),
             y0=fy(max(e.y0, e.y1)), y1=fy(min(e.y0, e.y1)),   # oben / unten im Bild
@@ -161,15 +162,20 @@ URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
 # Lokal: Windows-Ordner. Auf GitHub setzt die Steuerdatei ERA5_FOLDER auf einen Ordner im Projekt.
 FOLDER = os.environ.get("ERA5_FOLDER",
                         r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
-FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")              # Tageswerte (Original)
-ANNUAL_FILE = os.path.join(FOLDER, "ERA5_global_jahreswerte.txt")  # Jahreswerte
-PNG_NAME = "ERA5_global_jahreswerte" + ("_dunkel" if DUNKEL else "") + ".png"
+FILE = os.path.join(FOLDER, region.TAG_DATEI)                  # Tageswerte (global: Original)
+if region.EUROPA:            # Europa: Abweichung schon zum gewählten Bezug, kein 1850-1900
+    MONTHLY_OFFSETS = {m: 0.0 for m in range(1, 13)}
+    Y_LIMITS = None                # feste Achse gilt fürs globale Bild
+    BASELINE = region.BEZUG
+    SHOW_1_5_LINE = False
+ANNUAL_FILE = os.path.join(FOLDER, f"{region.STAMM}_jahreswerte.txt")  # Jahreswerte
+PNG_NAME = f"{region.STAMM}_jahreswerte" + ("_dunkel" if DUNKEL else "") + ".png"
 
 # =========================================================
 # DOWNLOAD
 # =========================================================
 os.makedirs(FOLDER, exist_ok=True)
-if os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE):
+if region.EUROPA or (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
     print(f"Vorhandene Daten werden genutzt:\n{FILE}")
 else:
     print("Lade aktuelle ERA5-Daten herunter...")
@@ -190,7 +196,7 @@ else:
 # =========================================================
 # DATEN AUFBEREITEN
 # =========================================================
-df = pd.read_csv(FILE, comment="#", parse_dates=["date"])
+df = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
 df = df[df["date"].dt.year >= START_YEAR]
 df["year"] = df["date"].dt.year
 df["ano_pre"] = df["ano_91-20"] + df["date"].dt.month.map(MONTHLY_OFFSETS)
@@ -215,7 +221,7 @@ annual["rank"] = annual["anomaly"].rank(ascending=False).astype(int)
 # JAHRESWERTE ALS TXT SPEICHERN
 # =========================================================
 with open(ANNUAL_FILE, "w", encoding="utf-8") as f:
-    f.write("# Jahresmitteltemperatur – Global (ERA5, Copernicus Climate Pulse)\n"
+    f.write(f"# Jahresmitteltemperatur – {region.GEBIET} ({region.DATENNAME})\n"
             f"# Abweichung bezogen auf {BASELINE}\n"
             f"# Stand: {last_date:%d.%m.%Y}\n"
             "#\n"
@@ -339,7 +345,7 @@ cur = annual.loc[current_year]
 full_years = annual.drop(current_year) if is_partial else annual
 warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Jahren
 info = (f"Temperaturmittel {current_year}"
-        f"{f' (bis {tag_monat(last_date)})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+        f"{f' (bis {tag_monat(last_date)})' if is_partial else ''}: {region.temp_info(annual, current_year, is_partial)}\n"
         f"Temperaturabweichung {BASELINE}: {cur['anomaly']:+.2f} K  "
         f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
 if not SHOW_RECORD:   # sonst steht das wärmste Jahr schon als Markierung in der Grafik
@@ -367,10 +373,11 @@ ax.set_xticks(range((START_YEAR // 10) * 10, current_year + 1, 10))
 
 # Überschrift in drei Zeilen wie bei den DWD-Grafiken:
 # groß "Temperaturmittel", darunter fett "Global | Jahr", darunter normal der Bezug
-zeile3 = ("Abweichung von der vorindustriellen Zeit (1850-1900)" if BASELINE == "1850-1900"
+zeile3 = (region.UNTERTITEL if region.EUROPA else
+          "Abweichung von der vorindustriellen Zeit (1850-1900)" if BASELINE == "1850-1900"
           else f"Abweichung vom Klimamittel {BASELINE}")
 ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-mitte = ax.annotate("Global | Jahr", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
+mitte = ax.annotate(f"{region.GEBIET} | Jahr", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                     textcoords="offset points", ha="center", va="bottom",
                     fontsize=16 * SCHRIFT, fontweight="bold")
 ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
@@ -384,8 +391,7 @@ for label in ax.get_xticklabels() + ax.get_yticklabels():
 ax.grid(True, axis="y", alpha=0.2, zorder=0)
 
 fig.text(0.99, 0.01,
-        "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
-        "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
+        region.FUSS + "\n"
         "Visualisierung: JohnnyLauge.bsky.social",
         ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
@@ -537,7 +543,7 @@ if SAVE_PNG:
     # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
     speichere_hover_daten(fig, ax, bars, annual, lambda j: str(j),
                           current_year if is_partial else None,
-                          os.path.join(png_folder, "ERA5_global_jahreswerte" + ".json"),
+                          os.path.join(png_folder, f"{region.STAMM}_jahreswerte" + ".json"),
                           info_rahmen=info_rahmen)
 
 # Fenster nur lokal öffnen - auf GitHub (Umgebungsvariable CI ist gesetzt) gibt es keinen Bildschirm

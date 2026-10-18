@@ -34,6 +34,7 @@ Läuft lokal (Windows) und auf GitHub:
 """
 
 import os
+import region                   # global oder Europa (region.py)
 import time
 import requests
 import numpy as np
@@ -61,7 +62,7 @@ def speichere_hover_daten(fig, ax, bars, werte, beschriftung, laufend_jahr, date
         e = b.get_window_extent(r)
         balken.append(dict(
             jahr=int(jahr), label=beschriftung(jahr), rang=int(z["rank"]),
-            temp=round(float(z["temp"]), 3), abw=round(float(z["anomaly"]), 3),
+            **region.temp_hover(werte, jahr, laufend_jahr), abw=round(float(z["anomaly"]), 3),
             laufend=bool(jahr == laufend_jahr),
             x0=fx(e.x0), x1=fx(e.x1),
             y0=fy(max(e.y0, e.y1)), y1=fy(min(e.y0, e.y1)),   # oben / unten im Bild
@@ -182,13 +183,18 @@ URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
 # Lokal: Windows-Ordner. Auf GitHub setzt die Steuerdatei ERA5_FOLDER auf einen Ordner im Projekt.
 FOLDER = os.environ.get("ERA5_FOLDER",
                         r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
-FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")              # Tageswerte (Original)
+FILE = os.path.join(FOLDER, region.TAG_DATEI)                  # Tageswerte (global: Original)
+if region.EUROPA:            # Europa: Abweichung schon zum gewählten Bezug, kein 1850-1900
+    MONTHLY_OFFSETS = {m: 0.0 for m in range(1, 13)}
+    Y_LIMITS = None                # feste Achse gilt fürs globale Bild
+    BASELINE = region.BEZUG
+    SHOW_1_5_LINE = False
 
 # =========================================================
 # DOWNLOAD
 # =========================================================
 os.makedirs(FOLDER, exist_ok=True)
-if os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE):
+if region.EUROPA or (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
     print(f"Vorhandene Daten werden genutzt:\n{FILE}")
 else:
     print("Lade aktuelle ERA5-Daten herunter...")
@@ -212,13 +218,13 @@ def erstelle(monat, anzeigen=True):
     MONTH = monat
     MONTH_NAME = MONTH_NAMES[MONTH - 1]
     PERIOD = f"Temperaturmittel {MONTH_NAME}"   # Konsole + TXT
-    MONTH_FILE = os.path.join(FOLDER, f"ERA5_global_monat_{MONTH:02d}.txt")  # Monatswerte
-    PNG_NAME = f"ERA5_global_monat_{MONTH:02d}" + ("_dunkel" if DUNKEL else "") + ".png"
+    MONTH_FILE = os.path.join(FOLDER, f"{region.STAMM}_monat_{MONTH:02d}.txt")  # Monatswerte
+    PNG_NAME = f"{region.STAMM}_monat_{MONTH:02d}" + ("_dunkel" if DUNKEL else "") + ".png"
 
     # =========================================================
     # DATEN AUFBEREITEN
     # =========================================================
-    df = pd.read_csv(FILE, comment="#", parse_dates=["date"])
+    df = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
     df = df[df["date"].dt.year >= START_YEAR]
     df["year"] = df["date"].dt.year
     df["ano_pre"] = df["ano_91-20"] + df["date"].dt.month.map(MONTHLY_OFFSETS)
@@ -246,7 +252,7 @@ def erstelle(monat, anzeigen=True):
     # WERTE ALS TXT SPEICHERN
     # =========================================================
     with open(MONTH_FILE, "w", encoding="utf-8") as f:
-        f.write(f"# {PERIOD} – Global (ERA5, Copernicus Climate Pulse)\n"
+        f.write(f"# {PERIOD} – {region.GEBIET} ({region.DATENNAME})\n"
                 f"# Abweichung bezogen auf {BASELINE}\n"
                 f"# Stand: {last_date:%d.%m.%Y}\n"
                 "#\n"
@@ -392,7 +398,7 @@ def erstelle(monat, anzeigen=True):
     full_years = annual.drop(current_year) if is_partial else annual
     warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Monaten
     info = (f"Temperaturmittel {monat_label(current_year)}"
-            f"{f' (bis Tag {last_date.day})' if is_partial else ''}: {cur['temp']:.2f} °C\n"
+            f"{f' (bis Tag {last_date.day})' if is_partial else ''}: {region.temp_info(annual, current_year, is_partial)}\n"
             f"Temperaturabweichung {BASELINE}: {cur['anomaly']:+.2f} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     if not SHOW_RECORD:   # sonst steht der wärmste Monat schon als Markierung in der Grafik
@@ -428,10 +434,11 @@ def erstelle(monat, anzeigen=True):
 
     # Überschrift in drei Zeilen wie bei den DWD-Grafiken:
     # groß "Temperaturmittel", darunter fett "Global | März", darunter normal der Bezug
-    zeile3 = ("Abweichung von der vorindustriellen Zeit (1850-1900)" if BASELINE == "1850-1900"
+    zeile3 = (region.UNTERTITEL if region.EUROPA else
+          "Abweichung von der vorindustriellen Zeit (1850-1900)" if BASELINE == "1850-1900"
               else f"Abweichung vom Klimamittel {BASELINE}")
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte = ax.annotate(f"Global | {MONTH_NAME}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
+    mitte = ax.annotate(f"{region.GEBIET} | {MONTH_NAME}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
@@ -445,8 +452,7 @@ def erstelle(monat, anzeigen=True):
     ax.grid(True, axis="y", alpha=0.2, zorder=0)
 
     fig.text(0.99, 0.01,
-            "Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
-            "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
+            region.FUSS + "\n"
             "Visualisierung: JohnnyLauge.bsky.social",
             ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
@@ -598,7 +604,7 @@ def erstelle(monat, anzeigen=True):
         # Lage der Balken für die Maus-Anzeige auf der Webseite (gleich für hell und dunkel)
         speichere_hover_daten(fig, ax, bars, annual, monat_label,
                               current_year if is_partial else None,
-                              os.path.join(png_folder, f"ERA5_global_monat_{MONTH:02d}" + ".json"),
+                              os.path.join(png_folder, f"{region.STAMM}_monat_{MONTH:02d}" + ".json"),
                               info_rahmen=info_rahmen)
     if anzeigen:
         plt.show()
