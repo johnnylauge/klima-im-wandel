@@ -1,2 +1,0 @@
-Hier kommt die Datei ERA5_europa_tag.txt hinein (einmalig auf dem PC mit skripte/ERA5_Europa_Daten.py erstellt).
-Der tägliche Lauf auf GitHub nutzt sie als Grundstock und lädt danach nur noch die neuesten Tage nach.
