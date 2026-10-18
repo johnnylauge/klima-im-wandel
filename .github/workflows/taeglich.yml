@@ -222,6 +222,8 @@ jobs:
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           EUROPA_TEIL: neu                 # nur die neuesten Monate; das Auffüllen übernimmt "Europa-Daten nachladen"
           EUROPA_MAX_MINUTEN: "20"         # danach mit dem Vorhandenen weiterrechnen
+          EUROPA_PARALLEL: "1"             # der Nachlade-Lauf fragt parallel an; der CDS begrenzt die Warteschlange
+          EUROPA_WARTEN_MIN: "10"
           EUROPA_ZUSATZ: ${{ github.workspace }}/europa_daten/ERA5_europa_tag.txt
         run: |
           if [ ! -f _site/daten/ERA5_europa_tag.txt ] && [ -f startdaten/ERA5_europa_tag.txt ]; then
