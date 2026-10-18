@@ -81,6 +81,7 @@
   .ausgeblendet { display: none; }
   /* Gebiet: Global / Europa - Reiter mit Unterstrich, über der Quellenauswahl */
   .gebiet { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+  .gebiet[hidden] { display: none; }
   .gebiet button {
     border: 0; background: none; font: inherit; font-weight: 700; font-size: 1rem; color: var(--muted);
     padding: 6px 14px 8px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer;
@@ -281,7 +282,7 @@
             title="Hell / Dunkel">◐</button>
     <h1>Klima im Wandel</h1>
     <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
-    <div class="gebiet" role="tablist" aria-label="Gebiet wählen">
+    <div class="gebiet" id="gebiet" role="tablist" aria-label="Gebiet wählen" hidden>
       <button type="button" role="tab" id="gebiet-global" aria-selected="true">Global</button>
       <button type="button" role="tab" id="gebiet-europa" aria-selected="false">Europa</button>
     </div>
@@ -1115,7 +1116,13 @@
     const offen = document.getElementById("quellinfo").classList.toggle("offen");
     e.currentTarget.setAttribute("aria-expanded", String(offen));
   });
+  // Europa erst zeigen, wenn die Daten da sind (der Download läuft anfangs mehrere Tage);
+  // bis dahin bleibt die Seite bei Global - danach erscheint der Reiter von selbst
+  if (istEuropa()) quelle = zuletzt.global;
   ladeQuelle();
+  fetch("daten/ERA5_europa_6190_jahreswerte.txt", { method: "HEAD", cache: "no-store" })
+    .then(r => { if (r.ok) document.getElementById("gebiet").hidden = false; })
+    .catch(() => {});
 
   // Handy: "Daten …" klappt TXT und CSV auf bzw. wieder zu
   document.querySelectorAll("nav.downloads").forEach(nav => {
