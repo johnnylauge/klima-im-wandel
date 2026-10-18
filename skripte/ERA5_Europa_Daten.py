@@ -78,7 +78,9 @@ SCHLOSS = threading.Lock()
 # =========================================================
 def client():
     import cdsapi
-    return cdsapi.Client(quiet=True, progress=False)
+    # wenige, kurze Wiederholungen: ohne diese Einstellung wartet cdsapi bei Serverfehlern bis zu
+    # 500-mal je 2 Minuten - der Lauf würde stundenlang hängen
+    return cdsapi.Client(quiet=True, progress=False, retry_max=3, sleep_max=60, timeout=600)
 
 
 def oeffne_netcdf(pfad):
@@ -222,7 +224,7 @@ def herunterladen():
                 werte = z.result()
             except Exception as fehler:
                 # neueste Tage oft noch nicht verfügbar -> beim nächsten Lauf erneut
-                print(f"  {j}-{m:02d}: nicht geladen ({str(fehler)[:160]})")
+                print(f"  {j}-{m:02d}: nicht geladen ({type(fehler).__name__}: {str(fehler)[:600]})")
                 continue
             with SCHLOSS:
                 reihe = pd.concat([reihe, werte])
@@ -271,5 +273,6 @@ if not OHNE_DOWNLOAD:
     try:
         herunterladen()
     except Exception as fehler:      # z. B. CDS nicht erreichbar oder kein Schlüssel: mit den vorhandenen Tagen weiter
-        print(f"Download nicht möglich ({str(fehler)[:200]}) - rechne mit den vorhandenen Tageswerten weiter")
+        print(f"Download nicht möglich: {type(fehler).__name__}: {str(fehler)[:1500]}")
+        print("Rechne mit den vorhandenen Tageswerten weiter.")
 abweichungen()
