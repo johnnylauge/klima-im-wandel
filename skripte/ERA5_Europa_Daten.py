@@ -37,7 +37,7 @@ Umgebungsvariablen:
   EUROPA_MAX_MINUTEN   nach so vielen Minuten aufhören, laufende Anfragen nicht abwarten (für GitHub)
   EUROPA_AUFFRISCHEN   so viele Monate vor dem aktuellen bei jedem Lauf neu laden (Standard 3),
                        weil ERA5 dort erst vorläufig ist und später durch endgültige Werte ersetzt wird
-  EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 3)
+  EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 2; der CDS begrenzt die Warteschlange)
   EUROPA_TEIL          "alles" (Standard), "alt" (nur ab 1940 auffüllen) oder "neu" (nur die neuesten Monate)
   EUROPA_OHNE_DOWNLOAD=1  nichts laden, nur die Abweichungen neu berechnen
   EUROPA_ZUSATZ        weitere ERA5_europa_tag.txt (z. B. aus dem Nachlade-Lauf), wird zuerst eingemischt
@@ -69,10 +69,11 @@ FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ER
 TAGE_DATEI = os.path.join(FOLDER, "ERA5_europa_tag.txt")
 MASKE_DATEI = os.path.join(FOLDER, "ERA5_europa_lsm.nc")
 MAX_MONATE = int(os.environ.get("EUROPA_MAX_MONATE", "0")) or None
-PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "3"))
+PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "2"))
 MAX_MINUTEN = float(os.environ.get("EUROPA_MAX_MINUTEN", "0")) or None
 AUFFRISCHEN = int(os.environ.get("EUROPA_AUFFRISCHEN", "3"))   # so viele Monate vor dem aktuellen jedes Mal neu laden
 OHNE_DOWNLOAD = os.environ.get("EUROPA_OHNE_DOWNLOAD") == "1"
+BEGRENZT_WARTEN_MIN = int(os.environ.get("EUROPA_WARTEN_MIN", "120"))   # so lange warten, wenn der CDS keine Anfragen annimmt
 # "alles" (Standard), "alt" = nur Lücken ab 1940 auffüllen, "neu" = nur die neuesten Monate
 TEIL = os.environ.get("EUROPA_TEIL", "alles").strip().lower()
 
@@ -169,12 +170,23 @@ def lade_zeitraum(jahr, monate, tage, gewicht, versuche=3):
             "daily_statistic": "daily_mean", "time_zone": "utc+00:00", "frequency": FREQUENZ,
             "area": GEBIET,
         }
-        for versuch in range(1, versuche + 1):
+        versuch, gewartet = 0, 0
+        while True:
+            versuch += 1
             try:
                 client().retrieve(DATENSATZ, anfrage, ziel)
                 break
             except Exception as fehler:                       # Warteschlange, Netz, Wartung ...
-                if versuch == versuche:
+                if "temporarily limited" in fehlertext(fehler) and gewartet < BEGRENZT_WARTEN_MIN:
+                    # Der CDS nimmt gerade keine weiteren Anfragen an (zu viele in der Warteschlange):
+                    # abwarten statt aufzuteilen - mehr Anfragen würden es nur schlimmer machen
+                    print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: CDS-Warteschlange voll - "
+                          f"warte 5 Minuten ({gewartet} min bisher)")
+                    time.sleep(300)
+                    gewartet += 5
+                    versuch -= 1                              # zählt nicht als Fehlversuch
+                    continue
+                if versuch >= versuche:
                     raise
                 print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: Fehler ({fehlertext(fehler)[:400]}) - neuer Versuch in 2 Minuten")
                 time.sleep(120)
@@ -232,6 +244,8 @@ def lade_jahr(jahr, monate, gewicht):
             teile.append(lade_zeitraum(jahr, ms, list(range(1, laenge + 1)), gewicht, versuche=1))
             continue
         except Exception as fehler:
+            if "temporarily limited" in fehlertext(fehler):
+                raise                                  # nicht aufteilen - beim nächsten Lauf erneut
             if len(ms) == 1:
                 print(f"  {jahr}-{ms[0]:02d}: nicht geladen ({fehlertext(fehler)[:600]})")
                 continue
