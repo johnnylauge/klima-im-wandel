@@ -3,8 +3,8 @@
 #   Test:     nur die 2 neuesten Monate laden und im Protokoll schauen, ob alles klappt
 #   Normal:   bis zu "monate" Monate in höchstens etwa 5 Stunden. Zusätzlich startet der Lauf alle
 #             6 Stunden von selbst, bis alles von 1940 bis heute da ist (ungefähr 1.000 Monate).
-# Der Stand wird im gleichen Speicher abgelegt wie beim täglichen Lauf; der nächste tägliche Lauf
-# erstellt daraus die Europa-Grafiken.
+# Der Stand wird in einem eigenen Speicher ("europa-") abgelegt; der tägliche Lauf übernimmt ihn
+# und erstellt daraus die Europa-Grafiken.
 # Voraussetzung: Geheimnis CDSAPI_KEY (Settings -> Secrets and variables -> Actions) und im CDS die
 # Lizenzen der Datensätze akzeptiert.
 
@@ -28,9 +28,10 @@ on:
 permissions:
   contents: read
 
-# Nie gleichzeitig mit dem täglichen Lauf (beide nutzen denselben Speicher)
+# Eigene Warteschlange und eigener Speicher ("europa-"): läuft unabhängig vom täglichen Lauf;
+# der tägliche Lauf holt sich von hier den neuesten Stand
 concurrency:
-  group: pages
+  group: europa
   cancel-in-progress: false
 
 jobs:
@@ -55,21 +56,21 @@ jobs:
       - name: Letzten Stand wiederherstellen
         uses: actions/cache/restore@v4
         with:
-          path: _site/daten
-          key: daten-${{ github.run_id }}
-          restore-keys: daten-
+          path: europa_daten
+          key: europa-${{ github.run_id }}
+          restore-keys: europa-
 
       - name: Europa-Daten laden
         timeout-minutes: 300
         env:
-          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_FOLDER: ${{ github.workspace }}/europa_daten
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate || '400' }}
           EUROPA_MAX_MINUTEN: "290"
           EUROPA_PARALLEL: "4"
         run: |
-          mkdir -p _site/daten
+          mkdir -p europa_daten
           if [ -z "$CDSAPI_KEY" ]; then echo "Das Geheimnis CDSAPI_KEY fehlt - bitte unter Settings anlegen."; exit 1; fi
           if [ "${{ inputs.test }}" = "true" ]; then
             # Test in eigenem Ordner, damit die echten Daten nicht berührt werden
@@ -81,8 +82,8 @@ jobs:
             echo "----- Ergebnis des Tests (erste Zeilen) -----"
             head -n 20 "$ERA5_FOLDER/ERA5_europa_tag.txt"
           else
-            echo "Vorhandene Tage: $(($(wc -l < _site/daten/ERA5_europa_tag.txt) - 3))"
-            tail -n 3 _site/daten/ERA5_europa_tag.txt
+            echo "Vorhandene Tage: $(($(wc -l < europa_daten/ERA5_europa_tag.txt) - 3)) von rund 31.700"
+            tail -n 3 europa_daten/ERA5_europa_tag.txt
           fi
 
       # Stand sichern - auch wenn der Lauf zwischendurch abbricht, bleibt das Geladene erhalten
@@ -90,5 +91,5 @@ jobs:
         if: ${{ always() && !inputs.test }}
         uses: actions/cache/save@v4
         with:
-          path: _site/daten
-          key: daten-${{ github.run_id }}
+          path: europa_daten
+          key: europa-${{ github.run_id }}
