@@ -68,7 +68,7 @@ jobs:
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate || '400' }}
           EUROPA_MAX_MINUTEN: "290"
-          EUROPA_PARALLEL: "4"
+          EUROPA_PARALLEL: "1"             # eine Anfrage nach der anderen - sonst lehnt der CDS ab ("temporarily limited")
           EUROPA_TEIL: ${{ inputs.test && 'neu' || 'alt' }}   # nur auffüllen; die neuesten Monate holt der tägliche Lauf
         run: |
           mkdir -p europa_daten
