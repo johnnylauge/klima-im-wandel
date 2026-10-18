@@ -23,6 +23,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: "1"            # Ausgaben der Skripte sofort im Protokoll zeigen
     steps:
       - name: Projekt holen
         uses: actions/checkout@v6
@@ -226,6 +228,11 @@ jobs:
           ERA5_REGION: europa
         run: |
           for bezug in 1961-1990 1991-2020; do
+            kurz=${bezug:2:2}${bezug:7:2}
+            if [ ! -f _site/daten/ERA5_europa_tag_$kurz.txt ]; then
+              echo "Europa $bezug: noch keine vollständigen Daten - Grafiken folgen später"
+              continue
+            fi
             for dunkel in 0 1; do
               export ERA5_BEZUG=$bezug ERA5_DUNKEL=$dunkel
               python skripte/ERA5_Jahresmittel_Balken.py

@@ -33,6 +33,8 @@ jobs:
   laden:
     runs-on: ubuntu-latest
     timeout-minutes: 340
+    env:
+      PYTHONUNBUFFERED: "1"            # Ausgaben sofort im Protokoll zeigen
     steps:
       - name: Projekt holen
         uses: actions/checkout@v6
