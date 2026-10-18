@@ -37,6 +37,7 @@ Umgebungsvariablen:
   EUROPA_MAX_MINUTEN   nach so vielen Minuten keine neuen Monate mehr anfangen (für GitHub)
   EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 3)
   EUROPA_OHNE_DOWNLOAD=1  nichts laden, nur die Abweichungen neu berechnen
+  EUROPA_ZUSATZ        weitere ERA5_europa_tag.txt (z. B. aus dem Nachlade-Lauf), wird zuerst eingemischt
 """
 
 import os
@@ -272,6 +273,17 @@ def abweichungen():
                 f.write(f"{d:%Y-%m-%d},{v:.4f},{v - klima[(d.month, d.day)]:.4f}\n")
         print(f"Abweichungen zu {von}-{bis} gespeichert unter:\n{datei}")
 
+
+# Tage aus einer zweiten Datei übernehmen (der Nachlade-Lauf speichert seinen Stand getrennt)
+ZUSATZ = os.environ.get("EUROPA_ZUSATZ", "")
+if ZUSATZ and os.path.exists(ZUSATZ) and os.path.abspath(ZUSATZ) != os.path.abspath(TAGE_DATEI):
+    alt = lies_tage()
+    neu = pd.read_csv(ZUSATZ, comment="#", parse_dates=["date"]).set_index("date")["2t"]
+    zusammen = pd.concat([neu, alt])                      # vorhandene (alt) haben Vorrang
+    zusammen = zusammen[~zusammen.index.duplicated(keep="last")]
+    if len(zusammen) > len(alt):
+        schreibe_tage(zusammen)
+        print(f"Aus {ZUSATZ} übernommen: {len(zusammen) - len(alt)} Tage")
 
 if not OHNE_DOWNLOAD:
     try:
