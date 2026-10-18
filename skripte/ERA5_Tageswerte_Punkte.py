@@ -352,7 +352,7 @@ def erstelle(wahl, anzeigen=True):
 
     ax.set_title(region.UNTERTITEL,
                  fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte_text = f"{region.GEBIET} | {name} | Tageswerte"          # name = "Jahr", Jahreszeit oder Monat
+    mitte_text = f"{region.GEBIET} | {name} | ERA5"          # name = "Jahr", Jahreszeit oder Monat
     mitte = ax.annotate(mitte_text, xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")

@@ -474,7 +474,7 @@ def erstelle(season, anzeigen=True):
           "Abweichung von der vorindustriellen Zeit (1850-1900)" if BASELINE == "1850-1900"
               else f"Abweichung vom Klimamittel {BASELINE}")
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte = ax.annotate(f"{region.GEBIET} | {SEASON}", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
+    mitte = ax.annotate(f"{region.GEBIET} | {SEASON} | ERA5", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom",
                         fontsize=16 * SCHRIFT, fontweight="bold")
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),

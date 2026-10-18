@@ -446,7 +446,7 @@ def speichern(fig, ax, info_text, name_basis, felder):
 # =========================================================
 def balken(werte, current_year, is_partial, art, name, label, teil):
     wort = "Jahr" if art == "jahr" else name
-    fig, ax = grundgeruest(f"Global | {wort}", "Abweichung von der vorindustriellen Zeit (1850-1900)")
+    fig, ax = grundgeruest(f"Global | {wort} | NOAA GlobalTemp", "Abweichung von der vorindustriellen Zeit (1850-1900)")
     lim = werte["anomaly"].abs().max()
     norm = TwoSlopeNorm(vmin=-lim, vcenter=0, vmax=lim)
     cmap = plt.get_cmap("RdBu_r")
@@ -519,7 +519,7 @@ def balken(werte, current_year, is_partial, art, name, label, teil):
 # =========================================================
 def linien(werte, current_year, is_partial, art, name, label, teil):
     wort = "Jahr" if art == "jahr" else name
-    fig, ax = grundgeruest(f"Global | {wort}", "Abweichung von der vorindustriellen Zeit (1850-1900)")
+    fig, ax = grundgeruest(f"Global | {wort} | NOAA GlobalTemp", "Abweichung von der vorindustriellen Zeit (1850-1900)")
     voll = werte.drop(current_year) if is_partial else werte
     abstand = float((voll["temp"] - voll["anomaly"]).median())
     werte = werte.copy()
