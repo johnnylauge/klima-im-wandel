@@ -1,6 +1,6 @@
 # Lädt die ERA5-Tageswerte für Europa aus dem Climate Data Store - ohne PC, direkt auf GitHub.
 # Manuell starten: Reiter "Actions" -> "Europa-Daten nachladen" -> "Run workflow" (geht auch am Handy).
-#   Test:     nur die 2 neuesten Monate laden und im Protokoll schauen, ob alles klappt
+#   Test:     nur die neuesten Monate laden und im Protokoll schauen, ob alles klappt
 #   Normal:   bis zu "monate" Monate in höchstens etwa 5 Stunden. Zusätzlich startet der Lauf alle
 #             6 Stunden von selbst, bis alles von 1940 bis heute da ist (ungefähr 1.000 Monate).
 # Der Stand wird in einem eigenen Speicher ("europa-") abgelegt; der tägliche Lauf übernimmt ihn
@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       test:
-        description: "Nur testen (die 2 neuesten Monate)"
+        description: "Nur testen (die neuesten Monate)"
         type: boolean
         default: true
       monate:
@@ -69,6 +69,7 @@ jobs:
           EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate || '400' }}
           EUROPA_MAX_MINUTEN: "290"
           EUROPA_PARALLEL: "4"
+          EUROPA_TEIL: ${{ inputs.test && 'neu' || 'alt' }}   # nur auffüllen; die neuesten Monate holt der tägliche Lauf
         run: |
           mkdir -p europa_daten
           if [ -z "$CDSAPI_KEY" ]; then echo "Das Geheimnis CDSAPI_KEY fehlt - bitte unter Settings anlegen."; exit 1; fi

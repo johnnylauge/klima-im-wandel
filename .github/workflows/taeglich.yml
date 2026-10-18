@@ -220,7 +220,8 @@ jobs:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
-          EUROPA_MAX_MONATE: "2"           # nur die neuesten Tage; das Auffüllen übernimmt "Europa-Daten nachladen"
+          EUROPA_TEIL: neu                 # nur die neuesten Monate; das Auffüllen übernimmt "Europa-Daten nachladen"
+          EUROPA_MAX_MINUTEN: "20"         # danach mit dem Vorhandenen weiterrechnen
           EUROPA_ZUSATZ: ${{ github.workspace }}/europa_daten/ERA5_europa_tag.txt
         run: |
           if [ ! -f _site/daten/ERA5_europa_tag.txt ] && [ -f startdaten/ERA5_europa_tag.txt ]; then
