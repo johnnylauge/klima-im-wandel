@@ -1,8 +1,8 @@
 # Lädt die ERA5-Tageswerte für Europa aus dem Climate Data Store - ohne PC, direkt auf GitHub.
 # Manuell starten: Reiter "Actions" -> "Europa-Daten nachladen" -> "Run workflow" (geht auch am Handy).
 #   Test:     nur die 2 neuesten Monate laden und im Protokoll schauen, ob alles klappt
-#   Normal:   bis zu "monate" Monate in höchstens etwa 5 Stunden; danach einfach erneut starten,
-#             bis alles von 1940 bis heute da ist (ungefähr 1.000 Monate, also einige Läufe).
+#   Normal:   bis zu "monate" Monate in höchstens etwa 5 Stunden. Zusätzlich startet der Lauf alle
+#             6 Stunden von selbst, bis alles von 1940 bis heute da ist (ungefähr 1.000 Monate).
 # Der Stand wird im gleichen Speicher abgelegt wie beim täglichen Lauf; der nächste tägliche Lauf
 # erstellt daraus die Europa-Grafiken.
 # Voraussetzung: Geheimnis CDSAPI_KEY (Settings -> Secrets and variables -> Actions) und im CDS die
@@ -11,6 +11,10 @@
 name: Europa-Daten nachladen
 
 on:
+  # Läuft von selbst alle 6 Stunden weiter, bis alles da ist; danach endet jeder Lauf nach ~1 Minute
+  # ("alle Tage schon vorhanden"). Wenn alles geladen ist, kann dieser Zeitplan raus.
+  schedule:
+    - cron: "40 */6 * * *"
   workflow_dispatch:
     inputs:
       test:
@@ -61,7 +65,7 @@ jobs:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
-          EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate }}
+          EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate || '400' }}
           EUROPA_MAX_MINUTEN: "290"
           EUROPA_PARALLEL: "4"
         run: |
