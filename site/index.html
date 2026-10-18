@@ -508,6 +508,13 @@
   const mt = (m, gross) => `<span class="nur-gross">${gross}</span><span class="nur-handy">${DREI[m - 1]}</span>`;
   const monatKurz = letzter => { const m = parseInt(letzter.split(".")[1], 10); return mt(m, MONATE_KURZ[m - 1]); };
   // "bis 14. Okt." / "bis 30. Sep." - bei allen Quellen Tag und Monat (Monatswerte: letzter Tag des Monats)
+  // "16.10.2026" -> "16. Okt. 2026", "August 2026" -> "Aug. 2026"
+  const standKurz = s => {
+    const m = String(s).trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (m) return `${parseInt(m[1], 10)}. ${DREI[parseInt(m[2], 10) - 1]} ${m[3]}`;
+    const i = MONATE.findIndex(x => String(s).startsWith(x));
+    return i >= 0 ? String(s).replace(MONATE[i], DREI[i]) : s;
+  };
   const tagKurz = letzter => { const [t, m] = letzter.split("."); return `${parseInt(t, 10)}. ${DREI[parseInt(m, 10) - 1]}`; };
   const bisText = letzter => tagKurz(letzter);
   // Gibt es die gewählte Darstellung bei der Quelle nicht, gilt Balken bzw. Linien (die Wahl bleibt gemerkt)
@@ -857,8 +864,8 @@
           const offen = unvollstaendig(a);
           volleJe.push(offen ? reihen.slice(0, -1) : reihen);
           html += kachel(`${VGL[i][1]} · ${bezeichnung(a.jahr)}`, k(a.abw),
-                         offen ? `bisher · bis ${tagKurz(a.letzter)}`
-                               : `Rang ${a.rang} von ${reihen.length}`,
+                         `${offen ? "bisher " : ""}Rang ${a.rang} von ${reihen.length}` +
+                         (offen ? ` · bis ${tagKurz(a.letzter)}` : ""),
                          a.abw >= 0 ? "warm" : "kalt", a.jahr);
         });
         // Mittel und Spanne im neuesten Zeitraum, den alle Datensätze vollständig haben
@@ -890,7 +897,7 @@
   // ---------- Jahr ----------
   function zeigeJahr({ stand, reihen }) {
     if (!reihen.length) return;
-    document.getElementById("stand").textContent = `Stand: ${stand} · ${Q().takt}`;
+    document.getElementById("stand").textContent = `Stand: ${standKurz(stand)} · ${Q().takt}`;
     const aktuell = reihen[reihen.length - 1];
     const unvollst = !aktuell.letzter.startsWith("31.12.");
     const volle = unvollst ? reihen.slice(0, -1) : reihen;
