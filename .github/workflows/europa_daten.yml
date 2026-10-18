@@ -54,6 +54,7 @@ jobs:
           restore-keys: daten-
 
       - name: Europa-Daten laden
+        timeout-minutes: 300
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           CDSAPI_URL: https://cds.climate.copernicus.eu/api

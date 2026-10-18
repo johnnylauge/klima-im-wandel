@@ -205,6 +205,7 @@ jobs:
       # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
       - name: Europa-Daten laden
         continue-on-error: true
+        timeout-minutes: 30            # hängt der Copernicus-Server, geht der Lauf trotzdem weiter
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
@@ -219,6 +220,7 @@ jobs:
       # Europa-Grafiken: je Bezugszeitraum (1961-1990, 1991-2020) hell und dunkel
       - name: Europa-Grafiken erstellen
         continue-on-error: true
+        timeout-minutes: 60
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           ERA5_REGION: europa
