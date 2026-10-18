@@ -1,4 +1,4 @@
-# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880 und ein Vergleich) und veröffentlicht sie auf GitHub Pages.
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880, ein Vergleich und Europa aus ERA5) und veröffentlicht sie auf GitHub Pages.
 # Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
 
 name: Tägliche Klimagrafik
@@ -200,6 +200,39 @@ jobs:
           VGL_WAHL: alle
           ERA5_DUNKEL: "1"
         run: python skripte/Vergleich_Linien.py
+
+      # Europa (ERA5 aus dem Climate Data Store): fehlende neueste Tage nachladen. Beim allerersten Lauf
+      # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
+      - name: Europa-Daten laden
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          CDSAPI_URL: https://cds.climate.copernicus.eu/api
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+          EUROPA_MAX_MONATE: "6"
+        run: |
+          if [ ! -f _site/daten/ERA5_europa_tag.txt ] && [ -f startdaten/ERA5_europa_tag.txt ]; then
+            cp startdaten/ERA5_europa_tag.txt _site/daten/
+          fi
+          python skripte/ERA5_Europa_Daten.py
+
+      # Europa-Grafiken: je Bezugszeitraum (1961-1990, 1991-2020) hell und dunkel
+      - name: Europa-Grafiken erstellen
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_REGION: europa
+        run: |
+          for bezug in 1961-1990 1991-2020; do
+            for dunkel in 0 1; do
+              export ERA5_BEZUG=$bezug ERA5_DUNKEL=$dunkel
+              python skripte/ERA5_Jahresmittel_Balken.py
+              ERA5_MONATE=alle python skripte/ERA5_Monatsmittel_Balken.py
+              ERA5_JAHRESZEITEN=alle python skripte/ERA5_Jahreszeiten_Balken.py
+              ERA5_PUNKTE=alle python skripte/ERA5_Tageswerte_Punkte.py
+              ERA5_LINIEN=alle python skripte/ERA5_Mittel_Linien.py
+            done
+          done
 
       # Daten-Downloads: ERA5-Tageswerte im einheitlichen Stil und zu jeder TXT eine CSV für Excel
       - name: Daten als TXT und CSV aufbereiten
