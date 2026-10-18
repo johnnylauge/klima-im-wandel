@@ -826,13 +826,15 @@
   const wertText = r => (Q().absolut === false || !isFinite(r.temp) ? k(r.abw) : `${grad(r.temp)} | ${k(r.abw)}`);
   // Erste Kachel: Mitteltemperatur - oder, ohne absolute Werte (HadCRUT5), die Abweichung des
   // vorherigen vollständigen Zeitraums (Vorjahr), damit daneben der aktuelle Wert steht
+  // Steht "bis 16. Okt." in der ersten Kachel? Nur wenn sie die Mitteltemperatur des laufenden Zeitraums zeigt
+  const bisVorn = () => istEuropa() || Q().absolut !== false;
   function ersteKachel(aktuell, volle, titel, zusatz, bezeichnung, anzahl) {
     // Europa, laufender Zeitraum: der bisherige Mittelwert hängt stark von der Jahreszeit ab -> über die
     // bisherige Abweichung aufs ganze Jahr bzw. den ganzen Zeitraum hochrechnen (wie in der Grafik)
     if (istEuropa() && !volle.includes(aktuell) && volle.length) {
       const d = volle.map(r => r.temp - r.abw).sort((a, b) => a - b);
       const median = d.length % 2 ? d[(d.length - 1) / 2] : (d[d.length / 2 - 1] + d[d.length / 2]) / 2;
-      return kachel(titel, "≈ " + grad(aktuell.abw + median), zusatz.replace("noch unvollständig", "hochgerechnet"), "", aktuell.jahr);
+      return kachel(titel, "≈ " + grad(aktuell.abw + median), zusatz + " · hochgerechnet", "", aktuell.jahr);
     }
     if (Q().absolut !== false) return kachel(titel, grad(aktuell.temp), zusatz, "", aktuell.jahr);
     const vorher = [...volle].reverse().find(r => r.jahr < aktuell.jahr);
@@ -905,10 +907,10 @@
     const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
     document.getElementById("kacheln-jahr").innerHTML =
       ersteKachel(aktuell, volle, "Mitteltemperatur " + aktuell.jahr,
-             unvollst ? "laufendes Jahr, noch unvollständig" : "Jahresmittel", j => String(j), reihen.length) +
+             unvollst ? `laufendes Jahr · bis ${bisText(aktuell.letzter)}` : "Jahresmittel", j => String(j), reihen.length) +
       kachel(`Abweichung ${aktuell.jahr}`, k(aktuell.abw),
              `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-             (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
+             (unvollst && !bisVorn() ? ` · bis ${bisText(aktuell.letzter)}` : ""),
              aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
       kachel(`Wärmstes Jahr seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
       kachel(`Kältestes Jahr seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
@@ -971,10 +973,10 @@
         const kaeltest = volle.reduce((a, b) => (b.abw < a.abw ? b : a));
         ziel.innerHTML =
           ersteKachel(aktuell, volle, `Mitteltemperatur ${mt(m, name)} ${aktuell.jahr}`,
-                 unvollst ? "laufender Monat, noch unvollständig" : "Monatsmittel", j => `${mt(m, name)} ${j}`, reihen.length) +
+                 unvollst ? `laufender Monat · bis ${bisText(aktuell.letzter)}` : "Monatsmittel", j => `${mt(m, name)} ${j}`, reihen.length) +
           kachel(`Abweichung ${mt(m, name)} ${aktuell.jahr}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-                 (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
+                 (unvollst && !bisVorn() ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
           kachel(`Wärmster ${mt(m, name)} seit ${reihen[0].jahr}`, String(rekord.jahr), wertText(rekord), "warm", rekord.jahr) +
           kachel(`Kältester ${mt(m, name)} seit ${reihen[0].jahr}`, String(kaeltest.jahr), wertText(kaeltest), "kalt", kaeltest.jahr);
@@ -1037,11 +1039,11 @@
         const rekordJahr = saisonLabel(x, rekord.jahr).split(" ")[1];
         ziel.innerHTML =
           ersteKachel(aktuell, volle, `Mitteltemperatur ${saisonLabel(x, aktuell.jahr)}`,
-                 unvollst ? "laufende Jahreszeit, noch unvollständig" : "Mittel der Jahreszeit",
+                 unvollst ? `laufende Jahreszeit · bis ${bisText(aktuell.letzter)}` : "Mittel der Jahreszeit",
                  j => saisonLabel(x, j), reihen.length) +
           kachel(`Abweichung ${saisonLabel(x, aktuell.jahr)}`, k(aktuell.abw),
                  `${unvollst ? "bisher " : ""}Rang ${aktuell.rang} von ${reihen.length}` +
-                 (unvollst ? ` · bis ${bisText(aktuell.letzter)}` : ""),
+                 (unvollst && !bisVorn() ? ` · bis ${bisText(aktuell.letzter)}` : ""),
                  aktuell.abw >= 0 ? "warm" : "kalt", aktuell.jahr, true) +
           kachel(`Wärmster ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, rekordJahr, wertText(rekord), "warm", rekord.jahr) +
           kachel(`Kältester ${x.name} seit ${saisonLabel(x, reihen[0].jahr).split(" ")[1]}`, saisonLabel(x, kaeltest.jahr).split(" ")[1],
