@@ -256,11 +256,15 @@ def abweichungen():
         print("Keine Tageswerte vorhanden - erst herunterladen.")
         return
     for kurz, (von, bis) in BEZUEGE.items():
-        if reihe.index.min().year > von or reihe.index.max().year < bis:
-            print(f"Bezug {von}-{bis}: Daten noch unvollständig - übersprungen")
+        datei = os.path.join(FOLDER, f"ERA5_europa_tag_{kurz}.txt")
+        soll = len(pd.date_range(f"{von}-01-01", f"{bis}-12-31"))
+        ist = int(((reihe.index.year >= von) & (reihe.index.year <= bis)).sum())
+        if ist < soll:                         # Bezugszeitraum noch nicht vollständig geladen
+            print(f"Bezug {von}-{bis}: erst {ist} von {soll} Tagen vorhanden - noch keine Abweichungen")
+            if os.path.exists(datei):
+                os.remove(datei)               # keine halbfertige Datei für die Grafiken liegen lassen
             continue
         klima = klimamittel(reihe, von, bis)
-        datei = os.path.join(FOLDER, f"ERA5_europa_tag_{kurz}.txt")
         with open(datei, "w", encoding="utf-8") as f:
             f.write(f"# Tagesmitteltemperatur Europa (Landflächen), ERA5; abw = Abweichung zum Mittel {von}-{bis}\n")
             f.write("date,2t,abw\n")
