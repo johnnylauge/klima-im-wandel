@@ -159,7 +159,7 @@ def lade_monat(jahr, monat, tage, gewicht, versuche=3):
 def lade_zeitraum(jahr, monate, tage, gewicht, versuche=3):
     """Lädt die Tagesmittel mehrerer Monate eines Jahres in EINER Anfrage (spart Wartezeit in der
     Warteschlange des CDS) und gibt das Landflächenmittel je Tag zurück (°C). Bei mehreren Monaten
-    werden die Tage 1-31 angefragt; Tage, die es nicht gibt (30. Februar), lässt der CDS weg."""
+    müssen alle gleich viele Tage haben (die Tagesliste gilt für jeden Monat)."""
     monat = monate[0]
     with tempfile.TemporaryDirectory() as tmp:
         ziel = os.path.join(tmp, f"t2m_{jahr}_{monat:02d}_{len(monate)}.nc")
@@ -176,7 +176,7 @@ def lade_zeitraum(jahr, monate, tage, gewicht, versuche=3):
             except Exception as fehler:                       # Warteschlange, Netz, Wartung ...
                 if versuch == versuche:
                     raise
-                print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: Fehler ({str(fehler)[:120]}) - neuer Versuch in 2 Minuten")
+                print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: Fehler ({fehlertext(fehler)[:400]}) - neuer Versuch in 2 Minuten")
                 time.sleep(120)
         ds = oeffne_netcdf(ziel)
         var = list(ds.data_vars)[0]
@@ -203,22 +203,48 @@ def lade_flexibel(jahr, monat, tage, gewicht, neuester):
             print(f"  {jahr}-{monat:02d}: neueste Tage noch nicht verfügbar - ein Tag weniger")
 
 
+def fehlertext(fehler):
+    """Fehlermeldung des CDS mit Begründung (steht oft nur in der Antwort des Servers)."""
+    text = str(fehler)
+    antwort = getattr(fehler, "response", None)
+    if antwort is not None:
+        try:
+            text += " | " + antwort.text[:400]
+        except Exception:
+            pass
+    return text
+
+
+def tage_im_monat(jahr, m):
+    return pd.Period(f"{jahr}-{m:02d}").days_in_month
+
+
 def lade_jahr(jahr, monate, gewicht):
-    """Alle fehlenden Monate eines Jahres in einer Anfrage; klappt das nicht (z. B. Größenlimit
-    des CDS), Monat für Monat nacheinander."""
-    try:
-        return lade_zeitraum(jahr, monate, list(range(1, 32)), gewicht, versuche=2)
-    except Exception as fehler:
-        print(f"  {jahr}: Jahresanfrage nicht möglich ({str(fehler)[:200]}) - lade Monat für Monat")
-        teile = []
-        for m in monate:
+    """Die fehlenden Monate eines Jahres in wenigen Anfragen: Monate gleicher Länge zusammen
+    (31 Tage, 30 Tage, Februar), damit nur gültige Tage angefragt werden. Klappt eine Gruppe
+    nicht, deren Monate einzeln nacheinander."""
+    gruppen = {}
+    for m in monate:
+        gruppen.setdefault(tage_im_monat(jahr, m), []).append(m)
+    teile = []
+    for laenge, ms in sorted(gruppen.items(), reverse=True):
+        try:
+            teile.append(lade_zeitraum(jahr, ms, list(range(1, laenge + 1)), gewicht, versuche=1))
+            continue
+        except Exception as fehler:
+            if len(ms) == 1:
+                print(f"  {jahr}-{ms[0]:02d}: nicht geladen ({fehlertext(fehler)[:600]})")
+                continue
+            print(f"  {jahr} ({len(ms)} Monate mit {laenge} Tagen): Anfrage nicht möglich "
+                  f"({fehlertext(fehler)[:600]}) - lade sie einzeln")
+        for m in ms:
             try:
-                teile.append(lade_monat(jahr, m, list(range(1, 32)), gewicht))
+                teile.append(lade_monat(jahr, m, list(range(1, laenge + 1)), gewicht))
             except Exception as f2:
-                print(f"  {jahr}-{m:02d}: nicht geladen ({str(f2)[:200]})")
-        if not teile:
-            raise
-        return pd.concat(teile)
+                print(f"  {jahr}-{m:02d}: nicht geladen ({fehlertext(f2)[:600]})")
+    if not teile:
+        raise RuntimeError(f"{jahr}: nichts geladen")
+    return pd.concat(teile)
 
 
 # =========================================================
