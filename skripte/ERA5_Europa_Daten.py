@@ -4,8 +4,8 @@ ERA5-Tagesmitteltemperatur für Europa (Landflächen) aus dem Copernicus Climate
 Ablauf:
   1. Lädt einmalig die Land-See-Maske von ERA5 für das Europa-Gebiet von C3S
      (34-72° N, 25° W-40° E) und merkt sie sich (ERA5_europa_lsm.nc).
-  2. Lädt die Tagesmittel der 2-m-Temperatur ("ERA5 post-processed daily statistics") Monat für
-     Monat und mittelt sie flächengewichtet über die Landflächen (Gitterpunkte mit mindestens 50 %
+  2. Lädt die Tagesmittel der 2-m-Temperatur ("ERA5 post-processed daily statistics") Jahr für
+     Jahr (die neuesten Monate einzeln) und mittelt sie flächengewichtet über die Landflächen (Gitterpunkte mit mindestens 50 %
      Land, Gewicht cos(Breite)). Die großen Gitterdateien werden danach gleich wieder gelöscht,
      gespeichert wird nur ein Wert pro Tag: ERA5_europa_tag.txt (Datum, °C).
      Schon vorhandene Tage werden nicht noch einmal geladen - das Skript kann jederzeit
@@ -34,10 +34,11 @@ Umgebungsvariablen:
   ERA5_FOLDER          Datenordner (auf GitHub der Datenordner der Webseite)
   EUROPA_MAX_MONATE    höchstens so viele Monate pro Lauf laden (Standard: alle); die neuesten
                        Monate (siehe EUROPA_AUFFRISCHEN) kommen immer dazu, sonst wird von 1940 an aufgefüllt
-  EUROPA_MAX_MINUTEN   nach so vielen Minuten keine neuen Monate mehr anfangen (für GitHub)
+  EUROPA_MAX_MINUTEN   nach so vielen Minuten aufhören, laufende Anfragen nicht abwarten (für GitHub)
   EUROPA_AUFFRISCHEN   so viele Monate vor dem aktuellen bei jedem Lauf neu laden (Standard 3),
                        weil ERA5 dort erst vorläufig ist und später durch endgültige Werte ersetzt wird
   EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 3)
+  EUROPA_TEIL          "alles" (Standard), "alt" (nur ab 1940 auffüllen) oder "neu" (nur die neuesten Monate)
   EUROPA_OHNE_DOWNLOAD=1  nichts laden, nur die Abweichungen neu berechnen
   EUROPA_ZUSATZ        weitere ERA5_europa_tag.txt (z. B. aus dem Nachlade-Lauf), wird zuerst eingemischt
 """
@@ -47,7 +48,8 @@ import time
 import zipfile
 import tempfile
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 import numpy as np
 import pandas as pd
@@ -71,6 +73,8 @@ PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "3"))
 MAX_MINUTEN = float(os.environ.get("EUROPA_MAX_MINUTEN", "0")) or None
 AUFFRISCHEN = int(os.environ.get("EUROPA_AUFFRISCHEN", "3"))   # so viele Monate vor dem aktuellen jedes Mal neu laden
 OHNE_DOWNLOAD = os.environ.get("EUROPA_OHNE_DOWNLOAD") == "1"
+# "alles" (Standard), "alt" = nur Lücken ab 1940 auffüllen, "neu" = nur die neuesten Monate
+TEIL = os.environ.get("EUROPA_TEIL", "alles").strip().lower()
 
 DATENSATZ = "derived-era5-single-levels-daily-statistics"
 os.makedirs(FOLDER, exist_ok=True)
@@ -149,11 +153,19 @@ def schreibe_tage(reihe):
 
 def lade_monat(jahr, monat, tage, gewicht, versuche=3):
     """Lädt die Tagesmittel eines Monats und gibt das Landflächenmittel je Tag zurück (°C)."""
+    return lade_zeitraum(jahr, [monat], tage, gewicht, versuche)
+
+
+def lade_zeitraum(jahr, monate, tage, gewicht, versuche=3):
+    """Lädt die Tagesmittel mehrerer Monate eines Jahres in EINER Anfrage (spart Wartezeit in der
+    Warteschlange des CDS) und gibt das Landflächenmittel je Tag zurück (°C). Bei mehreren Monaten
+    werden die Tage 1-31 angefragt; Tage, die es nicht gibt (30. Februar), lässt der CDS weg."""
+    monat = monate[0]
     with tempfile.TemporaryDirectory() as tmp:
-        ziel = os.path.join(tmp, f"t2m_{jahr}_{monat:02d}.nc")
+        ziel = os.path.join(tmp, f"t2m_{jahr}_{monat:02d}_{len(monate)}.nc")
         anfrage = {
             "product_type": "reanalysis", "variable": ["2m_temperature"],
-            "year": str(jahr), "month": [f"{monat:02d}"], "day": [f"{t:02d}" for t in tage],
+            "year": str(jahr), "month": [f"{m:02d}" for m in monate], "day": [f"{t:02d}" for t in tage],
             "daily_statistic": "daily_mean", "time_zone": "utc+00:00", "frequency": FREQUENZ,
             "area": GEBIET,
         }
@@ -164,7 +176,7 @@ def lade_monat(jahr, monat, tage, gewicht, versuche=3):
             except Exception as fehler:                       # Warteschlange, Netz, Wartung ...
                 if versuch == versuche:
                     raise
-                print(f"  {jahr}-{monat:02d}: Fehler ({str(fehler)[:120]}) - neuer Versuch in 2 Minuten")
+                print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: Fehler ({str(fehler)[:120]}) - neuer Versuch in 2 Minuten")
                 time.sleep(120)
         ds = oeffne_netcdf(ziel)
         var = list(ds.data_vars)[0]
@@ -191,6 +203,24 @@ def lade_flexibel(jahr, monat, tage, gewicht, neuester):
             print(f"  {jahr}-{monat:02d}: neueste Tage noch nicht verfügbar - ein Tag weniger")
 
 
+def lade_jahr(jahr, monate, gewicht):
+    """Alle fehlenden Monate eines Jahres in einer Anfrage; klappt das nicht (z. B. Größenlimit
+    des CDS), Monat für Monat nacheinander."""
+    try:
+        return lade_zeitraum(jahr, monate, list(range(1, 32)), gewicht, versuche=2)
+    except Exception as fehler:
+        print(f"  {jahr}: Jahresanfrage nicht möglich ({str(fehler)[:200]}) - lade Monat für Monat")
+        teile = []
+        for m in monate:
+            try:
+                teile.append(lade_monat(jahr, m, list(range(1, 32)), gewicht))
+            except Exception as f2:
+                print(f"  {jahr}-{m:02d}: nicht geladen ({str(f2)[:200]})")
+        if not teile:
+            raise
+        return pd.concat(teile)
+
+
 # =========================================================
 # 1.+2. DOWNLOAD (nur fehlende Tage)
 # =========================================================
@@ -201,50 +231,79 @@ def herunterladen():
     # Die neuesten Monate jedes Mal komplett neu laden: ERA5 ist dort erst vorläufig (ERA5T) und wird
     # nach etwa 2-3 Monaten durch die endgültigen Werte ersetzt - neue Werte überschreiben die alten
     neu_laden = monate[-(AUFFRISCHEN + 1):] if AUFFRISCHEN else monate[-1:]
-    auftraege = []
+    # Ältere Zeiträume: alle fehlenden Monate eines Jahres in EINER Anfrage. Der CDS bearbeitet
+    # Anfragen nacheinander aus einer Warteschlange - je Anfrage wartet man oft viele Minuten,
+    # egal wie groß sie ist. Ein Jahr auf einmal ist deshalb etwa zehnmal schneller als 12 Monate.
+    jahre = {}
     for monat_start in monate:
         if monat_start in neu_laden:
             continue
         ende = monat_start + pd.offsets.MonthEnd(0)
-        fehlend = [d for d in pd.date_range(monat_start, ende) if d not in vorhanden.index]
-        if fehlend:
-            auftraege.append((monat_start.year, monat_start.month, [d.day for d in fehlend]))
-    if MAX_MONATE and len(auftraege) > MAX_MONATE:
-        auftraege = auftraege[:MAX_MONATE]                 # die ältesten fehlenden zuerst (ab 1940)
-    for monat_start in neu_laden:                         # neueste Monate immer dazu
+        if any(d not in vorhanden.index for d in pd.date_range(monat_start, ende)):
+            jahre.setdefault(monat_start.year, []).append(monat_start.month)
+    auftraege, anzahl_monate = [], 0
+    if TEIL == "neu":
+        jahre = {}
+    if TEIL == "alt":
+        neu_laden = []
+    for jahr, ms in sorted(jahre.items()):               # die ältesten fehlenden zuerst (ab 1940)
+        if MAX_MONATE and anzahl_monate >= MAX_MONATE:
+            break
+        auftraege.append(("jahr", jahr, ms, None))
+        anzahl_monate += len(ms)
+    for monat_start in neu_laden:                         # neueste Monate immer dazu, einzeln
         ende = min(monat_start + pd.offsets.MonthEnd(0), letzter_tag)
         tage = list(pd.date_range(monat_start, ende))
         if AUFFRISCHEN or any(d not in vorhanden.index for d in tage):
-            auftraege.append((monat_start.year, monat_start.month, [d.day for d in tage]))
+            auftraege.append(("monat", monat_start.year, [monat_start.month], [d.day for d in tage]))
+            anzahl_monate += 1
     if not auftraege:
         print("Europa: alle Tage bis", f"{letzter_tag:%d.%m.%Y}", "sind schon vorhanden.")
-        return
-    print(f"Europa: {len(auftraege)} Monat(e) zu laden, {PARALLEL} Anfragen gleichzeitig ...")
+        return False
+    print(f"Europa: {anzahl_monate} Monat(e) in {len(auftraege)} Anfragen zu laden, "
+          f"{PARALLEL} Anfragen gleichzeitig ...")
     gewicht = lade_maske()
     reihe = vorhanden.copy()
     fertig = 0
     beginn = time.time()
-    with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
-        neuester = auftraege[-1][:2]
-        zukunft = {pool.submit(lade_flexibel, j, m, t, gewicht, (j, m) == neuester): (j, m)
-                   for j, m, t in auftraege}
-        for z in as_completed(zukunft):
-            if MAX_MINUTEN and time.time() - beginn > MAX_MINUTEN * 60:
-                offen = sum(f.cancel() for f in zukunft)          # noch nicht begonnene Monate auslassen
-                print(f"Zeitlimit erreicht - {offen} Monat(e) beim nächsten Lauf")
-                break
-            j, m = zukunft[z]
+    pool = ThreadPoolExecutor(max_workers=PARALLEL)
+    neuester = auftraege[-1]
+    zukunft = {}
+    for a in auftraege:
+        art, j, ms, t = a
+        if art == "jahr":
+            zukunft[pool.submit(lade_jahr, j, ms, gewicht)] = a
+        else:
+            zukunft[pool.submit(lade_flexibel, j, ms[0], t, gewicht, a is neuester)] = a
+    offen = set(zukunft)
+    abgebrochen = False
+    while offen:
+        erledigt, offen = wait(offen, timeout=60, return_when=FIRST_COMPLETED)
+        for z in erledigt:
+            art, j, ms, _ = zukunft[z]
+            name = f"{j}" + (f" ({len(ms)} Monate)" if art == "jahr" else f"-{ms[0]:02d}")
             try:
                 werte = z.result()
             except Exception as fehler:
                 # neueste Tage oft noch nicht verfügbar -> beim nächsten Lauf erneut
-                print(f"  {j}-{m:02d}: nicht geladen ({type(fehler).__name__}: {str(fehler)[:600]})")
+                print(f"  {name}: nicht geladen ({type(fehler).__name__}: {str(fehler)[:600]})")
                 continue
             with SCHLOSS:
                 reihe = pd.concat([reihe, werte])
-                schreibe_tage(reihe)                       # nach jedem Monat sichern
+                schreibe_tage(reihe)                       # nach jeder Anfrage sichern
                 fertig += 1
-            print(f"  {j}-{m:02d}: {len(werte)} Tage  ({fertig}/{len(auftraege)})")
+            vorhanden_tage = len(reihe[~reihe.index.duplicated()])
+            print(f"  {name}: {len(werte)} Tage  ({fertig}/{len(auftraege)} Anfragen, "
+                  f"{(time.time() - beginn) / 60:.0f} min, insgesamt {vorhanden_tage} Tage)")
+        if MAX_MINUTEN and offen and time.time() - beginn > MAX_MINUTEN * 60:
+            # nicht auf laufende Anfragen warten - sie können im CDS noch Stunden in der Schlange stehen
+            nicht_begonnen = sum(f.cancel() for f in offen)
+            print(f"Zeitlimit erreicht - {len(offen)} Anfrage(n) offen ({nicht_begonnen} noch nicht begonnen), "
+                  "weiter beim nächsten Lauf")
+            abgebrochen = True
+            break
+    pool.shutdown(wait=not abgebrochen, cancel_futures=True)
+    return abgebrochen
 
 
 # =========================================================
@@ -298,10 +357,15 @@ if ZUSATZ and os.path.exists(ZUSATZ) and os.path.abspath(ZUSATZ) != os.path.absp
         schreibe_tage(zusammen)
         print(f"Aus {ZUSATZ} übernommen: {len(zusammen) - len(alt)} Tage")
 
+abgebrochen = False
 if not OHNE_DOWNLOAD:
     try:
-        herunterladen()
+        abgebrochen = herunterladen()
     except Exception as fehler:      # z. B. CDS nicht erreichbar oder kein Schlüssel: mit den vorhandenen Tagen weiter
         print(f"Download nicht möglich: {type(fehler).__name__}: {str(fehler)[:1500]}")
         print("Rechne mit den vorhandenen Tageswerten weiter.")
 abweichungen()
+if abgebrochen:
+    # noch laufende Anfragen nicht abwarten (Python würde sonst beim Beenden auf sie warten)
+    sys.stdout.flush()
+    os._exit(0)
