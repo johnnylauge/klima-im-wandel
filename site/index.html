@@ -508,12 +508,14 @@
   const mt = (m, gross) => `<span class="nur-gross">${gross}</span><span class="nur-handy">${DREI[m - 1]}</span>`;
   const monatKurz = letzter => { const m = parseInt(letzter.split(".")[1], 10); return mt(m, MONATE_KURZ[m - 1]); };
   // "bis 14. Okt." / "bis 30. Sep." - bei allen Quellen Tag und Monat (Monatswerte: letzter Tag des Monats)
-  // "16.10.2026" -> "16. Okt. 2026", "August 2026" -> "Aug. 2026"
+  // "16.10.2026" -> "16. Okt. 2026", "August 2026" -> "31. Aug. 2026" (Monatswerte: letzter Tag des Monats)
   const standKurz = s => {
     const m = String(s).trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
     if (m) return `${parseInt(m[1], 10)}. ${DREI[parseInt(m[2], 10) - 1]} ${m[3]}`;
-    const i = MONATE.findIndex(x => String(s).startsWith(x));
-    return i >= 0 ? String(s).replace(MONATE[i], DREI[i]) : s;
+    const mm = String(s).trim().match(/^(\S+)\s+(\d{4})$/);
+    const i = mm ? MONATE.indexOf(mm[1]) : -1;
+    if (i >= 0) return `${new Date(+mm[2], i + 1, 0).getDate()}. ${DREI[i]} ${mm[2]}`;
+    return s;
   };
   const tagKurz = letzter => { const [t, m] = letzter.split("."); return `${parseInt(t, 10)}. ${DREI[parseInt(m, 10) - 1]}`; };
   const bisText = letzter => tagKurz(letzter);
