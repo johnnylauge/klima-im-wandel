@@ -33,8 +33,10 @@ Voraussetzungen:
 Umgebungsvariablen:
   ERA5_FOLDER          Datenordner (auf GitHub der Datenordner der Webseite)
   EUROPA_MAX_MONATE    höchstens so viele Monate pro Lauf laden (Standard: alle); die neuesten
-                       zwei Monate kommen immer dazu, sonst wird von 1940 an aufgefüllt
+                       Monate (siehe EUROPA_AUFFRISCHEN) kommen immer dazu, sonst wird von 1940 an aufgefüllt
   EUROPA_MAX_MINUTEN   nach so vielen Minuten keine neuen Monate mehr anfangen (für GitHub)
+  EUROPA_AUFFRISCHEN   so viele Monate vor dem aktuellen bei jedem Lauf neu laden (Standard 3),
+                       weil ERA5 dort erst vorläufig ist und später durch endgültige Werte ersetzt wird
   EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 3)
   EUROPA_OHNE_DOWNLOAD=1  nichts laden, nur die Abweichungen neu berechnen
   EUROPA_ZUSATZ        weitere ERA5_europa_tag.txt (z. B. aus dem Nachlade-Lauf), wird zuerst eingemischt
@@ -67,6 +69,7 @@ MASKE_DATEI = os.path.join(FOLDER, "ERA5_europa_lsm.nc")
 MAX_MONATE = int(os.environ.get("EUROPA_MAX_MONATE", "0")) or None
 PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "3"))
 MAX_MINUTEN = float(os.environ.get("EUROPA_MAX_MINUTEN", "0")) or None
+AUFFRISCHEN = int(os.environ.get("EUROPA_AUFFRISCHEN", "3"))   # so viele Monate vor dem aktuellen jedes Mal neu laden
 OHNE_DOWNLOAD = os.environ.get("EUROPA_OHNE_DOWNLOAD") == "1"
 
 DATENSATZ = "derived-era5-single-levels-daily-statistics"
@@ -194,15 +197,25 @@ def lade_flexibel(jahr, monat, tage, gewicht, neuester):
 def herunterladen():
     vorhanden = lies_tage()
     letzter_tag = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=LATENZ_TAGE)
+    monate = list(pd.date_range(f"{START_JAHR}-01-01", letzter_tag, freq="MS"))
+    # Die neuesten Monate jedes Mal komplett neu laden: ERA5 ist dort erst vorläufig (ERA5T) und wird
+    # nach etwa 2-3 Monaten durch die endgültigen Werte ersetzt - neue Werte überschreiben die alten
+    neu_laden = monate[-(AUFFRISCHEN + 1):] if AUFFRISCHEN else monate[-1:]
     auftraege = []
-    for monat_start in pd.date_range(f"{START_JAHR}-01-01", letzter_tag, freq="MS"):
-        ende = min(monat_start + pd.offsets.MonthEnd(0), letzter_tag)
+    for monat_start in monate:
+        if monat_start in neu_laden:
+            continue
+        ende = monat_start + pd.offsets.MonthEnd(0)
         fehlend = [d for d in pd.date_range(monat_start, ende) if d not in vorhanden.index]
         if fehlend:
             auftraege.append((monat_start.year, monat_start.month, [d.day for d in fehlend]))
     if MAX_MONATE and len(auftraege) > MAX_MONATE:
-        # die neuesten zwei Monate immer, dazu die ältesten fehlenden (so füllt sich die Reihe von 1940 an)
-        auftraege = auftraege[:max(MAX_MONATE - 2, 0)] + auftraege[-2:]
+        auftraege = auftraege[:MAX_MONATE]                 # die ältesten fehlenden zuerst (ab 1940)
+    for monat_start in neu_laden:                         # neueste Monate immer dazu
+        ende = min(monat_start + pd.offsets.MonthEnd(0), letzter_tag)
+        tage = list(pd.date_range(monat_start, ende))
+        if AUFFRISCHEN or any(d not in vorhanden.index for d in tage):
+            auftraege.append((monat_start.year, monat_start.month, [d.day for d in tage]))
     if not auftraege:
         print("Europa: alle Tage bis", f"{letzter_tag:%d.%m.%Y}", "sind schon vorhanden.")
         return
