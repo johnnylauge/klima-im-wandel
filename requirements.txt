@@ -2,3 +2,6 @@ requests
 numpy
 pandas
 matplotlib
+cdsapi
+xarray
+netCDF4
