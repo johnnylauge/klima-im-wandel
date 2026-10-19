@@ -37,7 +37,9 @@ Umgebungsvariablen:
   EUROPA_MAX_MINUTEN   nach so vielen Minuten aufhören, laufende Anfragen nicht abwarten (für GitHub)
   EUROPA_AUFFRISCHEN   so viele Monate vor dem aktuellen bei jedem Lauf neu laden (Standard 3),
                        weil ERA5 dort erst vorläufig ist und später durch endgültige Werte ersetzt wird
-  EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 2; der CDS begrenzt die Warteschlange)
+  EUROPA_PARALLEL      gleichzeitige Anfragen an den CDS (Standard 1; der CDS begrenzt die Warteschlange)
+  EUROPA_MAX_OFFEN     so viele Anfragen gleichzeitig beim CDS (Standard 6); noch wartende werden in
+                       ERA5_europa_offen.json gemerkt und beim nächsten Lauf abgeholt
   EUROPA_TEIL          "alles" (Standard), "alt" (nur ab 1940 auffüllen) oder "neu" (nur die neuesten Monate)
   EUROPA_OHNE_DOWNLOAD=1  nichts laden, nur die Abweichungen neu berechnen
   EUROPA_ZUSATZ        weitere ERA5_europa_tag.txt (z. B. aus dem Nachlade-Lauf), wird zuerst eingemischt
@@ -49,6 +51,7 @@ import zipfile
 import tempfile
 import threading
 import sys
+import json
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 import numpy as np
@@ -69,7 +72,7 @@ FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ER
 TAGE_DATEI = os.path.join(FOLDER, "ERA5_europa_tag.txt")
 MASKE_DATEI = os.path.join(FOLDER, "ERA5_europa_lsm.nc")
 MAX_MONATE = int(os.environ.get("EUROPA_MAX_MONATE", "0")) or None
-PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "2"))
+PARALLEL = int(os.environ.get("EUROPA_PARALLEL", "1"))
 MAX_MINUTEN = float(os.environ.get("EUROPA_MAX_MINUTEN", "0")) or None
 AUFFRISCHEN = int(os.environ.get("EUROPA_AUFFRISCHEN", "3"))   # so viele Monate vor dem aktuellen jedes Mal neu laden
 OHNE_DOWNLOAD = os.environ.get("EUROPA_OHNE_DOWNLOAD") == "1"
@@ -190,15 +193,20 @@ def lade_zeitraum(jahr, monate, tage, gewicht, versuche=3):
                     raise
                 print(f"  {jahr}-{monat:02d}{'+' if len(monate) > 1 else ''}: Fehler ({fehlertext(fehler)[:400]}) - neuer Versuch in 2 Minuten")
                 time.sleep(120)
-        ds = oeffne_netcdf(ziel)
-        var = list(ds.data_vars)[0]
-        zeit, breite, laenge = koordinaten(ds)
-        feld = ds[var]
-        g = gewicht.reindex_like(feld.isel({zeit: 0}), method="nearest", tolerance=1e-3).fillna(0)
-        mittel = (feld * g).sum((breite, laenge)) / (g * feld.notnull()).sum((breite, laenge))
-        werte = mittel.to_series() - 273.15
-        werte.index = pd.to_datetime(werte.index).normalize()
-        return werte.dropna()
+        return auswerten(ziel, gewicht)
+
+
+def auswerten(ziel, gewicht):
+    """Landflächenmittel je Tag (°C) aus einer heruntergeladenen Datei."""
+    ds = oeffne_netcdf(ziel)
+    var = list(ds.data_vars)[0]
+    zeit, breite, laenge = koordinaten(ds)
+    feld = ds[var]
+    g = gewicht.reindex_like(feld.isel({zeit: 0}), method="nearest", tolerance=1e-3).fillna(0)
+    mittel = (feld * g).sum((breite, laenge)) / (g * feld.notnull()).sum((breite, laenge))
+    werte = mittel.to_series() - 273.15
+    werte.index = pd.to_datetime(werte.index).normalize()
+    return werte.dropna()
 
 
 def lade_flexibel(jahr, monat, tage, gewicht, neuester):
@@ -386,6 +394,210 @@ def abweichungen():
         print(f"Abweichungen zu {von}-{bis} gespeichert unter:\n{datei}")
 
 
+# =========================================================
+# 1.+2. DOWNLOAD MIT MERKZETTEL (Anfragen abschicken, später abholen)
+# =========================================================
+# Der CDS ist oft stark ausgelastet: Anfragen warten dann viele Stunden in der Schlange - länger als
+# ein Lauf auf GitHub dauern darf. Deshalb werden Anfragen nur abgeschickt und ihre Nummern in
+# ERA5_europa_offen.json gemerkt. Jeder Lauf schaut nach, welche fertig sind, holt sie ab und schickt
+# neue nach. So geht kein Platz in der Warteschlange verloren, wenn ein Lauf endet.
+OFFEN_DATEI = os.path.join(FOLDER, "ERA5_europa_offen.json")
+MAX_OFFEN = int(os.environ.get("EUROPA_MAX_OFFEN", "6"))     # so viele Anfragen gleichzeitig beim CDS
+JE_ANFRAGE = os.environ.get("EUROPA_JE_ANFRAGE", "monat").strip().lower()   # "monat" oder "jahr"
+
+
+def asynchron_client():
+    """Client, der Anfragen abschicken und später abholen kann (gehört zu cdsapi dazu)."""
+    url = os.environ.get("CDSAPI_URL", "https://cds.climate.copernicus.eu/api")
+    key = os.environ.get("CDSAPI_KEY")
+    if not key:
+        rc = os.path.expanduser("~/.cdsapirc")
+        if os.path.exists(rc):
+            for z in open(rc, encoding="utf-8"):
+                if z.strip().startswith("key:"):
+                    key = z.split(":", 1)[1].strip()
+                elif z.strip().startswith("url:"):
+                    url = z.split(":", 1)[1].strip()
+    for modul, klasse in (("ecmwf.datastores", "Client"), ("datapi", "ApiClient"), ("cads_api_client", "ApiClient")):
+        try:
+            mod = __import__(modul, fromlist=[klasse])
+            return getattr(mod, klasse)(url=url, key=key)
+        except Exception:
+            continue
+    return None
+
+
+def anfrage_fuer(a):
+    return {
+        "product_type": "reanalysis", "variable": ["2m_temperature"],
+        "year": str(a["jahr"]), "month": [f"{m:02d}" for m in a["monate"]],
+        "day": [f"{t:02d}" for t in a["tage"]],
+        "daily_statistic": "daily_mean", "time_zone": "utc+00:00", "frequency": FREQUENZ,
+        "area": GEBIET,
+    }
+
+
+def name_von(a):
+    return f"{a['jahr']}-{a['monate'][0]:02d}" if len(a["monate"]) == 1 else f"{a['jahr']} ({len(a['monate'])} Monate)"
+
+
+def schluessel(a):
+    return f"{a['jahr']}:{','.join(str(m) for m in a['monate'])}"
+
+
+def auftraege_bauen(vorhanden):
+    """Was fehlt? Ältere Jahre: alle fehlenden Monate eines Jahres in einer Anfrage (Tage 1-31,
+    zusammenhängend - der CDS ist bei zusammenhängenden Tagen deutlich schneller). Neueste Monate
+    (vorläufige ERA5T-Werte) einzeln und jedes Mal neu."""
+    letzter_tag = pd.Timestamp.now("UTC").tz_localize(None).normalize() - pd.Timedelta(days=LATENZ_TAGE)
+    monate = list(pd.date_range(f"{START_JAHR}-01-01", letzter_tag, freq="MS"))
+    neu_laden = monate[-(AUFFRISCHEN + 1):] if AUFFRISCHEN else monate[-1:]
+    jahre = {}
+    for monat_start in monate:
+        if monat_start in neu_laden:
+            continue
+        ende = monat_start + pd.offsets.MonthEnd(0)
+        if any(d not in vorhanden.index for d in pd.date_range(monat_start, ende)):
+            jahre.setdefault(monat_start.year, []).append(monat_start.month)
+    if TEIL == "neu":
+        jahre = {}
+    if TEIL == "alt":
+        neu_laden = []
+    auftraege, anzahl = [], 0
+    for jahr, ms in sorted(jahre.items()):               # die ältesten fehlenden zuerst (ab 1940)
+        if MAX_MONATE and anzahl >= MAX_MONATE:
+            break
+        if JE_ANFRAGE == "jahr":
+            auftraege.append(dict(jahr=jahr, monate=ms, tage=list(range(1, 32))))
+        else:
+            # je Monat eine Anfrage: Anfragen über mehr als einen Monat zählen beim CDS als "groß"
+            # und haben eine eigene, viel vollere Warteschlange
+            auftraege += [dict(jahr=jahr, monate=[m],
+                               tage=list(range(1, pd.Period(f"{jahr}-{m:02d}").days_in_month + 1))) for m in ms]
+        anzahl += len(ms)
+    for monat_start in neu_laden:
+        ende = min(monat_start + pd.offsets.MonthEnd(0), letzter_tag)
+        tage = [d.day for d in pd.date_range(monat_start, ende)]
+        auftraege.append(dict(jahr=monat_start.year, monate=[monat_start.month], tage=tage, neu=True))
+    return auftraege, letzter_tag
+
+
+def lies_offen():
+    try:
+        with open(OFFEN_DATEI, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def schreibe_offen(offen):
+    with open(OFFEN_DATEI, "w", encoding="utf-8") as f:
+        json.dump(offen, f, indent=1)
+
+
+def herunterladen_merkzettel(cl):
+    vorhanden = lies_tage()
+    auftraege, letzter_tag = auftraege_bauen(vorhanden)
+    gemerkt = lies_offen()
+    offen = [a for a in gemerkt if a.get("id")]
+    # Monate abgelehnter Jahresanfragen, die einzeln geladen werden sollen (ohne Nummer gemerkt)
+    einzeln = [a for a in gemerkt if not a.get("id")]
+    geteilt = {a["jahr"] for a in einzeln}
+    auftraege = einzeln + [a for a in auftraege if a.get("neu") or a["jahr"] not in geteilt]
+    if not auftraege and not offen:
+        print("Europa: alle Tage bis", f"{letzter_tag:%d.%m.%Y}", "sind schon vorhanden.")
+        return
+    print(f"Europa: {len(auftraege)} Anfrage(n) nötig, {len(offen)} vom letzten Lauf noch beim CDS; "
+          f"höchstens {MAX_OFFEN} gleichzeitig")
+    gewicht = None
+    reihe = vorhanden.copy()
+    beginn = time.time()
+    pause_bis = 0
+    letzte_meldung = 0
+    erledigt = set()                                         # in diesem Lauf schon abgeholt
+    while True:
+        # 1. abgeschickte Anfragen prüfen und fertige abholen
+        bleibt = []
+        for a in offen:
+            try:
+                remote = cl.get_remote(a["id"])
+                status = remote.status
+            except Exception as fehler:
+                print(f"  {name_von(a)}: Status nicht abrufbar ({fehlertext(fehler)[:300]})")
+                if "not found" in fehlertext(fehler).lower() or "404" in fehlertext(fehler):
+                    continue                                 # beim CDS gelöscht -> neu abschicken
+                bleibt.append(a)
+                continue
+            if status == "successful":
+                try:
+                    if gewicht is None:
+                        gewicht = lade_maske()
+                    with tempfile.TemporaryDirectory() as tmp:
+                        ziel = remote.download(os.path.join(tmp, "daten.nc")) or os.path.join(tmp, "daten.nc")
+                        werte = auswerten(ziel, gewicht)
+                    reihe = pd.concat([reihe, werte])
+                    schreibe_tage(reihe)
+                    erledigt.add(schluessel(a))
+                    gesamt = len(reihe[~reihe.index.duplicated()])
+                    print(f"  {name_von(a)}: {len(werte)} Tage  ({(time.time() - beginn) / 60:.0f} min, "
+                          f"insgesamt {gesamt} Tage)")
+                except Exception as fehler:
+                    print(f"  {name_von(a)}: Abholen fehlgeschlagen ({fehlertext(fehler)[:400]})")
+                    bleibt.append(a)
+            elif status in ("failed", "rejected", "dismissed", "deleted"):
+                grund = ""
+                try:
+                    grund = str(getattr(remote, "json", "") or "")[:300]
+                except Exception:
+                    pass
+                print(f"  {name_von(a)}: vom CDS abgelehnt ({status}) {grund}")
+                if status == "rejected" or "limited" in grund:
+                    pause_bis = time.time() + 600                # Schlange voll: 10 min nichts Neues schicken
+                elif len(a["monate"]) > 1:
+                    # z. B. ungültige Tage: Monate einzeln mit gültigen Tagen nachschieben
+                    auftraege[:0] = [dict(jahr=a["jahr"], monate=[m], einzeln=True,
+                                          tage=list(range(1, pd.Period(f"{a['jahr']}-{m:02d}").days_in_month + 1)))
+                                     for m in a["monate"]]
+            else:
+                bleibt.append(a)                             # accepted / running: weiter warten
+        offen = bleibt
+        # 2. neue Anfragen abschicken, solange Platz ist
+        laufend = {schluessel(a) for a in offen}
+        auftraege = [a for a in auftraege if schluessel(a) not in laufend and schluessel(a) not in erledigt]
+        if time.time() >= pause_bis:
+            while auftraege and len(offen) < MAX_OFFEN:
+                a = auftraege.pop(0)
+                if not a.get("neu"):
+                    # schon vorhanden (z. B. gerade abgeholt)?
+                    tage = [d for m in a["monate"] for d in pd.date_range(
+                        f"{a['jahr']}-{m:02d}-01", pd.Timestamp(f"{a['jahr']}-{m:02d}-01") + pd.offsets.MonthEnd(0))]
+                    if all(d in reihe.index for d in tage):
+                        continue
+                try:
+                    remote = cl.submit(DATENSATZ, anfrage_fuer(a))
+                    a["id"] = remote.request_id
+                    offen.append(a)
+                    print(f"  {name_von(a)}: abgeschickt")
+                except Exception as fehler:
+                    print(f"  {name_von(a)}: nicht abgeschickt ({fehlertext(fehler)[:300]})")
+                    auftraege.insert(0, a)
+                    pause_bis = time.time() + 600
+                    break
+        # merken: abgeschickte Anfragen und schon aufgeteilte Monate
+        schreibe_offen(offen + [a for a in auftraege if a.get("einzeln")])
+        if not offen and not auftraege:
+            print("Europa: alles geladen.")
+            return
+        if MAX_MINUTEN and time.time() - beginn > MAX_MINUTEN * 60:
+            print(f"Zeitlimit erreicht - {len(offen)} Anfrage(n) warten beim CDS, {len(auftraege)} noch nicht "
+                  "abgeschickt; der nächste Lauf holt sie ab")
+            return
+        if time.time() - letzte_meldung > 1800:              # alle 30 min ein Lebenszeichen
+            print(f"  ... {len(offen)} Anfrage(n) warten beim CDS ({(time.time() - beginn) / 60:.0f} min)")
+            letzte_meldung = time.time()
+        time.sleep(60)
+
+
 # Tage aus einer zweiten Datei übernehmen (der Nachlade-Lauf speichert seinen Stand getrennt)
 ZUSATZ = os.environ.get("EUROPA_ZUSATZ", "")
 if ZUSATZ and os.path.exists(ZUSATZ) and os.path.abspath(ZUSATZ) != os.path.abspath(TAGE_DATEI):
@@ -400,7 +612,12 @@ if ZUSATZ and os.path.exists(ZUSATZ) and os.path.abspath(ZUSATZ) != os.path.absp
 abgebrochen = False
 if not OHNE_DOWNLOAD:
     try:
-        abgebrochen = herunterladen()
+        cl = asynchron_client()
+        if cl is not None:
+            herunterladen_merkzettel(cl)
+        else:                        # alter Weg: warten, bis jede Anfrage fertig ist
+            print("Hinweis: kein Client zum späteren Abholen gefunden - lade blockierend")
+            abgebrochen = herunterladen()
     except Exception as fehler:      # z. B. CDS nicht erreichbar oder kein Schlüssel: mit den vorhandenen Tagen weiter
         print(f"Download nicht möglich: {type(fehler).__name__}: {str(fehler)[:1500]}")
         print("Rechne mit den vorhandenen Tageswerten weiter.")
