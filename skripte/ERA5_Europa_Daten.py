@@ -508,13 +508,17 @@ def herunterladen_merkzettel(cl):
         print("Europa: alle Tage bis", f"{letzter_tag:%d.%m.%Y}", "sind schon vorhanden.")
         return
     print(f"Europa: {len(auftraege)} Anfrage(n) nötig, {len(offen)} vom letzten Lauf noch beim CDS; "
-          f"höchstens {MAX_OFFEN} gleichzeitig")
+          f"höchstens {MAX_OFFEN} gleichzeitig (Start mit 1, steigt, solange der CDS annimmt)")
     gewicht = None
     reihe = vorhanden.copy()
     beginn = time.time()
     pause_bis = 0
     letzte_meldung = 0
     erledigt = set()                                         # in diesem Lauf schon abgeholt
+    # Wie viele Anfragen der CDS gerade annimmt, ist nicht bekannt und schwankt mit der Auslastung:
+    # vorsichtig mit 1 anfangen, nach jeder angenommenen Anfrage eine mehr erlauben (bis MAX_OFFEN),
+    # nach einer Ablehnung zurück auf die Zahl, die gerade wartet (mindestens 1)
+    grenze = 1
     while True:
         # 1. abgeschickte Anfragen prüfen und fertige abholen
         bleibt = []
@@ -553,19 +557,25 @@ def herunterladen_merkzettel(cl):
                 print(f"  {name_von(a)}: vom CDS abgelehnt ({status}) {grund}")
                 if status == "rejected" or "limited" in grund:
                     pause_bis = time.time() + 600                # Schlange voll: 10 min nichts Neues schicken
+                    grenze = max(1, len([x for x in offen if x is not a and x.get("angenommen")]))
+                    if a.get("neu") or len(a["monate"]) == 1:
+                        auftraege.insert(0, {k: v for k, v in a.items() if k != "id"})   # später erneut
                 elif len(a["monate"]) > 1:
                     # z. B. ungültige Tage: Monate einzeln mit gültigen Tagen nachschieben
                     auftraege[:0] = [dict(jahr=a["jahr"], monate=[m], einzeln=True,
                                           tage=list(range(1, pd.Period(f"{a['jahr']}-{m:02d}").days_in_month + 1)))
                                      for m in a["monate"]]
             else:
+                if not a.get("angenommen") and (status == "running" or time.time() - a.get("seit", 0) > 300):
+                    a["angenommen"] = True
+                    grenze = min(MAX_OFFEN, grenze + 1)      # der CDS nimmt an - eine mehr erlauben
                 bleibt.append(a)                             # accepted / running: weiter warten
         offen = bleibt
         # 2. neue Anfragen abschicken, solange Platz ist
         laufend = {schluessel(a) for a in offen}
         auftraege = [a for a in auftraege if schluessel(a) not in laufend and schluessel(a) not in erledigt]
         if time.time() >= pause_bis:
-            while auftraege and len(offen) < MAX_OFFEN:
+            while auftraege and len(offen) < grenze:
                 a = auftraege.pop(0)
                 if not a.get("neu"):
                     # schon vorhanden (z. B. gerade abgeholt)?
@@ -576,6 +586,7 @@ def herunterladen_merkzettel(cl):
                 try:
                     remote = cl.submit(DATENSATZ, anfrage_fuer(a))
                     a["id"] = remote.request_id
+                    a["seit"] = time.time()
                     offen.append(a)
                     print(f"  {name_von(a)}: abgeschickt")
                 except Exception as fehler:
