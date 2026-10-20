@@ -60,6 +60,20 @@ jobs:
           key: europa-${{ github.run_id }}
           restore-keys: europa-
 
+      # Niño 3.4 aus ERA5 (für den Reiter "Meer"): wenige kleine Anfragen, vor Europa
+      - name: Niño-3.4-ERA5-Daten laden
+        if: ${{ !inputs.test }}
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/europa_daten
+          CDSAPI_URL: https://cds.climate.copernicus.eu/api
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+          NINO_MAX_MINUTEN: "20"
+        run: |
+          mkdir -p europa_daten
+          python skripte/ERA5_Nino34_Daten.py
+
       - name: Europa-Daten laden
         timeout-minutes: 300
         env:
@@ -67,7 +81,7 @@ jobs:
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           EUROPA_MAX_MONATE: ${{ inputs.test && '2' || inputs.monate || '400' }}
-          EUROPA_MAX_MINUTEN: "290"
+          EUROPA_MAX_MINUTEN: "265"
           EUROPA_MAX_OFFEN: "6"            # so viele Monats-Anfragen gleichzeitig beim CDS; sie werden gemerkt und
                                            # vom nächsten Lauf abgeholt, falls sie länger als ein Lauf warten
           EUROPA_TEIL: ${{ inputs.test && 'neu' || 'alt' }}   # nur auffüllen; die neuesten Monate holt der tägliche Lauf

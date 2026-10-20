@@ -260,6 +260,7 @@ jobs:
         timeout-minutes: 20
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NINO_ERA5_FOLDER: ${{ github.workspace }}/europa_daten   # ERA5-Daten vom Nachlade-Lauf
         run: python skripte/NINO34_Grafik.py
 
       # Daten-Downloads: ERA5-Tageswerte im einheitlichen Stil und zu jeder TXT eine CSV für Excel
