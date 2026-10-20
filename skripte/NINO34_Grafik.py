@@ -17,6 +17,7 @@ pip install requests pandas xarray netCDF4 matplotlib
 """
 import os
 import sys
+import time
 import datetime as dt
 import tempfile
 from pathlib import Path
@@ -80,8 +81,17 @@ def lade_jahr(jahr: int) -> pd.Series:
     ende = "last" if laufend else f"{jahr}-12-31T12:00:00Z"
     abfrage = f"anom[({jahr}-01-01T12:00:00Z):1:({ende})][(0.0)][(-5):1:(5)][(-170):1:(-120)]"
     print(f"Lade {jahr} …")
-    r = requests.get(f"{ERDDAP}?{quote(abfrage)}", timeout=900)
-    r.raise_for_status()
+    for versuch in range(1, 5):             # ERDDAP ist manchmal kurz überlastet (503) - nochmal versuchen
+        try:
+            r = requests.get(f"{ERDDAP}?{quote(abfrage)}", timeout=900)
+            r.raise_for_status()
+            break
+        except Exception as fehler:
+            if versuch == 4:
+                raise
+            warten = 30 * versuch
+            print(f"  {jahr}: {type(fehler).__name__} ({str(fehler)[:80]}) - neuer Versuch in {warten} s")
+            time.sleep(warten)
 
     with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp:
         tmp.write(r.content)
@@ -221,12 +231,23 @@ def schreibe_tabelle(aktuell, vergleich):
 if __name__ == "__main__":
     try:
         aktuell = lade_jahr(JAHR)
-        vergleich = {j: lade_jahr(j) for j in VERGLEICH}
-        hintergrund = {j: lade_jahr(j) for j in range(1982, JAHR)
-                       if HINTERGRUND and j not in VERGLEICH}
     except Exception as fehler:
-        print(f"Niño 3.4: Daten nicht abrufbar ({type(fehler).__name__}: {str(fehler)[:300]})")
+        print(f"Niño 3.4: {JAHR} nicht abrufbar ({type(fehler).__name__}: {str(fehler)[:300]})")
         sys.exit(0)                       # die übrige Webseite soll trotzdem entstehen
+
+    def versuche(jahre):
+        """Vergleichsjahre einzeln laden; fehlt eines, wird die Grafik ohne es gezeichnet
+        und der nächste Lauf versucht es erneut (geladene Jahre bleiben gespeichert)."""
+        ergebnis = {}
+        for j in jahre:
+            try:
+                ergebnis[j] = lade_jahr(j)
+            except Exception as fehler:
+                print(f"Niño 3.4: {j} nicht abrufbar ({type(fehler).__name__}) - diesmal ohne {j}")
+        return ergebnis
+
+    vergleich = versuche(VERGLEICH)
+    hintergrund = versuche([j for j in range(1982, JAHR) if HINTERGRUND and j not in VERGLEICH])
     for dunkel in (False, True):
         zeichne(JAHR, aktuell, vergleich, hintergrund, dunkel)
     schreibe_tabelle(aktuell, vergleich)
