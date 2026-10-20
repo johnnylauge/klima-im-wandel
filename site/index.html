@@ -85,8 +85,9 @@
   /* Meer: eigene Ansicht ohne Quellen-, Zeitraum- und Darstellungswahl */
   #ansicht-meer { display: none; }
   body.meer #ansicht-meer { display: block; }
-  body.meer .kopfzeile, body.meer .quellinfo, body.meer .leiste,
+  body.meer header .kopfzeile, body.meer .quellinfo, body.meer .leiste,
   body.meer #ansicht-jahr, body.meer #ansicht-saison, body.meer #ansicht-monat { display: none !important; }
+  .meer-quellen { margin: 0 0 14px; }
   .meer-text { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin: 12px 0 0; }
   .test-hinweis { display: inline-block; font-size: 0.75rem; font-weight: 600; color: var(--muted);
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
@@ -409,6 +410,13 @@
   <section id="ansicht-meer" aria-labelledby="h-meer">
     <h2 id="h-meer">Niño 3.4 <span class="test-hinweis">Test</span></h2>
     <p class="unter">Meeresoberflächentemperatur im äquatorialen Pazifik · Tageswerte <span id="meer-jahr"></span> im Vergleich mit starken El-Niño-Jahren · <span id="meer-stand">Daten werden geladen …</span></p>
+    <div class="kopfzeile meer-quellen">
+      <span class="qlabel" id="meer-qlabel">Datenquelle</span>
+      <div class="quelle" role="group" aria-labelledby="meer-qlabel">
+        <button type="button" id="meer-oisst" aria-pressed="true" title="NOAA OISST v2.1: Satelliten, Schiffe und Bojen">NOAA OISST</button>
+        <button type="button" id="meer-era5" aria-pressed="false" title="ERA5-Reanalyse (Copernicus)" hidden>ERA5</button>
+      </div>
+    </div>
     <div class="kacheln" id="kacheln-meer" aria-live="polite"></div>
     <figure>
       <div class="bildrahmen">
@@ -421,14 +429,16 @@
     <nav class="downloads" aria-label="Downloads Niño 3.4">
       <a id="png-meer" href="#" download>Grafik (PNG)</a>
       <a id="pdf-meer" href="#" download>Grafik (PDF)</a>
-      <a href="daten/NINO34_tageswerte.txt">Tageswerte (TXT)</a>
-      <a href="daten/NINO34_tageswerte.csv" download>Tageswerte (CSV)</a>
+      <a id="txt-meer" href="daten/NINO34_tageswerte.txt">Tageswerte (TXT)</a>
+      <a id="csv-meer" href="daten/NINO34_tageswerte.csv" download>Tageswerte (CSV)</a>
     </nav>
     <p class="meer-text">Niño 3.4 ist ein Meeresgebiet im äquatorialen Pazifik (5° S–5° N, 170° W–120° W).
       Seine Temperatur zeigt, ob gerade El Niño (warm) oder La Niña (kalt) herrscht. Ab +0,5 K spricht man von
       El-Niño-Bedingungen, ab −0,5 K von La Niña. Offiziell zählt dafür das Mittel über drei Monate; die
       Tageswerte zeigen die Entwicklung früher. El Niño erwärmt mit einigen Monaten Verzögerung auch die
-      globale Lufttemperatur. Daten: NOAA OISST v2.1 (NCEI), Bezug 1991–2020.</p>
+      globale Lufttemperatur. Daten: NOAA OISST v2.1 (NCEI) bzw. ERA5 (Copernicus),
+      jeweils bezogen auf 1991–2020. Bei ERA5 wird das Klimamittel aus den ERA5-Monatsmitteln als glatter
+      Jahresgang berechnet; kleine Unterschiede zwischen beiden Datensätzen sind normal.</p>
   </section>
 
   <footer>
@@ -620,16 +630,24 @@
   }
 
   // ---------- Meer: Niño 3.4 ----------
-  let meerDaten = null;                // Tageswerte aus NINO34_tageswerte.txt (einmal geladen)
+  let meerDaten = null;                // Tageswerte der gewählten Quelle (einmal je Quelle geladen)
+  let meerQuelle = "oisst";            // "oisst" oder "era5"
+  try { if (localStorage.getItem("meerQuelle") === "era5") meerQuelle = "era5"; } catch (e) {}
+  const MEER = { oisst: { stamm: "NINO34" }, era5: { stamm: "NINO34_ERA5" } };
   function zeigeMeer() {
     if (!meer) return;
-    const basis = `daten/Grafiken/NINO34_jahr${istDunkel() ? "_dunkel" : ""}`;
+    const st = MEER[meerQuelle].stamm;
+    ["oisst", "era5"].forEach(x => document.getElementById("meer-" + x).setAttribute("aria-pressed", String(meerQuelle === x)));
+    document.getElementById("txt-meer").href = `daten/${st}_tageswerte.txt`;
+    document.getElementById("csv-meer").href = `daten/${st}_tageswerte.csv`;
+    const name = `${st}_jahr${istDunkel() ? "_dunkel" : ""}`;
+    const basis = `daten/Grafiken/${name}`;
     const v = meerDaten ? "?v=" + encodeURIComponent(meerDaten.stand) : "";
     document.getElementById("bild-meer").src = `${basis}.png${v}`;
     document.getElementById("link-meer").href = `${basis}.png${v}`;
     const png = document.getElementById("png-meer"), pdf = document.getElementById("pdf-meer");
-    png.href = `${basis}.png${v}`; png.setAttribute("download", `NINO34_jahr${istDunkel() ? "_dunkel" : ""}.png`);
-    pdf.href = `${basis}.pdf${v}`; pdf.setAttribute("download", `NINO34_jahr${istDunkel() ? "_dunkel" : ""}.pdf`);
+    png.href = `${basis}.png${v}`; png.setAttribute("download", `${name}.png`);
+    pdf.href = `${basis}.pdf${v}`; pdf.setAttribute("download", `${name}.pdf`);
     if (!meerDaten) ladeMeer();
   }
   function einordnung(w) {
@@ -642,7 +660,8 @@
   }
   function ladeMeer() {
     meerDaten = { stand: "", werte: [] };
-    fetch("daten/NINO34_tageswerte.txt", { cache: "no-store" })
+    const q = meerQuelle;
+    fetch(`daten/${MEER[q].stamm}_tageswerte.txt`, { cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(); return r.text(); })
       .then(t => {
         const zeilen = t.split("\n");
@@ -652,6 +671,7 @@
           const [tt, mm, jj] = d.split(".").map(Number);
           return { tt, mm, jj, d, a: parseFloat(a) };
         });
+        if (q !== meerQuelle) return;              // inzwischen andere Quelle gewählt
         meerDaten = { stand, werte };
         const jahr = werte.length ? werte[werte.length - 1].jj : new Date().getFullYear();
         const dieses = werte.filter(w => w.jj === jahr);
@@ -1231,6 +1251,21 @@
     try { localStorage.setItem("meer", "0"); } catch (e) {}
     if (quelle === zuletzt[g]) anwenden(); else setzeQuelle(zuletzt[g]);
   }));
+  ["oisst", "era5"].forEach(x => document.getElementById("meer-" + x).addEventListener("click", () => {
+    if (meerQuelle === x) return;
+    meerQuelle = x;
+    try { localStorage.setItem("meerQuelle", x); } catch (e) {}
+    meerDaten = null;
+    document.getElementById("kacheln-meer").innerHTML = "";
+    zeigeMeer();
+  }));
+  // ERA5 erst zeigen, wenn der Nachlade-Lauf die Daten geholt hat
+  fetch("daten/NINO34_ERA5_tageswerte.txt", { method: "HEAD", cache: "no-store" })
+    .then(r => {
+      if (r.ok) document.getElementById("meer-era5").hidden = false;
+      else if (meerQuelle === "era5") { meerQuelle = "oisst"; meerDaten = null; zeigeMeer(); }
+    })
+    .catch(() => {});
   document.getElementById("gebiet-meer").addEventListener("click", () => {
     meer = true;
     try { localStorage.setItem("meer", "1"); } catch (e) {}
