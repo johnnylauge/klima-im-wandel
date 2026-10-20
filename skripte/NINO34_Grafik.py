@@ -7,11 +7,17 @@ Gebiet Niño 3.4: 5° S–5° N, 170° W–120° W, flächengewichtet (cos Breit
 Erstellt eine helle und eine dunkle Grafik (PNG und PDF) und eine Datentabelle:
   Grafiken/NINO34_jahr.png, Grafiken/NINO34_jahr_dunkel.png (+ .pdf)
   NINO34_tageswerte.txt  (Datum, Abweichung; laufendes Jahr und Vergleichsjahre)
+Zusätzlich die gleiche Grafik aus ERA5, sobald ERA5_Nino34_Daten.py die Daten geladen hat:
+  Grafiken/NINO34_ERA5_jahr(_dunkel).png/.pdf und NINO34_ERA5_tageswerte.txt
+  ERA5 liefert die Temperatur selbst; die Abweichung wird hier gegen das Klimamittel 1991–2020
+  aus den ERA5-Monatsmitteln gerechnet (als glatter Jahresgang, 3 Harmonische).
 Abgeschlossene Jahre werden einmal geladen und in nino34/ zwischengespeichert, das laufende
-Jahr bei jedem Lauf neu (die letzten rund zwei Wochen sind bei OISST vorläufig).
+Jahr bei jedem Lauf neu. Die endgültigen OISST-Werte liegen rund zwei Wochen zurück; die Tage
+danach kommen aus der vorläufigen Fassung (Near Real Time, etwa 1-2 Tage Verzug).
 
 Umgebungsvariablen (auf GitHub in der Steuerdatei):
   ERA5_FOLDER / NINO_FOLDER   Datenordner (auf GitHub der Datenordner der Webseite)
+  NINO_ERA5_FOLDER            Ordner mit ERA5_nino34_tag.txt und ERA5_nino34_klima.txt (Standard: Datenordner)
 
 pip install requests pandas xarray netCDF4 matplotlib
 """
@@ -40,9 +46,24 @@ CACHE = ORDNER / "nino34"
 GRAFIKEN = ORDNER / "Grafiken"
 NAME = "NINO34_jahr"
 TABELLE = ORDNER / "NINO34_tageswerte.txt"
+ERA5_ORDNER = Path(os.environ.get("NINO_ERA5_FOLDER") or ORDNER)
+QUELLEN = {
+    "oisst": dict(name="NINO34_jahr", tabelle=ORDNER / "NINO34_tageswerte.txt", titel="NOAA OISST",
+                  lang="NOAA OISST v2.1",
+                  fuss="Datenquelle: NOAA OISST v2.1 (NCEI) über NOAA CoastWatch ERDDAP\n"
+                       "Gebiet 5° S–5° N, 170° W–120° W · Bezug 1991–2020 · eigene Berechnung\n"
+                       "Visualisierung: JohnnyLauge.bsky.social"),
+    "era5": dict(name="NINO34_ERA5_jahr", tabelle=ORDNER / "NINO34_ERA5_tageswerte.txt", titel="ERA5",
+                 lang="ERA5, Copernicus Climate Data Store",
+                 fuss="Datenquelle: ERA5, C3S/ECMWF (Climate Data Store) · CC BY 4.0\n"
+                      "Gebiet 5° S–5° N, 170° W–120° W · Bezug 1991–2020 · eigene Berechnung\n"
+                      "Visualisierung: JohnnyLauge.bsky.social"),
+}
 # =================================================
 
 ERDDAP = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg_LonPM180.nc"
+# Vorläufige Werte (Near Real Time, etwa 1-2 Tage Verzug); die endgültigen liegen rund zwei Wochen zurück
+ERDDAP_NRT = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21NrtAgg_LonPM180.nc"
 
 # ---------- Farben (wie die übrigen Grafiken: hell und dunkel) ----------
 FARBEN = {
@@ -76,18 +97,36 @@ def lade_jahr(jahr: int) -> pd.Series:
         s = pd.read_csv(datei, index_col=0, parse_dates=True).iloc[:, 0]
         return s[s.index.year == jahr].sort_index()
 
+    ende = "last" if laufend else f"{jahr}-12-31T12:00:00Z"
+    print(f"Lade {jahr} …")
+    s = hole(ERDDAP, f"{jahr}-01-01T12:00:00Z", ende, jahr)
+    if laufend:
+        # die letzten rund zwei Wochen aus den vorläufigen Daten ergänzen
+        try:
+            ab = (s.index[-1] + pd.Timedelta(days=1)) if len(s) else pd.Timestamp(jahr, 1, 1)
+            nrt = hole(ERDDAP_NRT, f"{ab:%Y-%m-%d}T12:00:00Z", "last", jahr, versuche=2)
+            nrt = nrt[nrt.index > (s.index[-1] if len(s) else pd.Timestamp(jahr - 1, 12, 31))]
+            if len(nrt):
+                print(f"  vorläufige Werte bis {nrt.index[-1]:%d.%m.%Y} ergänzt ({len(nrt)} Tage)")
+                s = pd.concat([s, nrt]).sort_index()
+        except Exception as fehler:
+            print(f"  vorläufige Werte nicht abrufbar ({type(fehler).__name__}) - nur endgültige")
+    s.round(3).to_csv(datei)
+    return s
+
+
+def hole(url, von, bis, jahr, versuche=4):
+    """Gebietsmittel der Abweichung je Tag aus ERDDAP (flächengewichtet mit cos Breite)."""
     import requests
     import xarray as xr
-    ende = "last" if laufend else f"{jahr}-12-31T12:00:00Z"
-    abfrage = f"anom[({jahr}-01-01T12:00:00Z):1:({ende})][(0.0)][(-5):1:(5)][(-170):1:(-120)]"
-    print(f"Lade {jahr} …")
-    for versuch in range(1, 5):             # ERDDAP ist manchmal kurz überlastet (503) - nochmal versuchen
+    abfrage = f"anom[({von}):1:({bis})][(0.0)][(-5):1:(5)][(-170):1:(-120)]"
+    for versuch in range(1, versuche + 1):  # ERDDAP ist manchmal kurz überlastet (503) - nochmal versuchen
         try:
-            r = requests.get(f"{ERDDAP}?{quote(abfrage)}", timeout=900)
+            r = requests.get(f"{url}?{quote(abfrage)}", timeout=900)
             r.raise_for_status()
             break
         except Exception as fehler:
-            if versuch == 4:
+            if versuch == versuche:
                 raise
             warten = 30 * versuch
             print(f"  {jahr}: {type(fehler).__name__} ({str(fehler)[:80]}) - neuer Versuch in {warten} s")
@@ -100,14 +139,11 @@ def lade_jahr(jahr: int) -> pd.Series:
     Path(tmp.name).unlink(missing_ok=True)
     w = np.cos(np.deg2rad(a["latitude"]))
     s = a.weighted(w).mean(("latitude", "longitude")).to_series()
-
     s.index = pd.to_datetime(s.index).normalize()
     s.name = "anom"
     # nur Tage dieses Jahres: ERDDAP liefert am Rand manchmal den 1. Januar des Folgejahres mit -
     # der würde in der Grafik als Linie vom Dezember zurück zum Januar erscheinen
-    s = s[s.index.year == jahr].dropna().sort_index()
-    s.round(3).to_csv(datei)
-    return s
+    return s[s.index.year == jahr].dropna().sort_index()
 
 
 def dummy(s: pd.Series) -> pd.Series:
@@ -117,7 +153,49 @@ def dummy(s: pd.Series) -> pd.Series:
     return s
 
 
-def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel):
+def lade_era5():
+    """ERA5-Tageswerte als Abweichung vom Klimamittel 1991–2020 - oder None, solange Daten fehlen."""
+    tag_datei, klima_datei = ERA5_ORDNER / "ERA5_nino34_tag.txt", ERA5_ORDNER / "ERA5_nino34_klima.txt"
+    if not (tag_datei.exists() and klima_datei.exists()):
+        print("Niño 3.4 (ERA5): noch keine Daten - Grafik folgt später")
+        return None
+    sst = pd.read_csv(tag_datei, comment="#", parse_dates=["date"]).set_index("date")["sst"]
+    klima = pd.read_csv(klima_datei, comment="#").set_index("monat")["sst"]
+    if len(klima) < 12 or sst.empty:
+        return None
+    # Glatter Jahresgang aus den 12 Monatsmitteln: 3 Harmonische, an die Monatsmitten angepasst.
+    # Ein Monatsmittel dämpft jede Schwingung leicht (Faktor sinc) - das wird ausgeglichen.
+    mitte = np.array([(pd.Timestamp(2001, m, 1).dayofyear - 1) + pd.Timestamp(2001, m, 1).days_in_month / 2
+                      for m in range(1, 13)]) / 365.25
+    spalten = [np.ones(12)]
+    for k in (1, 2, 3):
+        d = np.sinc(k / 12)                                       # np.sinc(x) = sin(pi x)/(pi x)
+        spalten += [d * np.cos(2 * np.pi * k * mitte), d * np.sin(2 * np.pi * k * mitte)]
+    koeff = np.linalg.lstsq(np.column_stack(spalten), klima.sort_index().values, rcond=None)[0]
+
+    def jahresgang(tage):
+        t = ((tage.dayofyear - 1) + 0.5) / np.where(tage.is_leap_year, 366, 365)
+        w = koeff[0] + 0 * t
+        for i, k in enumerate((1, 2, 3)):
+            w = w + koeff[1 + 2 * i] * np.cos(2 * np.pi * k * t) + koeff[2 + 2 * i] * np.sin(2 * np.pi * k * t)
+        return w
+
+    anom = sst - jahresgang(sst.index)
+    aktuell = anom[anom.index.year == JAHR]
+    if aktuell.empty:
+        return None
+    vergleich = {}
+    for j in VERGLEICH:
+        s = anom[anom.index.year == j]
+        if len(s) >= 365:                                          # nur vollständige Vergleichsjahre
+            vergleich[j] = s
+        else:
+            print(f"Niño 3.4 (ERA5): {j} erst {len(s)} Tage - diesmal ohne {j}")
+    return aktuell, vergleich
+
+
+def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel, q=None):
+    q = q or QUELLEN["oisst"]
     F = FARBEN[dunkel]
     plt.rcParams.update({
         "figure.facecolor": F["bg"], "axes.facecolor": F["bg"], "savefig.facecolor": F["bg"],
@@ -133,7 +211,7 @@ def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel):
 
     # Titelblock wie bei den Temperaturgrafiken: groß, fett (Gebiet | Zeitraum | Datensatz), Bezug
     fig.text(0.5, 0.955, "Niño 3.4", ha="center", fontsize=30, fontweight="bold")
-    fig.text(0.5, 0.918, f"Äquatorialer Pazifik | {jahr} | NOAA OISST",
+    fig.text(0.5, 0.918, f"Äquatorialer Pazifik | {jahr} | {q['titel']}",
              ha="center", fontsize=19, fontweight="bold")
     fig.text(0.5, 0.885, "Abweichung der Meeresoberflächentemperatur vom Mittel 1991–2020",
              ha="center", fontsize=17, fontweight="normal")
@@ -201,27 +279,25 @@ def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel):
     ax.grid(axis="y", color=F["gitter"], lw=0.8)
     ax.set_axisbelow(True)
 
-    fig.text(0.99, 0.012,
-             "Datenquelle: NOAA OISST v2.1 (NCEI) über NOAA CoastWatch ERDDAP\n"
-             "Gebiet 5° S–5° N, 170° W–120° W · Bezug 1991–2020 · eigene Berechnung\n"
-             "Visualisierung: JohnnyLauge.bsky.social",
+    fig.text(0.99, 0.012, q["fuss"],
              ha="right", va="bottom", fontsize=11, color=F["grau"], fontweight="normal",
              linespacing=1.5)
 
     GRAFIKEN.mkdir(parents=True, exist_ok=True)
-    basis = GRAFIKEN / (NAME + ("_dunkel" if dunkel else ""))
+    basis = GRAFIKEN / (q["name"] + ("_dunkel" if dunkel else ""))
     fig.savefig(f"{basis}.png", dpi=128)
     fig.savefig(f"{basis}.pdf", dpi=128)
     plt.close(fig)
     print(f"Gespeichert: {basis}.png  (letzter Wert {letzt_dat:%d.%m.%Y}: {letzt_wert:+.2f} K)")
 
 
-def schreibe_tabelle(aktuell, vergleich):
+def schreibe_tabelle(aktuell, vergleich, q=None):
     """Tageswerte im einheitlichen TXT-Stil der Seite (die CSV macht Daten_Export.py)."""
+    q = q or QUELLEN["oisst"]
     alle = pd.concat([*vergleich.values(), aktuell]).sort_index()
     alle = alle[~alle.index.duplicated(keep="last")]
-    with open(TABELLE, "w", encoding="utf-8") as f:
-        f.write("# Niño 3.4 – Abweichung der Meeresoberflächentemperatur (NOAA OISST v2.1), Tageswerte\n"
+    with open(q["tabelle"], "w", encoding="utf-8") as f:
+        f.write(f"# Niño 3.4 – Abweichung der Meeresoberflächentemperatur ({q['lang']}), Tageswerte\n"
                 f"# Gebiet 5° S–5° N, 170° W–120° W, flächengewichtet · Bezug 1991–2020 · "
                 f"Jahre: {', '.join(str(j) for j in [*vergleich, JAHR])}\n"
                 f"# Stand: {aktuell.index[-1]:%d.%m.%Y}\n"
@@ -229,10 +305,20 @@ def schreibe_tabelle(aktuell, vergleich):
                 f"{'Datum':>10}  {'Abw_K':>6}\n")
         for d, v in alle.items():
             f.write(f"{d:%d.%m.%Y}  {v:>+6.3f}\n")
-    print(f"Tabelle gespeichert: {TABELLE}")
+    print(f"Tabelle gespeichert: {q['tabelle']}")
 
 
 if __name__ == "__main__":
+    # ERA5 (aus dem Climate Data Store, getrennt geladen) - unabhängig davon, ob OISST klappt
+    try:
+        era5 = lade_era5()
+        if era5:
+            for dunkel in (False, True):
+                zeichne(JAHR, era5[0], era5[1], {}, dunkel, QUELLEN["era5"])
+            schreibe_tabelle(era5[0], era5[1], QUELLEN["era5"])
+    except Exception as fehler:
+        print(f"Niño 3.4 (ERA5): Grafik nicht möglich ({type(fehler).__name__}: {str(fehler)[:300]})")
+
     try:
         aktuell = lade_jahr(JAHR)
     except Exception as fehler:
