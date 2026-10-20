@@ -80,7 +80,9 @@
   }
   .ausgeblendet { display: none; }
   /* Gebiet: Global / Europa - Reiter mit Unterstrich, über der Quellenauswahl */
-  .gebiet { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+  /* Titel und Gebiets-Reiter (Global / Europa / Meer) in einer Zeile; am Handy rutschen die Reiter darunter */
+  .titelzeile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 28px; }
+  .gebiet { display: flex; gap: 2px; }
   .gebiet[hidden], .gebiet button[hidden] { display: none; }
   /* Meer: eigene Ansicht ohne Quellen-, Zeitraum- und Darstellungswahl */
   #ansicht-meer { display: none; }
@@ -93,7 +95,7 @@
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
   .gebiet button {
     border: 0; background: none; font: inherit; font-weight: 700; font-size: 1rem; color: var(--muted);
-    padding: 6px 14px 8px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer;
+    padding: 4px 12px 6px; border-bottom: 3px solid transparent; cursor: pointer;
   }
   .gebiet button:hover { color: var(--text); }
   .gebiet button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
@@ -242,6 +244,9 @@
     main { padding: 16px 16px 40px; }
     header { padding-right: 48px; }
     header h1 { font-size: 1.5rem; }
+    .titelzeile { gap: 2px 16px; }
+    .gebiet { margin-left: -12px; }
+    .gebiet button { font-size: 0.95rem; }
     header > p { font-size: 0.85rem; margin-top: 2px; }
     .schalter { width: 38px; height: 38px; font-size: 1rem; }
     .qlabel { display: none; }
@@ -289,13 +294,15 @@
   <header>
     <button class="schalter" id="schalter" type="button" aria-label="Zwischen hell und dunkel wechseln"
             title="Hell / Dunkel">◐</button>
-    <h1>Klima im Wandel</h1>
-    <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
-    <div class="gebiet" id="gebiet" role="tablist" aria-label="Gebiet wählen">
-      <button type="button" role="tab" id="gebiet-global" aria-selected="true">Global</button>
-      <button type="button" role="tab" id="gebiet-europa" aria-selected="false" hidden>Europa</button>
-      <button type="button" role="tab" id="gebiet-meer" aria-selected="false">Meer</button>
+    <div class="titelzeile">
+      <h1>Klima im Wandel</h1>
+      <div class="gebiet" id="gebiet" role="tablist" aria-label="Gebiet wählen">
+        <button type="button" role="tab" id="gebiet-global" aria-selected="true">Global</button>
+        <button type="button" role="tab" id="gebiet-europa" aria-selected="false" hidden>Europa</button>
+        <button type="button" role="tab" id="gebiet-meer" aria-selected="false">Meer</button>
+      </div>
     </div>
+    <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
     <div class="kopfzeile">
       <span class="qlabel" id="qlabel">Datenquelle</span>
       <div class="quelle" role="group" aria-labelledby="qlabel">
