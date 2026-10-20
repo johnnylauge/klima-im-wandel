@@ -254,6 +254,14 @@ jobs:
             done
           done
 
+      # Meer (Test): Niño 3.4 aus NOAA OISST, hell und dunkel in einem Lauf
+      - name: Niño-3.4-Grafik erstellen
+        continue-on-error: true
+        timeout-minutes: 20
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+        run: python skripte/NINO34_Grafik.py
+
       # Daten-Downloads: ERA5-Tageswerte im einheitlichen Stil und zu jeder TXT eine CSV für Excel
       - name: Daten als TXT und CSV aufbereiten
         continue-on-error: true
