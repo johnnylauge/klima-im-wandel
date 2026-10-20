@@ -104,7 +104,8 @@ def als_csv(txt):
 
 anzahl = 0
 ROHDATEIEN = {"ERA5_global_tag.txt", "ERA5_europa_tag.txt", "ERA5_europa_tag_6190.txt", "ERA5_europa_tag_9120.txt"}
-for txt in sorted(glob.glob(os.path.join(FOLDER, "*_global_*.txt")) + glob.glob(os.path.join(FOLDER, "ERA5_europa_*.txt"))):
+for txt in sorted(glob.glob(os.path.join(FOLDER, "*_global_*.txt")) + glob.glob(os.path.join(FOLDER, "ERA5_europa_*.txt"))
+                  + glob.glob(os.path.join(FOLDER, "NINO34_*.txt"))):
     if os.path.basename(txt) in ROHDATEIEN:              # Rohdaten (CSV mit Komma), keine eigene Tabelle
         continue
     anzahl += als_csv(txt)
