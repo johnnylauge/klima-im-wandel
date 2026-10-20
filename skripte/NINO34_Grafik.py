@@ -99,7 +99,25 @@ def lade_jahr(jahr: int) -> pd.Series:
 
     ende = "last" if laufend else f"{jahr}-12-31T12:00:00Z"
     print(f"Lade {jahr} …")
-    s = hole(ERDDAP, f"{jahr}-01-01T12:00:00Z", ende, jahr)
+    try:
+        s = hole(ERDDAP, f"{jahr}-01-01T12:00:00Z", ende, jahr, versuche=3 if laufend else 4)
+    except Exception as fehler:
+        if not laufend:
+            raise
+        # Server der endgültigen Daten gestört: das ganze Jahr aus den vorläufigen Daten versuchen,
+        # sonst mit dem Stand vom letzten Lauf weiterzeichnen
+        print(f"  endgültige Werte nicht abrufbar ({type(fehler).__name__}) - versuche die vorläufigen")
+        try:
+            s = hole(ERDDAP_NRT, f"{jahr}-01-01T12:00:00Z", "last", jahr, versuche=2)
+            print(f"  vorläufige Werte bis {s.index[-1]:%d.%m.%Y} geladen")
+            s.round(3).to_csv(datei)
+            return s
+        except Exception:
+            if datei.exists():
+                alt = pd.read_csv(datei, index_col=0, parse_dates=True).iloc[:, 0]
+                print(f"  NOAA-Server gestört - zeichne mit dem letzten Stand bis {alt.index[-1]:%d.%m.%Y}")
+                return alt[alt.index.year == jahr].sort_index()
+            raise
     if laufend:
         # die letzten rund zwei Wochen aus den vorläufigen Daten ergänzen
         try:
