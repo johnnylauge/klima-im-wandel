@@ -69,15 +69,15 @@ def komma(x, plus=True):
 
 def lade_jahr(jahr: int) -> pd.Series:
     """Tageswerte eines Jahres laden (abgeschlossene Jahre aus dem Zwischenspeicher)."""
-    import requests
-    import xarray as xr
-
     CACHE.mkdir(parents=True, exist_ok=True)
     datei = CACHE / f"nino34_{jahr}.csv"
     laufend = jahr == dt.date.today().year
     if datei.exists() and not laufend:
-        return pd.read_csv(datei, index_col=0, parse_dates=True).iloc[:, 0]
+        s = pd.read_csv(datei, index_col=0, parse_dates=True).iloc[:, 0]
+        return s[s.index.year == jahr].sort_index()
 
+    import requests
+    import xarray as xr
     ende = "last" if laufend else f"{jahr}-12-31T12:00:00Z"
     abfrage = f"anom[({jahr}-01-01T12:00:00Z):1:({ende})][(0.0)][(-5):1:(5)][(-170):1:(-120)]"
     print(f"Lade {jahr} …")
@@ -103,7 +103,9 @@ def lade_jahr(jahr: int) -> pd.Series:
 
     s.index = pd.to_datetime(s.index).normalize()
     s.name = "anom"
-    s = s.dropna()
+    # nur Tage dieses Jahres: ERDDAP liefert am Rand manchmal den 1. Januar des Folgejahres mit -
+    # der würde in der Grafik als Linie vom Dezember zurück zum Januar erscheinen
+    s = s[s.index.year == jahr].dropna().sort_index()
     s.round(3).to_csv(datei)
     return s
 
@@ -140,10 +142,12 @@ def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel):
     for w, txt in [(0.5, "El Niño"), (1.0, "mäßig"), (1.5, "stark"), (2.0, "sehr stark")]:
         ax.axhline(w, color=F["warm"], ls=":", lw=1.3, alpha=0.4 + 0.15 * w)
         ax.text(pd.Timestamp("2000-12-29"), w + 0.03, txt, ha="right", va="bottom",
-                fontsize=10, color=F["grau"])
+                fontsize=10, color=F["grau"], zorder=3,
+                bbox=dict(boxstyle="round,pad=0.15", fc=F["bg"], ec="none", alpha=0.85))
     ax.axhline(-0.5, color=F["kalt"], ls=":", lw=1.3, alpha=0.7)
     ax.text(pd.Timestamp("2000-12-29"), -0.47, "La Niña", ha="right", va="bottom",
-            fontsize=10, color=F["grau"])
+            fontsize=10, color=F["grau"], zorder=3,
+            bbox=dict(boxstyle="round,pad=0.15", fc=F["bg"], ec="none", alpha=0.85))
     ax.axhline(0, color=F["null"], lw=0.9)
 
     for s in hintergrund.values():
