@@ -11,10 +11,10 @@
 name: Europa-Daten nachladen
 
 on:
-  # Läuft von selbst alle 6 Stunden weiter, bis alles da ist; danach endet jeder Lauf nach ~1 Minute
-  # ("alle Tage schon vorhanden"). Wenn alles geladen ist, kann dieser Zeitplan raus.
-  schedule:
-    - cron: "40 */6 * * *"
+  # Automatischer Lauf alle 6 Stunden - derzeit ausgeschaltet (Europa pausiert).
+  # Zum Einschalten die beiden Zeilen unten wieder aktivieren (# entfernen).
+  # schedule:
+  #   - cron: "40 */6 * * *"
   workflow_dispatch:
     inputs:
       test:

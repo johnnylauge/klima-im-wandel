@@ -25,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONUNBUFFERED: "1"            # Ausgaben der Skripte sofort im Protokoll zeigen
+      # Erweiterungen ein- und ausschalten: "ja" oder "nein"
+      # (auf der Webseite zusätzlich in site/index.html bei GEBIETE umstellen)
+      MIT_EUROPA: "nein"               # Europa aus ERA5 (Climate Data Store)
+      MIT_MEER: "nein"                 # Meer: Niño 3.4 aus NOAA OISST
     steps:
       - name: Projekt holen
         uses: actions/checkout@v6
@@ -206,6 +210,7 @@ jobs:
       # Europa (ERA5 aus dem Climate Data Store): fehlende neueste Tage nachladen. Beim allerersten Lauf
       # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
       - name: Stand des Europa-Nachladens holen
+        if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
         uses: actions/cache/restore@v4
         with:
@@ -214,6 +219,7 @@ jobs:
           restore-keys: europa-
 
       - name: Europa-Daten laden
+        if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
         timeout-minutes: 30            # hängt der Copernicus-Server, geht der Lauf trotzdem weiter
         env:
@@ -232,6 +238,7 @@ jobs:
 
       # Europa-Grafiken: je Bezugszeitraum (1961-1990, 1991-2020) hell und dunkel
       - name: Europa-Grafiken erstellen
+        if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
         timeout-minutes: 60
         env:
@@ -256,6 +263,7 @@ jobs:
 
       # Meer (Test): Niño 3.4 aus NOAA OISST, hell und dunkel in einem Lauf
       - name: Niño-3.4-Grafik erstellen
+        if: env.MIT_MEER == 'ja'
         continue-on-error: true
         timeout-minutes: 20
         env:
