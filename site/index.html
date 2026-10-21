@@ -536,8 +536,12 @@
   const zuletzt = { global: "era5", europa: "eu6190" };
   try { Object.assign(zuletzt, JSON.parse(localStorage.getItem("zuletzt") || "{}")); } catch (e) {}
   const istEuropa = () => !!QUELLEN[quelle].europa;
+  // Erweiterungen ein- und ausschalten (passend zu MIT_EUROPA / MIT_MEER in taeglich.yml).
+  // Europa erscheint zusätzlich erst, wenn seine Daten da sind.
+  const GEBIETE = { europa: false, meer: false };
   let meer = false;                    // Reiter "Meer" (Niño 3.4) gewählt?
-  try { meer = localStorage.getItem("meer") === "1"; } catch (e) {}
+  try { meer = GEBIETE.meer && localStorage.getItem("meer") === "1"; } catch (e) {}
+  if (!GEBIETE.meer) document.getElementById("gebiet-meer").hidden = true;
   const BEZUG = () => (istEuropa() ? Q().bezug : "1850–1900");
   try { const g = localStorage.getItem("quelle"); if (QUELLEN[g]) quelle = g; } catch (e) {}
   const Q = () => QUELLEN[quelle];
@@ -1287,7 +1291,7 @@
   // bis dahin bleibt die Seite bei Global - danach erscheint der Reiter von selbst
   if (istEuropa()) quelle = zuletzt.global;
   ladeQuelle();
-  fetch("daten/ERA5_europa_6190_jahreswerte.txt", { method: "HEAD", cache: "no-store" })
+  if (GEBIETE.europa) fetch("daten/ERA5_europa_6190_jahreswerte.txt", { method: "HEAD", cache: "no-store" })
     .then(r => { if (r.ok) document.getElementById("gebiet-europa").hidden = false; })
     .catch(() => {});
 
