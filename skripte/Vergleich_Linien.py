@@ -49,6 +49,13 @@ INFO_ALS_PLATZHALTER = SHOW_INFO and WEB
 AUF_GITHUB = bool(os.environ.get("CI"))
 if os.environ.get("VGL_WAHL"):
     WAHL = os.environ["VGL_WAHL"]
+# Angleichung der Datensätze:
+#   "1850-1900"  (bisher) jeder Datensatz an seinem eigenen Mittel 1850-1900 (ERA5 über die Copernicus-Aufschläge,
+#                NASA an den anderen angehängt)
+#   "1991-2020"  wie Foster & Rahmstorf (GRL 2026): jeder Datensatz um einen festen Betrag so verschoben, dass sein
+#                Mittel 1991-2020 dem von ERA5 entspricht (im Jahresmittel 0,88 K über 1850-1900)
+ANGLEICHUNG = os.environ.get("VGL_ANGLEICHUNG", "1850-1900")
+ZIEL_9120 = 0.88                       # Ersatz, falls ERA5 fehlt (Jahresmittel)
 
 # Lokal: je Quelle ein eigener Ordner; auf GitHub alles in ERA5_FOLDER
 BASIS = r"C:\Users\rafff\Documents\Wetterdaten"
@@ -235,11 +242,23 @@ def erstelle(wahl):
     if not reihen:
         print(f"Keine Daten für {name} - übersprungen")
         return
-    if not DUNKEL:                              # Tabelle nur einmal (beim hellen Lauf) schreiben
+    if ANGLEICHUNG == "1991-2020":
+        def mittel_9120(df):
+            v = df[(df.index >= 1991) & (df.index <= 2020) & ~df["laufend"]]["abw"]
+            return float(v.mean()) if len(v) == 30 else None
+        ziel = mittel_9120(reihen["ERA5"][0]) if "ERA5" in reihen else None
+        ziel = ZIEL_9120 if ziel is None else ziel
+        for q, (df, stand) in reihen.items():
+            m = mittel_9120(df)
+            if m is not None:
+                df["abw"] = df["abw"] + (ziel - m)
+                print(f"  {q}: um {ziel - m:+.3f} K verschoben (Mittel 1991-2020 = {ziel:.2f} K)")
+    if not DUNKEL and ANGLEICHUNG == "1850-1900":   # Tabelle nur einmal (beim hellen Lauf, nicht im Test)
         speichere_tabelle(reihen, name, txt_teil)
 
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
-    ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)",
+    ax.set_title("Abweichung von der vorindustriellen Zeit (1850-1900)" + (
+                 " · angeglichen über 1991-2020" if ANGLEICHUNG == "1991-2020" else ""),
                  fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
     mitte = ax.annotate(f"Global | {'Jahr' if art == 'jahr' else name} | Vergleich der Datensätze",
                         xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3), textcoords="offset points",
@@ -382,7 +401,7 @@ def erstelle(wahl):
     r = fig.canvas.get_renderer()
     info_rahmen = info_text.get_bbox_patch().get_window_extent(r)
     os.makedirs(PNG_FOLDER, exist_ok=True)
-    basis = f"VGL_global_linien_{bild_teil}"
+    basis = f"VGL_global_linien_{bild_teil}" + ("_9120" if ANGLEICHUNG == "1991-2020" else "")
     png_file = os.path.join(PNG_FOLDER, basis + ("_dunkel" if DUNKEL else "") + ".png")
     if INFO_ALS_PLATZHALTER:
         fig.savefig(os.path.splitext(png_file)[0] + "_voll.png", dpi=PNG_DPI, facecolor=FARBEN["bg"])
