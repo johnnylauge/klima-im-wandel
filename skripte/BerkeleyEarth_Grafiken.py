@@ -6,8 +6,10 @@ jeweils für das Jahr, die vier Jahreszeiten und die zwölf Monate.
 Ablauf:
   1. Lädt die Datei Global_TAVG_monthly.txt von Berkeley Earth (laufend aktualisiert) und
      speichert sie als BE_Global_TAVG_monthly.txt. Genutzt wird die erste Tabelle.
-  2. Rechnet die Abweichungen (Bezug 1951-1980) auf 1850-1900 um: Je Kalendermonat wird das
-     Mittel 1850-1900 abgezogen. Die absolute Temperatur in °C ergibt sich aus der Abweichung
+  2. Rechnet die Abweichungen (Bezug 1951-1980) auf 1850-1900 um, angeglichen über 1991-2020 (angleichung.py, wie Foster &
+     Rahmstorf 2026 und Copernicus): je Kalendermonat Abweichung zum eigenen Mittel 1991-2020
+     plus die Erwärmung dieses Zeitraums gegenüber 1850-1900 (im Jahresmittel 0,88 K).
+     Die absolute Temperatur in °C ergibt sich aus der Abweichung
      plus dem absoluten Monatsmittel 1951-1980 aus dem Kopf der Datei.
   3. Bildet je Jahr das Mittel des Zeitraums (Jahr, Jahreszeit, Monat), mit Rang.
      Unvollständige Zeiträume am Anfang fallen weg, der laufende wird als unvollständig markiert.
@@ -39,6 +41,7 @@ def tag_monat(d):
                            "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
 
 import pandas as pd
+import angleichung      # gemeinsamer Bezug: 1850-1900, angeglichen über 1991-2020
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.collections import LineCollection
@@ -220,9 +223,8 @@ def lies_berkeley(datei):
 
 
 MONATE_DF, ABSOLUT = lies_berkeley(FILE)
-# Bezug 1850-1900 je Kalendermonat; absolute Temperatur aus dem Monatsmittel 1951-1980
-bezug = MONATE_DF[(MONATE_DF["jahr"] >= 1850) & (MONATE_DF["jahr"] <= 1900)].groupby("monat")["abw_5180"].mean()
-MONATE_DF["ano_pre"] = MONATE_DF["abw_5180"] - MONATE_DF["monat"].map(bezug)
+# Bezug 1850-1900, angeglichen über 1991-2020 (siehe angleichung.py); °C aus dem Monatsmittel 1951-1980
+MONATE_DF["ano_pre"] = angleichung.auf_1850_1900(MONATE_DF, "abw_5180")
 MONATE_DF["temp"] = MONATE_DF["abw_5180"] + MONATE_DF["monat"].map(dict(zip(range(1, 13), ABSOLUT)))
 MONATE_DF["tage"] = [pd.Period(f"{j}-{m:02d}").days_in_month for j, m in zip(MONATE_DF["jahr"], MONATE_DF["monat"])]
 LETZTER = MONATE_DF.iloc[-1]
@@ -272,7 +274,7 @@ def berechne(art, name, monate):
 def speichere_txt(werte, art, name, datei):
     with open(datei, "w", encoding="utf-8") as f:
         f.write(f"# Temperaturmittel {name} – Global (Berkeley Earth, Land + Ozean)\n"
-                f"# Abweichung bezogen auf 1850-1900\n"
+                f"# Abweichung bezogen auf 1850-1900 ({angleichung.HINWEIS})\n"
                 f"# Stand: {STAND}\n"
                 + ("# Jahr = Jahr von Januar/Februar (2026 = Winter 2025/26)\n" if name == "Winter" else "")
                 + "#\n"

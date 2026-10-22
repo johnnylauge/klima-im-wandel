@@ -6,7 +6,9 @@ jeweils für das Jahr, die vier Jahreszeiten und die zwölf Monate.
 Ablauf:
   1. Lädt die Monatswerte über "Climate at a Glance" (NOAA NCEI) als CSV herunter und speichert
      sie als NOAA_global_monat.csv. Die Abweichungen beziehen sich dort auf 1901-2000.
-  2. Rechnet auf 1850-1900 um: Je Kalendermonat wird das Mittel 1850-1900 abgezogen.
+  2. Rechnet auf 1850-1900 um, angeglichen über 1991-2020 (angleichung.py, wie Foster &
+     Rahmstorf 2026 und Copernicus): je Kalendermonat Abweichung zum eigenen Mittel 1991-2020
+     plus die Erwärmung dieses Zeitraums gegenüber 1850-1900 (im Jahresmittel 0,88 K).
      NOAA veröffentlicht keine absoluten Werte in der Datei; für °C wird das Monatsmittel des
      20. Jahrhunderts addiert, das NOAA in seinen Monatsberichten nennt (auf 0,1 °C gerundet).
   3. Bildet je Jahr das Mittel des Zeitraums (Jahr, Jahreszeit, Monat), mit Rang.
@@ -37,6 +39,7 @@ def tag_monat(d):
                            "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
 
 import pandas as pd
+import angleichung      # gemeinsamer Bezug: 1850-1900, angeglichen über 1991-2020
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.collections import LineCollection
@@ -200,9 +203,8 @@ def lies_noaa(datei):
 
 
 MONATE_DF = lies_noaa(FILE)
-# Bezug 1850-1900 je Kalendermonat; absolute Temperatur aus dem Monatsmittel 1901-2000
-bezug = MONATE_DF[(MONATE_DF["jahr"] >= 1850) & (MONATE_DF["jahr"] <= 1900)].groupby("monat")["abw_20jh"].mean()
-MONATE_DF["ano_pre"] = MONATE_DF["abw_20jh"] - MONATE_DF["monat"].map(bezug)
+# Bezug 1850-1900, angeglichen über 1991-2020 (siehe angleichung.py); °C aus dem Monatsmittel 1901-2000
+MONATE_DF["ano_pre"] = angleichung.auf_1850_1900(MONATE_DF, "abw_20jh")
 MONATE_DF["temp"] = MONATE_DF["abw_20jh"] + MONATE_DF["monat"].map(dict(zip(range(1, 13), ABSOLUT_20JH)))
 MONATE_DF["unsicher"] = 0.0
 MONATE_DF["tage"] = [pd.Period(f"{j}-{m:02d}").days_in_month for j, m in zip(MONATE_DF["jahr"], MONATE_DF["monat"])]
@@ -253,7 +255,7 @@ def berechne(art, name, monate):
 def speichere_txt(werte, art, name, datei):
     with open(datei, "w", encoding="utf-8") as f:
         f.write(f"# Temperaturmittel {name} – Global (NOAA NOAAGlobalTemp, Land + Ozean)\n"
-                f"# Abweichung bezogen auf 1850-1900\n"
+                f"# Abweichung bezogen auf 1850-1900 ({angleichung.HINWEIS})\n"
                 f"# Stand: {STAND}\n"
                 + ("# Jahr = Jahr von Januar/Februar (2026 = Winter 2025/26)\n" if name == "Winter" else "")
                 + "#\n"

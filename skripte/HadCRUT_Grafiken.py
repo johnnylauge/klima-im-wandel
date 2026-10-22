@@ -8,7 +8,9 @@ Ablauf:
   1. Sucht auf der HadCRUT5-Seite die aktuelle Version (z. B. HadCRUT.5.2.0.0) und lädt die
      globale Monatsreihe (CSV, "analysis") herunter; gespeichert als HadCRUT5_global_monat.csv.
      Die Abweichungen beziehen sich dort auf 1961-1990, dazu gibt es die 95-%-Unsicherheit.
-  2. Rechnet auf 1850-1900 um: Je Kalendermonat wird das Mittel 1850-1900 abgezogen.
+  2. Rechnet auf 1850-1900 um, angeglichen über 1991-2020 (angleichung.py, wie Foster &
+     Rahmstorf 2026 und Copernicus): je Kalendermonat Abweichung zum eigenen Mittel 1991-2020
+     plus die Erwärmung dieses Zeitraums gegenüber 1850-1900 (im Jahresmittel 0,88 K).
   3. Bildet je Jahr das Mittel des Zeitraums (Jahr, Jahreszeit, Monat), mit Rang.
   4. HadCRUT5 liefert keine absoluten Werte. Für °C wird je Monat ein Mittel 1961-1990
      geschätzt: die Monatsmittel des 20. Jahrhunderts von NOAA, verschoben um das Mittel
@@ -39,6 +41,7 @@ def tag_monat(d):
                            "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
 
 import pandas as pd
+import angleichung      # gemeinsamer Bezug: 1850-1900, angeglichen über 1991-2020
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.collections import LineCollection
@@ -224,9 +227,8 @@ def lies_hadcrut(datei):
 
 
 MONATE_DF = lies_hadcrut(FILE)
-# Bezug 1850-1900 je Kalendermonat
-bezug = MONATE_DF[(MONATE_DF["jahr"] >= 1850) & (MONATE_DF["jahr"] <= 1900)].groupby("monat")["abw_6190"].mean()
-MONATE_DF["ano_pre"] = MONATE_DF["abw_6190"] - MONATE_DF["monat"].map(bezug)
+# Bezug 1850-1900, angeglichen über 1991-2020 (siehe angleichung.py)
+MONATE_DF["ano_pre"] = angleichung.auf_1850_1900(MONATE_DF, "abw_6190")
 # Geschätzte absolute Temperatur: Monatsmittel 1961-1990 = NOAA-Mittel 1901-2000 minus dem
 # HadCRUT5-Mittel 1901-2000 (bezogen auf 1961-1990)
 jh20 = MONATE_DF[(MONATE_DF["jahr"] >= 1901) & (MONATE_DF["jahr"] <= 2000)].groupby("monat")["abw_6190"].mean()
@@ -281,7 +283,7 @@ def berechne(art, name, monate):
 def speichere_txt(werte, art, name, datei):
     with open(datei, "w", encoding="utf-8") as f:
         f.write(f"# Temperaturmittel {name} – Global (HadCRUT5, Land + Ozean; °C geschätzt)\n"
-                f"# Abweichung bezogen auf 1850-1900\n"
+                f"# Abweichung bezogen auf 1850-1900 ({angleichung.HINWEIS})\n"
                 f"# Stand: {STAND}\n"
                 f"# Version: {VERSION_GENUTZT}\n"
                 f"# Abgerufen: {ABGERUFEN}\n"
