@@ -1,0 +1,330 @@
+# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880, ein Vergleich und Europa aus ERA5) und veröffentlicht sie auf GitHub Pages.
+# Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
+
+name: Tägliche Klimagrafik
+
+on:
+  schedule:
+    - cron: "0 9 * * *"        # täglich 09:00 UTC (= 11:00 Sommerzeit / 10:00 Winterzeit)
+  workflow_dispatch:            # Knopf zum manuellen Starten
+  push:
+    branches: [main]            # auch nach jeder Änderung an Skript oder Webseite
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Nie zwei Läufe gleichzeitig veröffentlichen
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: "1"            # Ausgaben der Skripte sofort im Protokoll zeigen
+      # Erweiterungen ein- und ausschalten: "ja" oder "nein"
+      # (auf der Webseite zusätzlich in site/index.html bei GEBIETE umstellen)
+      MIT_EUROPA: "nein"               # Europa aus ERA5 (Climate Data Store)
+      MIT_MEER: "nein"                 # Meer: Niño 3.4 aus NOAA OISST
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v6
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pakete installieren
+        run: pip install -r requirements.txt
+
+      # Daten und Grafiken vom letzten Lauf zurückholen. Fällt heute eine Quelle aus,
+      # bleiben ihre Grafiken vom letzten erfolgreichen Lauf stehen statt zu fehlen.
+      - name: Letzten Stand wiederherstellen
+        uses: actions/cache/restore@v4
+        with:
+          path: _site/daten
+          key: daten-${{ github.run_id }}
+          restore-keys: daten-
+
+      - name: Daten laden und helle Grafik erstellen
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+        run: python skripte/ERA5_Jahresmittel_Balken.py
+
+      - name: Dunkle Grafik erstellen (ohne neuen Download)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahresmittel_Balken.py
+
+      - name: Monatsgrafiken erstellen (hell)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_MONATE: alle
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Monatsmittel_Balken.py
+
+      - name: Monatsgrafiken erstellen (dunkel)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_MONATE: alle
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Monatsmittel_Balken.py
+
+      - name: Jahreszeitengrafiken erstellen (hell)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_JAHRESZEITEN: alle
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahreszeiten_Balken.py
+
+      - name: Jahreszeitengrafiken erstellen (dunkel)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_JAHRESZEITEN: alle
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Jahreszeiten_Balken.py
+
+      - name: Punktdiagramme erstellen (hell)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_PUNKTE: alle
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Tageswerte_Punkte.py
+
+      - name: Punktdiagramme erstellen (dunkel)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_PUNKTE: alle
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Tageswerte_Punkte.py
+
+      - name: Liniendiagramme erstellen (hell)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_LINIEN: alle
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Mittel_Linien.py
+
+      - name: Liniendiagramme erstellen (dunkel)
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_LINIEN: alle
+          ERA5_DUNKEL: "1"
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: python skripte/ERA5_Mittel_Linien.py
+
+      # Berkeley Earth (Monatswerte ab 1850). Schlägt der Download einmal fehl, läuft der Rest
+      # trotzdem weiter und die ERA5-Grafiken werden veröffentlicht.
+      - name: Berkeley-Earth-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          BE_WAHL: alle
+        run: python skripte/BerkeleyEarth_Grafiken.py
+
+      - name: Berkeley-Earth-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          BE_WAHL: alle
+          ERA5_DUNKEL: "1"
+          BE_OHNE_DOWNLOAD: "1"
+        run: python skripte/BerkeleyEarth_Grafiken.py
+
+      - name: NOAA-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NOAA_WAHL: alle
+        run: python skripte/NOAA_Grafiken.py
+
+      - name: NOAA-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NOAA_WAHL: alle
+          ERA5_DUNKEL: "1"
+          NOAA_OHNE_DOWNLOAD: "1"
+        run: python skripte/NOAA_Grafiken.py
+
+      - name: HadCRUT5-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          HADCRUT_WAHL: alle
+        run: python skripte/HadCRUT_Grafiken.py
+
+      - name: HadCRUT5-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          HADCRUT_WAHL: alle
+          ERA5_DUNKEL: "1"
+          HADCRUT_OHNE_DOWNLOAD: "1"
+        run: python skripte/HadCRUT_Grafiken.py
+
+      # NASA GISTEMP (ab 1880): nach NOAA, HadCRUT5 und Berkeley Earth, weil der Anschluss an
+      # 1850-1900 deren TXT-Dateien nutzt (fehlen sie, gilt die zuletzt gemerkte Verschiebung)
+      - name: NASA-GISTEMP-Grafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NASA_WAHL: alle
+        run: python skripte/NASA_Grafiken.py
+
+      - name: NASA-GISTEMP-Grafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NASA_WAHL: alle
+          ERA5_DUNKEL: "1"
+          NASA_OHNE_DOWNLOAD: "1"
+        run: python skripte/NASA_Grafiken.py
+
+      # Vergleich: liest die TXT-Dateien von ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth (kein eigener Download)
+      - name: Vergleichsgrafiken erstellen (hell)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          VGL_WAHL: alle
+        run: python skripte/Vergleich_Linien.py
+
+      - name: Vergleichsgrafiken erstellen (dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          VGL_WAHL: alle
+          ERA5_DUNKEL: "1"
+        run: python skripte/Vergleich_Linien.py
+
+      # Europa (ERA5 aus dem Climate Data Store): fehlende neueste Tage nachladen. Beim allerersten Lauf
+      # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
+      - name: Stand des Europa-Nachladens holen
+        if: env.MIT_EUROPA == 'ja'
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: europa_daten
+          key: europa-${{ github.run_id }}
+          restore-keys: europa-
+
+      - name: Europa-Daten laden
+        if: env.MIT_EUROPA == 'ja'
+        continue-on-error: true
+        timeout-minutes: 30            # hängt der Copernicus-Server, geht der Lauf trotzdem weiter
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          CDSAPI_URL: https://cds.climate.copernicus.eu/api
+          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+          EUROPA_TEIL: neu                 # nur die neuesten Monate; das Auffüllen übernimmt "Europa-Daten nachladen"
+          EUROPA_MAX_MINUTEN: "20"         # danach mit dem Vorhandenen weiterrechnen
+          EUROPA_MAX_OFFEN: "1"            # der CDS verlangt derzeit: eine Anfrage nach der anderen
+          EUROPA_ZUSATZ: ${{ github.workspace }}/europa_daten/ERA5_europa_tag.txt
+        run: |
+          if [ ! -f _site/daten/ERA5_europa_tag.txt ] && [ -f startdaten/ERA5_europa_tag.txt ]; then
+            cp startdaten/ERA5_europa_tag.txt _site/daten/
+          fi
+          python skripte/ERA5_Europa_Daten.py
+
+      # Europa-Grafiken: je Bezugszeitraum (1961-1990, 1991-2020) hell und dunkel
+      - name: Europa-Grafiken erstellen
+        if: env.MIT_EUROPA == 'ja'
+        continue-on-error: true
+        timeout-minutes: 60
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_REGION: europa
+        run: |
+          for bezug in 1961-1990 1991-2020; do
+            kurz=${bezug:2:2}${bezug:7:2}
+            if [ ! -f _site/daten/ERA5_europa_tag_$kurz.txt ]; then
+              echo "Europa $bezug: noch keine vollständigen Daten - Grafiken folgen später"
+              continue
+            fi
+            for dunkel in 0 1; do
+              export ERA5_BEZUG=$bezug ERA5_DUNKEL=$dunkel
+              python skripte/ERA5_Jahresmittel_Balken.py
+              ERA5_MONATE=alle python skripte/ERA5_Monatsmittel_Balken.py
+              ERA5_JAHRESZEITEN=alle python skripte/ERA5_Jahreszeiten_Balken.py
+              ERA5_PUNKTE=alle python skripte/ERA5_Tageswerte_Punkte.py
+              ERA5_LINIEN=alle python skripte/ERA5_Mittel_Linien.py
+            done
+          done
+
+      # Meer (Test): Niño 3.4 aus NOAA OISST, hell und dunkel in einem Lauf
+      - name: Niño-3.4-Grafik erstellen
+        if: env.MIT_MEER == 'ja'
+        continue-on-error: true
+        timeout-minutes: 20
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          NINO_ERA5_FOLDER: ${{ github.workspace }}/europa_daten   # ERA5-Daten vom Nachlade-Lauf
+        run: python skripte/NINO34_Grafik.py
+
+      # Daten-Downloads: ERA5-Tageswerte im einheitlichen Stil und zu jeder TXT eine CSV für Excel
+      - name: Daten als TXT und CSV aufbereiten
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+        run: python skripte/Daten_Export.py
+
+      - name: Webseite zusammenstellen
+        run: cp site/index.html _site/
+
+      # Heutigen Stand für den nächsten Lauf sichern (ältere Sicherungen löscht GitHub selbst)
+      - name: Stand sichern
+        uses: actions/cache/save@v4
+        with:
+          path: _site/daten
+          key: daten-${{ github.run_id }}
+
+      - name: Webseite hochladen
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Verhindert, dass GitHub den täglichen Lauf nach 60 Tagen ohne Änderung pausiert:
+  # am 1. jedes Monats schreibt der geplante Lauf das Datum in wachhalten.txt.
+  # (Änderungen durch diesen Bot starten keinen neuen Lauf.)
+  wachhalten:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v6
+
+      - name: Monatlicher Eintrag
+        run: |
+          if [ "$(date -u +%d)" = "01" ]; then
+            date -u +"%Y-%m-%d" > wachhalten.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            git add wachhalten.txt
+            git commit -m "Monatlicher Eintrag (hält den täglichen Lauf aktiv)" || exit 0
+            git push
+          else
+            echo "Heute kein Eintrag nötig (nur am 1. des Monats)."
+          fi
