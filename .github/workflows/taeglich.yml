@@ -207,18 +207,6 @@ jobs:
           ERA5_DUNKEL: "1"
         run: python skripte/Vergleich_Linien.py
 
-      # TEST: Vergleich wie Foster & Rahmstorf (2026) angeglichen - alle Datensätze mit gleichem Mittel 1991-2020.
-      # Nur das Jahr, hell und dunkel; erscheint nicht auf der Seite, nur unter daten/Grafiken/..._9120_...
-      - name: Vergleich-Test (angeglichen über 1991-2020)
-        continue-on-error: true
-        env:
-          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
-          VGL_WAHL: Jahr
-          VGL_ANGLEICHUNG: "1991-2020"
-        run: |
-          python skripte/Vergleich_Linien.py
-          ERA5_DUNKEL=1 python skripte/Vergleich_Linien.py
-
       # Europa (ERA5 aus dem Climate Data Store): fehlende neueste Tage nachladen. Beim allerersten Lauf
       # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
       - name: Stand des Europa-Nachladens holen
