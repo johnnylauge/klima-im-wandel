@@ -239,6 +239,7 @@
   .lizenzen p { margin: 10px 0 0; }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
   footer a { color: inherit; }
+  .aufrufe { margin: 10px 0 0; font-size: 0.75rem; opacity: 0.7; }
   /* ---------- Handy: kompakter, Grafik vor den Kacheln ---------- */
   @media (max-width: 600px) {
     main { padding: 16px 16px 40px; }
@@ -482,12 +483,21 @@
           <a class="lz" href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a> nur nicht-kommerzielle Nutzung</li>
       </ul>
       <p><strong>Bearbeitung:</strong> Alle Werte und Grafiken sind eigene Berechnungen auf Basis dieser Daten –
-        Umrechnung auf den Bezug 1850–1900 (NASA GISTEMP beginnt 1880 und ist über 1951–1980 an das Mittel von
-        NOAA, HadCRUT5 und Berkeley Earth angeschlossen), Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von
+        Umrechnung auf den Bezug 1850–1900, für alle Datensätze gleich angeglichen über 1991–2020: Jeder Datensatz
+        ist je Kalendermonat so verschoben, dass sein Mittel 1991–2020 der Erwärmung dieses Zeitraums gegenüber
+        1850–1900 entspricht (im Jahresmittel 0,88 K, Monatswerte von Copernicus für ERA5) – wie bei
+        <a href="https://doi.org/10.1029/2025GL118804">Foster &amp; Rahmstorf (2026)</a>. Die Datensätze stimmen so in der
+        gut gemessenen jüngeren Zeit überein; ihre Unterschiede zeigen sich vor allem im 19. Jahrhundert. Dadurch weichen
+        die Werte etwas von den Angaben der Anbieter ab (die NOAA-Werte z. B. liegen rund 0,1 K höher), Ränge und
+        Trends bleiben gleich. Mittel für Jahre, Jahreszeiten und Monate; die °C-Werte von
         NASA, NOAA und HadCRUT5 sind geschätzt. Europa: Tagesmittel über die Landflächen 34–72° N, 25° W–40° E
         (Europa-Gebiet von C3S), flächengewichtet; Abweichung je Kalendertag zum Mittel 1961–1990 bzw. 1991–2020
         (ERA5 beginnt 1940, ein Bezug auf 1850–1900 ist dort nicht möglich). Die Datenanbieter sind für diese Darstellung nicht verantwortlich.</p>
+      <!-- Beim Einschalten des Zählers (ZAEHLER unten) wieder einfügen:
+      <p><strong>Seitenaufrufe:</strong> Gezählt mit <a href="https://www.goatcounter.com/">GoatCounter</a> –
+        ohne Cookies und ohne Speicherung personenbezogener Daten.</p> -->
     </details>
+    <p class="aufrufe" id="aufrufe" hidden></p>
   </footer>
 </main>
 
@@ -511,8 +521,7 @@
                   "neue Werte etwa Mitte des Folgemonats. Die °C-Werte beruhen auf gerundeten Mittelwerten von NOAA." },
     nasa: { stamm: "NASA_global", start: 1880, takt: "monatlich",
             info: "NASA GISTEMP v4 (Goddard Institute for Space Studies): Monatswerte aus Stations- und Schiffsmessungen ab 1880, " +
-                  "neue Werte etwa Mitte des Folgemonats. Da die Reihe erst 1880 beginnt, ist sie über 1951–1980 an den Bezug " +
-                  "1850–1900 der anderen Datensätze angeschlossen; die °C-Werte sind geschätzt." },
+                  "neue Werte etwa Mitte des Folgemonats. Die °C-Werte sind geschätzt." },
     hadcrut: { stamm: "HADCRUT_global", start: 1850, takt: "monatlich",
             info: "HadCRUT5 (Met Office Hadley Centre und University of East Anglia): Monatswerte aus Stations- und " +
                   "Schiffsmessungen ab 1850, Grundlage der IPCC-Berichte. HadCRUT5 liefert nur Abweichungen; die °C-Werte sind geschätzt." },
@@ -1329,6 +1338,27 @@
       if (wert("Abgerufen")) document.getElementById("lz-hc-datum").textContent = wert("Abgerufen");
     })
     .catch(() => {});
+
+  // ---------- Unscheinbarer Zähler der Seitenaufrufe (GoatCounter, ohne Cookies) ----------
+  // Leer lassen = kein Zähler. Der Code ist der Name des GoatCounter-Kontos (xyz.goatcounter.com).
+  const ZAEHLER = "";                  // z. B. "klima-im-wandel" - derzeit ausgeschaltet
+  if (ZAEHLER && !/^(localhost|127\.)/.test(location.hostname)) {
+    const gc = document.createElement("script");
+    gc.async = true;
+    gc.src = "https://gc.zgo.at/count.js";
+    gc.dataset.goatcounter = `https://${ZAEHLER}.goatcounter.com/count`;
+    document.body.appendChild(gc);
+    fetch(`https://${ZAEHLER}.goatcounter.com/counter/TOTAL.json`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const n = d && parseInt(String(d.count).replace(/\D/g, ""), 10);
+        if (!n) return;
+        const el = document.getElementById("aufrufe");
+        el.textContent = `${n.toLocaleString("de-DE")} Seitenaufrufe`;
+        el.hidden = false;
+      })
+      .catch(() => {});
+  }
 </script>
 </body>
 </html>
