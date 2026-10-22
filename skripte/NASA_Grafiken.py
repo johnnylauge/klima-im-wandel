@@ -6,12 +6,9 @@ Abweichung, jeweils für das Jahr, die vier Jahreszeiten und die zwölf Monate.
 Ablauf:
   1. Lädt die globale Monatstabelle (GLB.Ts+dSST.csv) herunter; gespeichert als
      NASA_GISTEMP_global_monat.csv. Die Abweichungen beziehen sich dort auf 1951-1980.
-  2. Anschluss an 1850-1900: GISTEMP beginnt erst 1880, das Mittel 1850-1900 lässt sich also
-     nicht direkt bilden. Je Kalendermonat wird die Reihe deshalb so verschoben, dass ihr
-     Mittel 1951-1980 dem Mittel von NOAA, HadCRUT5 und Berkeley Earth (alle bezogen auf
-     1850-1900) im selben Zeitraum entspricht - ähnlich wie die WMO die Datensätze angleicht.
-     Die Verschiebung wird in NASA_anschluss.txt gemerkt und genutzt, falls die anderen
-     Quellen einmal fehlen.
+  2. Rechnet auf 1850-1900 um, angeglichen über 1991-2020 (angleichung.py, wie Foster &
+     Rahmstorf 2026 und Copernicus): je Kalendermonat Abweichung zum eigenen Mittel 1991-2020
+     plus die Erwärmung dieses Zeitraums gegenüber 1850-1900 (im Jahresmittel 0,88 K).
   3. Bildet je Jahr das Mittel des Zeitraums (Jahr, Jahreszeit, Monat), mit Rang.
   4. GISTEMP liefert keine absoluten Werte. Für °C wird wie bei HadCRUT5 je Monat geschätzt:
      die Monatsmittel des 20. Jahrhunderts von NOAA, verschoben um das GISTEMP-Mittel 1901-2000.
@@ -40,6 +37,7 @@ def tag_monat(d):
                            "Sep.", "Okt.", "Nov.", "Dez."][d.month - 1]
 
 import pandas as pd
+import angleichung      # gemeinsamer Bezug: 1850-1900, angeglichen über 1991-2020
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.collections import LineCollection
@@ -107,7 +105,7 @@ ANSCHLUSS_ERSATZ = 0.30           # nur falls weder andere Quellen noch NASA_ans
 ABSOLUT_20JH = [12.0, 12.1, 12.7, 13.7, 14.8, 15.5, 15.8, 15.6, 15.0, 14.0, 12.9, 12.2]
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 QUELLE = ("Datenquelle: NASA GISS, GISTEMP v4 (Land + Ozean) · gemeinfrei\n"
-          "https://data.giss.nasa.gov/gistemp/ · eigene Berechnung (an 1850-1900 angeschlossen)\n"
+          "https://data.giss.nasa.gov/gistemp/ · eigene Berechnung\n"
           "Visualisierung: JohnnyLauge.bsky.social")
 
 SEASONS = {
@@ -265,10 +263,9 @@ def anschluss():
 
 
 MONATE_DF = lies_nasa(FILE)
-# Anschluss an 1850-1900: Mittel 1951-1980 je Kalendermonat auf das der anderen Quellen setzen
-eigen = MONATE_DF[(MONATE_DF["jahr"] >= ANSCHLUSS_VON) & (MONATE_DF["jahr"] <= ANSCHLUSS_BIS)].groupby("monat")["abw_5180"].mean()
-verschiebung = anschluss()
-MONATE_DF["ano_pre"] = MONATE_DF["abw_5180"] - MONATE_DF["monat"].map(eigen) + MONATE_DF["monat"].map(verschiebung)
+# Bezug 1850-1900, angeglichen über 1991-2020 (siehe angleichung.py) - wie die anderen Datensätze.
+# (Der frühere Anschluss über 1951-1980 an NOAA, HadCRUT5 und Berkeley ist damit nicht mehr nötig.)
+MONATE_DF["ano_pre"] = angleichung.auf_1850_1900(MONATE_DF, "abw_5180")
 # Geschätzte absolute Temperatur: NOAA-Monatsmittel 1901-2000 minus dem GISTEMP-Mittel 1901-2000
 jh20 = MONATE_DF[(MONATE_DF["jahr"] >= 1901) & (MONATE_DF["jahr"] <= 2000)].groupby("monat")["abw_5180"].mean()
 ABSOLUT_5180 = {m: ABSOLUT_20JH[m - 1] - jh20[m] for m in range(1, 13)}
@@ -322,7 +319,7 @@ def berechne(art, name, monate):
 def speichere_txt(werte, art, name, datei):
     with open(datei, "w", encoding="utf-8") as f:
         f.write(f"# Temperaturmittel {name} – Global (NASA GISTEMP v4, Land + Ozean; °C geschätzt)\n"
-                f"# Abweichung bezogen auf 1850-1900 (angeschlossen über {ANSCHLUSS_VON}-{ANSCHLUSS_BIS})\n"
+                f"# Abweichung bezogen auf 1850-1900 ({angleichung.HINWEIS})\n"
                 f"# Stand: {STAND}\n"
                 f"# Version: {VERSION_GENUTZT}\n"
                 f"# Abgerufen: {ABGERUFEN}\n"
