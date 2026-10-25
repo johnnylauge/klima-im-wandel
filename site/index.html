@@ -343,6 +343,10 @@
       <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
       <span class="text">Punkte</span>
     </button>
+    <button type="button" id="art-verlauf" aria-pressed="false" title="Jahresverlauf: jeder Tag des laufenden Jahres im Vergleich zu allen Jahren">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 22 C10 8, 22 8, 28 20" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="6" stroke-linecap="round"/><path d="M4 20 C9 9, 15 7, 19 11" fill="none" stroke="#e8313f" stroke-width="2.6" stroke-linecap="round"/><circle cx="19" cy="11" r="2.4" fill="#e8313f"/></svg>
+      <span class="text">Verlauf</span>
+    </button>
   </div>
   </div>
 
@@ -536,7 +540,7 @@
                   "ab 1940, als Abweichung vom Mittel 1991–2020 (Bezug von Copernicus). ERA5 liegt hier etwa 5 Tage zurück." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
-  QUELLEN.era5.arten = ["balken", "punkte", "linien"];
+  QUELLEN.era5.arten = ["balken", "punkte", "linien", "verlauf"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
   QUELLEN.hadcrut.arten = QUELLEN.nasa.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
@@ -558,7 +562,7 @@
   // bei den Punkten (ERA5) die Tageswerte dieses Zeitraums - jeweils als TXT und als CSV (für Excel)
   const DATEN_TEXT = { jahr: "Jahreswerte", saison: "Jahreszeitenwerte", monat: "Monatswerte" };
   const datenLinks = (teil, rest) => {        // rest: "jahreswerte", "saison_herbst", "monat_10"
-    const tage = artJetzt() === "punkte";
+    const tage = ["punkte", "verlauf"].includes(artFuer(teil));
     const basis = tage ? `daten/${Q().stamm}_tageswerte${teil === "jahr" ? "" : "_" + rest}`
                        : `daten/${Q().stamm}_${rest}`;
     ["txt", "csv"].forEach(e => {
@@ -591,9 +595,14 @@
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
   let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "linien" (Abweichung mit Trend) oder "punkte" (jeder Tag)
-  const ARTEN = ["balken", "linien", "punkte"];
+  const ARTEN = ["balken", "linien", "punkte", "verlauf"];
   const ART_TEXT = { balken: "ein Balken je Jahr", punkte: "ein Punkt je Tag",
-                     linien: "Abweichung als Linie mit Trend" };
+                     linien: "Abweichung als Linie mit Trend",
+                     verlauf: "jeder Tag, das laufende Jahr hervorgehoben" };
+  // "Verlauf" gibt es nur für das ganze Jahr - in Jahreszeit und Monat gilt dann Balken
+  const artFuer = teil => (artJetzt() === "verlauf" && teil !== "jahr" ? "balken" : artJetzt());
+  const ansichtJetzt = () => ["jahr", "saison", "monat"].find(n =>
+    document.getElementById("tab-" + n).getAttribute("aria-selected") === "true") || "jahr";
   try { const a = localStorage.getItem("art"); if (ARTEN.includes(a)) art = a; } catch (e) {}
 
   // Jahreszeiten: Name, Dateiname, Monate
@@ -629,7 +638,7 @@
 
   // Dateiname der Grafik je Ansicht und Darstellung
   function grafikName(teil) {
-    const a = artJetzt(), q = Q().stamm;
+    const a = artFuer(teil), q = Q().stamm;
     const p = a === "balken" ? "" : a + "_";
     if (teil === "jahr") return a === "balken" ? `${q}_jahreswerte` : `${q}_${a}_jahr`;
     if (teil === "monat") return `${q}_${p}monat_${nn(monat)}`;
@@ -640,7 +649,8 @@
     const wer = teil === "jahr" ? "Jahresmitteltemperatur"
               : teil === "monat" ? `Mitteltemperatur im ${MONATE[monat - 1]}`
               : `Mitteltemperatur im ${SAISONS[saison].name}`;
-    const seit = Q().start, a = artJetzt();
+    const seit = Q().start, a = artFuer(teil);
+    if (a === "verlauf") return `Liniendiagramm der globalen Tagesmitteltemperatur des laufenden Jahres in °C im Vergleich zu allen Jahren seit ${seit}, mit Klimamittel 1991–2020 und täglichen Rekorden`;
     const wo = istEuropa() ? "europäischen" : "globalen", bez = BEZUG();
     if (Q().vergleich) return `Liniendiagramm: Abweichung der globalen ${wer} von 1850–1900 nach ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth`;
     if (a === "linien") return `Liniendiagramm der ${wo} ${wer} seit ${seit} als Abweichung von ${bez}, mit Trend`;
@@ -723,6 +733,18 @@
                   gleich.map(w => `${w.jj}: ${k(w.a)}`).join(" · "), "");
   }
 
+  // Darstellungs-Knöpfe: gedrückt/gesperrt passend zu Quelle und Ansicht (Verlauf nur beim Jahr)
+  function artKnoepfe() {
+    const t = ansichtJetzt();
+    ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(artFuer(t) === a)));
+    ARTEN.forEach(a => { document.getElementById("art-" + a).disabled =
+      !Q().arten.includes(a) || (a === "verlauf" && t !== "jahr"); });
+    document.getElementById("art-verlauf").title = !Q().arten.includes("verlauf")
+      ? "Den Jahresverlauf gibt es nur bei ERA5 (Tageswerte)"
+      : t !== "jahr" ? "Den Jahresverlauf gibt es nur in der Ansicht Jahr"
+      : "Jahresverlauf: jeder Tag des laufenden Jahres im Vergleich zu allen Jahren";
+  }
+
   function anwenden() {
     if (wahl) document.documentElement.setAttribute("data-theme", wahl);
     else document.documentElement.removeAttribute("data-theme");
@@ -730,8 +752,10 @@
     knopf.textContent = istDunkel() ? "☀" : "☾";
     knopf.setAttribute("aria-label", istDunkel() ? "Zur hellen Ansicht wechseln" : "Zur dunklen Ansicht wechseln");
     // Darstellung: Knöpfe, Beschreibung und Bilder
-    ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(artJetzt() === a)));
-    ARTEN.forEach(a => { document.getElementById("art-" + a).disabled = !Q().arten.includes(a); });
+    artKnoepfe();
+    const tagWeise = artFuer("jahr") === "verlauf";
+    document.querySelector("#ansicht-jahr figcaption .nur-gross").textContent =
+      `Mit der Maus über die Grafik fahren zeigt die Werte ${tagWeise ? "eines Tages" : "eines Jahres"} · zum Vergrößern klicken.`;
     document.getElementById("art-punkte").title = Q().arten.includes("punkte")
       ? "Punktdiagramm: ein Punkt je Tag" : "Punkte gibt es nur bei ERA5 (Tageswerte)";
     document.getElementById("art-balken").title = Q().arten.includes("balken")
@@ -740,8 +764,8 @@
       ? "Liniendiagramm: Abweichung mit Trend" : "Der Vergleich ist nur als Liniendiagramm verfügbar";
     document.querySelectorAll(".nur-quelle").forEach(el => el.classList.toggle("ausgeblendet", !!Q().vergleich));
     document.querySelectorAll(".kacheln").forEach(el => el.classList.toggle("sechs", !!Q().vergleich));
-    document.querySelectorAll(".art-text").forEach(el => el.textContent =
-      Q().vergleich ? "fünf Datensätze als Abweichung von 1850–1900" : ART_TEXT[artJetzt()]);
+    ["jahr", "saison", "monat"].forEach(t => document.querySelectorAll(`#ansicht-${t} .art-text`).forEach(el =>
+      el.textContent = Q().vergleich ? "fünf Datensätze als Abweichung von 1850–1900" : ART_TEXT[artFuer(t)]));
     // Gebiet: Reiter, Überschriften und Untertitel
     const eu = istEuropa();
     document.body.classList.toggle("europa", eu);
@@ -815,9 +839,15 @@
     // Gibt es im Bild einen (leeren) Platz für den Info-Kasten, steht der Kasten fest oben links
     // und zeigt ohne Maus den neuesten Wert - wie der frühere Info-Kasten.
     const fest = !!d.info;
-    const neuester = d.balken[d.balken.length - 1];
+    const neuester = d.balken[d.neuester !== undefined ? d.neuester : d.balken.length - 1];
 
     function fuelle(b) {
+      if (b.text) {                                     // Jahresverlauf: Text fertig aus dem Skript
+        tipp.innerHTML = b.text;
+        tipp.style.display = "block";
+        passend();
+        return;
+      }
       if (b.werte) {                                    // Vergleich: Wert je Datensatz
         const kurz = { "Berkeley Earth": "Berkeley" };
         tipp.innerHTML = `${b.label}${b.werte.some(w => w.laufend) ? " (bisher)" : ""}<br>` +
@@ -1207,6 +1237,7 @@
       document.getElementById("tab-" + n).setAttribute("aria-selected", String(n === name));
       document.getElementById("ansicht-" + n).hidden = n !== name;
     });
+    artKnoepfe();
     if (adresseMerken) {
       let ziel = "#" + (name === "saison" ? "jahreszeit" : name);
       if (name === "monat" && monat) ziel = "#monat-" + nn(monat);
