@@ -108,6 +108,16 @@ jobs:
           ERA5_OHNE_DOWNLOAD: "1"
         run: python skripte/ERA5_Tageswerte_Punkte.py
 
+      # Jahresverlauf (ERA5, Tageswerte des laufenden Jahres im Vergleich zu allen Jahren seit 1940)
+      - name: Jahresverlauf erstellen (hell und dunkel)
+        continue-on-error: true
+        env:
+          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
+          ERA5_OHNE_DOWNLOAD: "1"
+        run: |
+          python skripte/ERA5_Jahresverlauf.py
+          ERA5_DUNKEL=1 python skripte/ERA5_Jahresverlauf.py
+
       - name: Liniendiagramme erstellen (hell)
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
