@@ -252,7 +252,7 @@ def zeichne(fassung):
 
     # 1,5-K-Linie bei der Abweichung
     if einheit == "k":
-        ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Paris)")
+        ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Pariser Klimaabkommen)")
         ax.axhline(0, color=FARBEN["fg"], lw=0.9, zorder=1.5)
 
     # laufendes Jahr
@@ -375,13 +375,64 @@ def zeichne(fassung):
             mm = monate[monate["jahr"] == JAHR].iloc[-1]
             titel = f"{MONATSNAMEN[int(mm['monat']) - 1]} {JAHR}" + ("" if monat_voll else " (bisher)")
             c_w, k_w = mm["c"], mm["k"]
-        rechts_frei = (x_l < 300) if art == "tag" else (x_l < 11)
-        punkt_kasten = ax.annotate(
-            f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l),
-            xytext=(14 if rechts_frei else -14, 0), textcoords="offset points",
-            ha="left" if rechts_frei else "right", va="center", multialignment="right",
-            fontsize=11 * SCHRIFT, fontweight="bold", zorder=11,
-            bbox=dict(boxstyle="round,pad=0.3", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
+        # Kasten über den Linien, mit waagrechter und senkrechter Linie zum Punkt (wie beim wärmsten Jahr),
+        # damit er keine Daten verdeckt. Gesucht wird der erste freie Platz von unten nach oben.
+        from matplotlib.patches import FancyBboxPatch as _FB
+        huelle = tab.max(axis=1)                                     # höchster Wert aller Jahre je Tag/Monat
+        unten_y, oben_y = ax.get_ylim()
+        hoehe = oben_y - unten_y
+        r = fig.canvas.get_renderer()
+        hindernisse = [p for p in ax.patches if isinstance(p, _FB)] + [info.get_bbox_patch()]
+        if ax.get_legend():
+            hindernisse.append(ax.get_legend().get_frame())
+        inv = ax.transData.inverted()
+
+        def kasten(links, y):
+            dx = (25 if art == "tag" else 0.9) * (-1 if links else 1)
+            return ax.annotate(
+                f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l), xytext=(x_l + dx, y),
+                ha="right" if links else "left", va="bottom", multialignment="right" if links else "left",
+                fontsize=11 * SCHRIFT, fontweight="bold", zorder=11, linespacing=1.3,
+                bbox=dict(boxstyle="round,pad=0.35", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95),
+                arrowprops=dict(arrowstyle="-", color=FARBEN["fuss"], lw=1.2,
+                                connectionstyle="angle,angleA=0,angleB=90,rad=0",
+                                relpos=(1, 0.5) if links else (0, 0.5), shrinkA=0, shrinkB=4))
+
+        def frei(m):
+            fig.canvas.draw()
+            bb = m.get_bbox_patch().get_window_extent(r)
+            achse = ax.get_window_extent(r)
+            if bb.x0 < achse.x0 + 2 or bb.x1 > achse.x1 - 2 or bb.y1 > achse.y1 - 2:
+                return False
+            if any(bb.overlaps(h.get_window_extent(r)) for h in hindernisse):
+                return False
+            (x0, y0), (x1, _) = inv.transform([[bb.x0, bb.y0], [bb.x1, bb.y1]])
+            bereich = huelle[(huelle.index >= x0 - (3 if art == "tag" else 0.3)) & (huelle.index <= x1 + (3 if art == "tag" else 0.3))]
+            return not len(bereich) or y0 > bereich.max() + 0.02 * hoehe
+
+        punkt_kasten = None
+        fenster = 40 if art == "tag" else 1.5                          # Suche beginnt knapp über den Linien nahe dem Punkt
+        start = float(huelle[(huelle.index >= x_l - fenster) & (huelle.index <= x_l + fenster)].max())
+        for _ in range(8):                                           # notfalls oben etwas mehr Platz
+            for schritt in range(0, 40):
+                y = start + (0.03 + 0.02 * schritt) * hoehe
+                for links in (True, False):
+                    m = kasten(links, y)
+                    if frei(m):
+                        punkt_kasten = m
+                        break
+                    m.remove()
+                if punkt_kasten is not None or y > oben_y:
+                    break
+            if punkt_kasten is not None:
+                break
+            ax.set_ylim(unten_y, oben_y + 0.06 * hoehe)
+            unten_y, oben_y = ax.get_ylim()
+        if punkt_kasten is None:                                     # Notlösung: direkt neben den Punkt
+            punkt_kasten = ax.annotate(
+                f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l), xytext=(-14, 0), textcoords="offset points",
+                ha="right", va="center", multialignment="right", fontsize=11 * SCHRIFT, fontweight="bold", zorder=11,
+                bbox=dict(boxstyle="round,pad=0.35", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
     else:
         punkt_kasten = None
 
