@@ -188,6 +188,7 @@
   .kachel .label { color: var(--muted); font-size: 0.85rem; }
   .kachel .wert { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .kachel .zusatz { color: var(--muted); font-size: 0.85rem; }
+  .kachel .wert .neutral { color: var(--text); }
   .kachel .wert .trenn { color: var(--muted); font-weight: 400; margin: 0 2px; }
   .kachel .wert.doppel { white-space: nowrap; font-size: clamp(1rem, 1.9vw, 1.5rem); }
   #kacheln-aktuell { grid-template-columns: repeat(4, minmax(0, 1fr)); }                 /* vier gleich breite Kacheln */
@@ -863,7 +864,7 @@
     const d = akDaten, t = d.tag, j = d.jahr_bisher, tagesweise = akArt === "tag";
     if (!d.schwellen || t.rang === undefined) { kachelnAktuellAlt(); return; }   // ältere Datei (Skript noch nicht gelaufen)
     const farbe = v => (v >= 0 ? "warm" : "kalt");
-    const beide = (c, a) => `${grad(c)} <span class="trenn">|</span> ${k(a)}`;
+    const beide = (c, a) => `<span class="neutral">${grad(c)}</span> <span class="trenn">|</span> ${k(a)}`;   // °C in Textfarbe wie unten
     const jahrZeile = `<b>Jahr ${d.jahr} bisher</b><br>${grad(j.temp)} | ${k(j.abw)} · Rang ${j.rang} von ${j.von}`;
     let html;
     if (tagesweise || !d.monat) {
