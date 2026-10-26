@@ -23,6 +23,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredOffsetbox, HPacker, TextArea
 
+
+# Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
+from matplotlib.ticker import ScalarFormatter as _SF
+if not getattr(_SF, "_komma", False):
+    _sf_alt = _SF.__call__
+    _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
+    _SF._komma = True
+
+
+def dz(v, fmt=".2f"):
+    """Zahl in deutscher Schreibweise für Grafiktexte: Komma statt Punkt, echtes Minus."""
+    return format(v, fmt).replace(".", ",").replace("-", "−")
+
 # =========================================================
 # EINSTELLUNGEN
 # =========================================================
@@ -185,7 +198,7 @@ if not cur.empty:
 
     letzter_kasten = ax.annotate(
         f"{tag_monat(last['date'])} {last['date'].year}\n"
-        f"{last['2t']:.2f} °C | {last['preindustrial_anomaly']:+.2f} K",
+        f"{dz(last['2t'], ".2f")} °C | {dz(last['preindustrial_anomaly'], "+.2f")} K",
         xy=(last["pos"], last["2t"]), xytext=(10, 0), textcoords="offset points",
         ha="left", va="center", multialignment="right",   # beide Zeilen rechts bündig
         fontsize=12 * SCHRIFT, fontweight="bold",
@@ -194,8 +207,8 @@ if not cur.empty:
 
     # zwei Spalten: Beschriftung links, Zahlen rechtsbündig
     zeilen = [
-        (f"Temperaturmittel {current_year}{bis}:", f"{cur['2t'].mean():.2f} °C"),
-        ("Temperaturabweichung 1850-1900:", f"{cur['preindustrial_anomaly'].mean():+.2f} K"),
+        (f"Temperaturmittel {current_year}{bis}:", f"{dz(cur['2t'].mean(), ".2f")} °C"),
+        ("Temperaturabweichung 1850-1900:", f"{dz(cur['preindustrial_anomaly'].mean(), "+.2f")} K"),
     ]
     stil = dict(fontsize=10 * SCHRIFT, fontweight="bold", linespacing=1.3, color=FARBEN["text"])
     spalten = HPacker(children=[

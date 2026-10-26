@@ -44,6 +44,19 @@ from matplotlib.collections import LineCollection
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.ticker import MultipleLocator
 
+
+# Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
+from matplotlib.ticker import ScalarFormatter as _SF
+if not getattr(_SF, "_komma", False):
+    _sf_alt = _SF.__call__
+    _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
+    _SF._komma = True
+
+
+def dz(v, fmt=".2f"):
+    """Zahl in deutscher Schreibweise für Grafiktexte: Komma statt Punkt, echtes Minus."""
+    return format(v, fmt).replace(".", ",").replace("-", "−")
+
 # =========================================================
 # EINSTELLUNGEN
 # =========================================================
@@ -347,7 +360,7 @@ def erstelle(wahl, anzeigen=True):
     cur = werte.loc[current_year]
     info = (f"Temperaturmittel {label(current_year)}"
             f"{f' (bis {bis_tag})' if is_partial else ''}: {region.temp_info(werte, current_year, is_partial)}\n"
-            f"Temperaturabweichung {region.BEZUG}: {cur['anomaly']:+.2f} K  "
+            f"Temperaturabweichung {region.BEZUG}: {dz(cur['anomaly'], "+.2f")} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)

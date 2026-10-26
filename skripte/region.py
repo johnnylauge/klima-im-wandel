@@ -16,6 +16,11 @@ Europa:  Tagesmittel aus dem Copernicus Climate Data Store (ERA5 post-processed 
 
 import os
 
+
+def dz(v, fmt=".2f"):
+    """Zahl in deutscher Schreibweise für Grafiktexte: Komma statt Punkt, echtes Minus."""
+    return format(v, fmt).replace(".", ",").replace("-", "−")
+
 REGION = os.environ.get("ERA5_REGION", "global").strip().lower()
 if REGION not in ("global", "europa"):
     raise ValueError(f"ERA5_REGION '{REGION}' unbekannt - möglich: global, europa")
@@ -63,10 +68,10 @@ def temp_info(tabelle, jahr, unvollstaendig):
     Temperatur - Abweichung der vollständigen Zeiträume."""
     z = tabelle.loc[jahr]
     if not (EUROPA and unvollstaendig):
-        return f"{z['temp']:.2f} °C"
+        return f"{dz(z['temp'], ".2f")} °C"
     voll = tabelle.drop(jahr)
     abstand = float((voll["temp"] - voll["anomaly"]).median())
-    return f"≈ {z['anomaly'] + abstand:.2f} °C (hochgerechnet)"
+    return f"≈ {dz(z['anomaly'] + abstand, ".2f")} °C (hochgerechnet)"
 
 
 def temp_hover(tabelle, jahr, laufend_jahr):

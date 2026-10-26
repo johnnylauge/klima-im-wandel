@@ -36,6 +36,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+
+# Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
+from matplotlib.ticker import ScalarFormatter as _SF
+if not getattr(_SF, "_komma", False):
+    _sf_alt = _SF.__call__
+    _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
+    _SF._komma = True
+
 # ================= Einstellungen =================
 JAHR = dt.date.today().year
 VERGLEICH = [1997, 2015, 2023]   # Vergleichsjahre (starke El-Niño-Jahre)

@@ -31,6 +31,14 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm
 from matplotlib.lines import Line2D
 
+
+# Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
+from matplotlib.ticker import ScalarFormatter as _SF
+if not getattr(_SF, "_komma", False):
+    _sf_alt = _SF.__call__
+    _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
+    _SF._komma = True
+
 # =========================================================
 # EINSTELLUNGEN
 # =========================================================
@@ -169,7 +177,7 @@ def zeichne(fassung):
     art, einheit = fassung.split("_")          # "tag"/"monat", "c"/"k"
     spalte = "2t" if einheit == "c" else "abw"
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.125, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
 
     if art == "tag":
         tab = tag_tab if einheit == "c" else tag_abw
@@ -195,7 +203,7 @@ def zeichne(fassung):
 
     # 1,5-K-Linie bei der Abweichung
     if einheit == "k":
-        ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Pariser Klimaabkommen)")
+        ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Paris)")
         ax.axhline(0, color=FARBEN["fg"], lw=0.9, zorder=1.5)
 
     # laufendes Jahr
@@ -229,7 +237,7 @@ def zeichne(fassung):
     if einheit == "k":
         oben = max(oben, 1.6)
     spanne = oben - unten
-    ax.set_ylim(unten - 0.04 * spanne, oben + 0.20 * spanne)          # oben Platz für den Info-Kasten
+    ax.set_ylim(unten - 0.04 * spanne, oben + (0.30 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
     fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9 else f"{v:.1f}".replace(".", ",").replace("-", "−"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt))
     ax.set_ylabel("Temperatur [°C]" if einheit == "c" else "Temperaturabweichung [K]",
@@ -241,8 +249,9 @@ def zeichne(fassung):
     ax.set_axisbelow(True)
 
     # Überschrift in drei Zeilen wie bei den anderen Grafiken
-    zeile3 = (("Tageswerte" if art == "tag" else "Monatswerte") + f" im Vergleich zu den Jahren {START}-{VORJAHR}"
-              + (" · Abweichung von 1850-1900" if einheit == "k" else ""))
+    # °C: was gezeigt wird · Abweichung: gleiche dritte Zeile wie bei den anderen Grafiken
+    zeile3 = ("Abweichung von der vorindustriellen Zeit (1850-1900)" if einheit == "k"
+              else ("Tageswerte" if art == "tag" else "Monatswerte") + f" im Vergleich zu den Jahren {START}-{VORJAHR}")
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
     mitte = ax.annotate(f"Global | {JAHR} | ERA5", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom", fontsize=16 * SCHRIFT, fontweight="bold")
@@ -275,26 +284,45 @@ def zeichne(fassung):
 
     # Info-Kasten oben links
     bis = f" (bis {tag_monat(LETZTER)})"
+    # deutsche Schreibweise mit Komma ("15,07 °C" - mit Punkt sähe es aus wie ein Datum)
+    c_, k_ = (lambda v: komma(v)), (lambda v: komma(v, True))
     if art == "tag":
-        z1 = (f"{tag_monat(LETZTER)} {JAHR}: {letzte['2t']:.2f} °C | {letzte['abw']:+.2f} K"
-              f"  (Rekord {rekord_c:.2f} °C, {rekord_j})")
+        z1 = (f"{tag_monat(LETZTER)} {JAHR}: {c_(letzte['2t'])} °C | {k_(letzte['abw'])} K"
+              f"  (Tagesrekord {c_(rekord_c)} °C, {rekord_j})")
         z2 = (f"Tage über 1,5 K in {JAHR}: {kacheln['ueber15']['tage']} von {kacheln['ueber15']['von']}" if einheit == "k"
-              else f"Temperaturmittel {JAHR}{bis}: {akt['2t'].mean():.2f} °C | {akt['abw'].mean():+.2f} K")
+              else f"Temperaturmittel {JAHR}{bis}: {c_(akt['2t'].mean())} °C | {k_(akt['abw'].mean())} K")
     else:
         m = monate[monate["jahr"] == JAHR].iloc[-1]
         z1 = (f"{MONATSNAMEN[int(m['monat']) - 1]} {JAHR}{'' if monat_voll else ' (bisher)'}: "
-              f"{m['c']:.2f} °C | {m['k']:+.2f} K")
+              f"{c_(m['c'])} °C | {k_(m['k'])} K")
         z2 = (f"Monate über 1,5 K in {JAHR}: {kacheln['ueber15']['monate']} von {kacheln['ueber15']['von_monate']}"
-              if einheit == "k" else f"Temperaturmittel {JAHR}{bis}: {akt['2t'].mean():.2f} °C | {akt['abw'].mean():+.2f} K")
+              if einheit == "k" else f"Temperaturmittel {JAHR}{bis}: {c_(akt['2t'].mean())} °C | {k_(akt['abw'].mean())} K")
     info = ax.text(0.01, 0.97, f"{z1}\n{z2}", transform=ax.transAxes, ha="left", va="top",
                    fontsize=11 * SCHRIFT, fontweight="bold", linespacing=1.35, zorder=10,
                    bbox=dict(boxstyle="round,pad=0.5", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
 
-    # Legende unten links unter dem Diagramm (neben der Quellenangabe) - verdeckt so keine Linien
-    handles, labels = ax.get_legend_handles_labels()
-    leg = fig.legend(handles, labels, loc="lower left", bbox_to_anchor=(0.065, 0.004), ncol=3,
-                     fontsize=10 * SCHRIFT, frameon=False, labelcolor=FARBEN["text"],
-                     handlelength=2.4, columnspacing=1.6, borderaxespad=0)
+    # Legende als Kasten im Diagramm (gleicher Stil wie der Info-Kasten):
+    #  °C:         unten in der Mitte - unter dem Sommerbogen ist dort frei
+    #  Abweichung: oben in der Mitte zwischen Info-Kasten und Farbleiste
+    stil = dict(fontsize=10 * SCHRIFT, facecolor=FARBEN["box_bg"], edgecolor=FARBEN["box_rand"], framealpha=0.95,
+                labelcolor=FARBEN["text"], handlelength=2.4, columnspacing=1.4, borderpad=0.6)
+    if einheit == "k":
+        # genau mittig in die Lücke zwischen Info-Kasten und Farbleiste; wird es zu eng, kleinere Schrift
+        fig.canvas.draw()
+        inv = ax.transAxes.inverted()
+        links = inv.transform(info.get_bbox_patch().get_window_extent())[1][0] + 0.012
+        rechts = 0.765 - 0.012
+        for groesse in (10, 9.5, 9, 8.5, 8):
+            stil["fontsize"] = groesse * SCHRIFT
+            leg = ax.legend(loc="upper center", bbox_to_anchor=((links + rechts) / 2, 0.985), ncol=2, **stil)
+            fig.canvas.draw()
+            b = inv.transform(leg.get_window_extent())
+            if b[1][0] - b[0][0] <= rechts - links:
+                break
+    else:
+        leg = ax.legend(loc="lower center", bbox_to_anchor=(0.5, 0.015), ncol=1, **stil)
+    leg.set_zorder(10)
+    leg.get_frame().set_boxstyle("round,pad=0.2,rounding_size=0.6")
     plt.setp(leg.get_texts(), fontweight="bold")
 
     # Speichern
