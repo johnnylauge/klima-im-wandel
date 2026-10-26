@@ -359,7 +359,7 @@ def erstelle(wahl, anzeigen=True):
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
                 textcoords="offset points", ha="center", va="bottom",
                 fontsize=24 * SCHRIFT, fontweight="bold")
-    ax.set_xlabel("Jahr", fontsize=18 * SCHRIFT, fontweight="bold")
+    # keine Beschriftung der x-Achse: Jahreszahlen bzw. Monate erklären sich selbst
     ax.set_ylabel("Temperaturabweichung [K]", fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for t in ax.get_xticklabels() + ax.get_yticklabels():
@@ -372,7 +372,7 @@ def erstelle(wahl, anzeigen=True):
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
     # Feste Ränder statt tight_layout -> immer gleiche Bildgröße und Position
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
 
     # Legende: ein Punkt steht für einen Tag
     handles, labels = ax.get_legend_handles_labels()

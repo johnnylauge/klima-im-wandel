@@ -293,7 +293,7 @@ def zeichne(jahr, aktuell, vergleich, hintergrund, dunkel, q=None):
     ax.set_ylim(min(-1.0, werte.min() - 0.3), werte.max() + 0.75)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.1f}".replace(".", ",").replace("-", "−")))
     ax.set_ylabel("Temperaturabweichung [K]", fontsize=24, fontweight="bold")
-    ax.set_xlabel("Monat", fontsize=24, fontweight="bold")
+    # keine Beschriftung der x-Achse: Jahreszahlen bzw. Monate erklären sich selbst
     ax.grid(axis="y", color=F["gitter"], lw=0.8)
     ax.set_axisbelow(True)
 

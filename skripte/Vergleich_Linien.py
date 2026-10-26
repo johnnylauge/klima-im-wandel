@@ -342,7 +342,7 @@ def erstelle(wahl):
     ax.yaxis.set_major_locator(MultipleLocator(0.25))
     erster_tick = start if start % X_TICK_STEP == 0 else (start // X_TICK_STEP + 1) * X_TICK_STEP
     ax.set_xticks(range(erster_tick, neuestes + 1, X_TICK_STEP))
-    ax.set_xlabel("Jahr", fontsize=18 * SCHRIFT, fontweight="bold")
+    # keine Beschriftung der x-Achse: Jahreszahlen bzw. Monate erklären sich selbst
     ax.set_ylabel("Temperaturabweichung [K]", fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for t in ax.get_xticklabels() + ax.get_yticklabels():
@@ -352,7 +352,7 @@ def erstelle(wahl):
              "HadCRUT5 (© British Crown Copyright, Met Office, OGL v3.0) · Berkeley Earth (CC BY-NC 4.0) · eigene Berechnung\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
 
     legend = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(0.01, 0.80), frameon=True,
                        fontsize=10 * SCHRIFT, fancybox=True, framealpha=0.85, edgecolor=FARBEN["box_rand"],

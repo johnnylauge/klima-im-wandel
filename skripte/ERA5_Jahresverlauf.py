@@ -254,7 +254,7 @@ mitte = ax.annotate(f"Global | {current_year} | ERA5", xy=(0.5, 1), xycoords=ax.
 ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
             textcoords="offset points", ha="center", va="bottom",
             fontsize=24 * SCHRIFT, fontweight="bold")
-ax.set_xlabel("Monat", fontsize=18 * SCHRIFT, fontweight="bold")
+# keine Beschriftung der x-Achse: Jahreszahlen bzw. Monate erklären sich selbst
 ax.set_ylabel("Temperatur [°C]", fontsize=18 * SCHRIFT, fontweight="bold")
 ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
 for label in ax.get_xticklabels() + ax.get_yticklabels():
@@ -265,7 +265,7 @@ ax.set_axisbelow(True)
 fig.text(0.99, 0.01, QUELLE, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
 # Feste Ränder statt tight_layout -> immer gleiche Bildgröße und Position
-fig.subplots_adjust(left=0.07, right=0.985, bottom=0.12, top=0.87)
+fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
 
 # Legende links bündig direkt unter dem Info-Kasten (gleicher Abstand wie Info-Kasten zum Rand)
 legend = ax.legend(loc="upper left", bbox_to_anchor=(0.01, 0.80), borderaxespad=0,

@@ -90,6 +90,14 @@
   body.meer header .kopfzeile, body.meer .quellinfo, body.meer .leiste,
   body.meer #ansicht-jahr, body.meer #ansicht-saison, body.meer #ansicht-monat { display: none !important; }
   .meer-quellen { margin: 0 0 14px; }
+  /* Aktuell: nur bei Global; darunter beginnt der Vergleich der Jahre */
+  #aktuell { margin-top: 22px; }
+  #aktuell .ak-leiste { margin: 10px 0 14px; }
+  .h-zusatz { font-weight: 500; color: var(--muted); font-size: 1rem; }
+  .vergleich-titel { margin: 36px 0 0; padding-top: 20px; border-top: 1px solid var(--line); }
+  body.europa #aktuell, body.meer #aktuell, body.europa .vergleich-titel, body.meer .vergleich-titel { display: none; }
+  .reiter button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .einheit button { padding: 6px 14px; }
   .meer-text { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin: 12px 0 0; }
   .test-hinweis { display: inline-block; font-size: 0.75rem; font-weight: 600; color: var(--muted);
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
@@ -304,6 +312,39 @@
       </div>
     </div>
     <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
+    <!-- ======================= AKTUELL (ERA5, täglich) ======================= -->
+    <section id="aktuell" aria-labelledby="h-aktuell">
+      <h2 id="h-aktuell">Aktuell <span class="h-zusatz">· ERA5, täglich</span></h2>
+      <p class="unter" id="ak-unter">Das laufende Jahr im Vergleich zu allen Jahren seit 1940 · jede Linie ein Jahr, gefärbt nach Jahrzehnt</p>
+      <div class="leiste ak-leiste">
+        <div class="reiter" role="group" aria-label="Tages- oder Monatswerte">
+          <button type="button" id="ak-tag" aria-pressed="true">Tageswerte</button>
+          <button type="button" id="ak-monat" aria-pressed="false">Monatswerte</button>
+        </div>
+        <div class="art einheit" role="group" aria-label="Temperatur oder Abweichung">
+          <button type="button" id="ak-c" aria-pressed="false" title="Temperatur in °C">°C</button>
+          <button type="button" id="ak-k" aria-pressed="true" title="Abweichung von 1850–1900 in K"><span class="nur-gross">Abweichung</span><span class="nur-handy">K</span></button>
+        </div>
+      </div>
+      <div class="kacheln" id="kacheln-aktuell" aria-live="polite"></div>
+      <figure>
+        <div class="bildrahmen">
+          <a id="link-aktuell" href="#">
+            <img id="bild-aktuell" alt="">
+          </a>
+          <div class="hover" id="hover-aktuell"></div>
+        </div>
+        <figcaption><span class="nur-gross">Mit der Maus über die Grafik fahren zeigt die Werte des Tages · zum Vergrößern klicken.</span><span class="nur-handy">Antippen zeigt die Werte · zweimal tippen vergrößert.</span></figcaption>
+      </figure>
+      <nav class="downloads" aria-label="Downloads Aktuell">
+        <a id="png-aktuell" href="#" download>Grafik (PNG)</a>
+        <a id="pdf-aktuell" href="#" download>Grafik (PDF)</a>
+        <a id="txt-aktuell" href="daten/ERA5_global_tageswerte.txt">Tageswerte (TXT)</a>
+        <a id="csv-aktuell" href="daten/ERA5_global_tageswerte.csv" download>Tageswerte (CSV)</a>
+      </nav>
+    </section>
+    <h2 class="vergleich-titel" id="h-vergleich">Im Vergleich der Jahre</h2>
+
     <div class="kopfzeile">
       <span class="qlabel" id="qlabel">Datenquelle</span>
       <div class="quelle" role="group" aria-labelledby="qlabel">
@@ -342,10 +383,6 @@
     <button type="button" id="art-punkte" aria-pressed="false" title="Punktdiagramm: ein Punkt je Tag">
       <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#4393c3"><circle cx="6.75" cy="21" r="2.1"/><circle cx="6.75" cy="26" r="2.1"/></g><g fill="#f4a582"><circle cx="12.75" cy="17" r="2.1"/><circle cx="12.75" cy="22" r="2.1"/></g><g fill="#d6604d"><circle cx="18.75" cy="12" r="2.1"/><circle cx="18.75" cy="17" r="2.1"/><circle cx="18.75" cy="22" r="2.1"/></g><g fill="#e8313f"><circle cx="24.75" cy="6" r="2.1"/><circle cx="24.75" cy="11" r="2.1"/><circle cx="24.75" cy="16" r="2.1"/></g></svg>
       <span class="text">Punkte</span>
-    </button>
-    <button type="button" id="art-verlauf" aria-pressed="false" title="Jahresverlauf: jeder Tag des laufenden Jahres im Vergleich zu allen Jahren">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 22 C10 8, 22 8, 28 20" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="6" stroke-linecap="round"/><path d="M4 20 C9 9, 15 7, 19 11" fill="none" stroke="#e8313f" stroke-width="2.6" stroke-linecap="round"/><circle cx="19" cy="11" r="2.4" fill="#e8313f"/></svg>
-      <span class="text">Verlauf</span>
     </button>
   </div>
   </div>
@@ -540,7 +577,7 @@
                   "ab 1940, als Abweichung vom Mittel 1991–2020 (Bezug von Copernicus). ERA5 liegt hier etwa 5 Tage zurück." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
-  QUELLEN.era5.arten = ["balken", "punkte", "linien", "verlauf"];
+  QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
   QUELLEN.hadcrut.arten = QUELLEN.nasa.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
@@ -595,7 +632,7 @@
   let monat = null;          // gewählter Monat 1..12
   let saison = null;         // gewählte Jahreszeit (Index in SAISONS)
   let art = "balken";        // Darstellung: "balken" (Mittel je Jahr), "linien" (Abweichung mit Trend) oder "punkte" (jeder Tag)
-  const ARTEN = ["balken", "linien", "punkte", "verlauf"];
+  const ARTEN = ["balken", "linien", "punkte"];
   const ART_TEXT = { balken: "ein Balken je Jahr", punkte: "ein Punkt je Tag",
                      linien: "Abweichung als Linie mit Trend",
                      verlauf: "jeder Tag, das laufende Jahr hervorgehoben" };
@@ -739,11 +776,72 @@
     ARTEN.forEach(a => document.getElementById("art-" + a).setAttribute("aria-pressed", String(artFuer(t) === a)));
     ARTEN.forEach(a => { document.getElementById("art-" + a).disabled =
       !Q().arten.includes(a) || (a === "verlauf" && t !== "jahr"); });
-    document.getElementById("art-verlauf").title = !Q().arten.includes("verlauf")
-      ? "Den Jahresverlauf gibt es nur bei ERA5 (Tageswerte)"
-      : t !== "jahr" ? "Den Jahresverlauf gibt es nur in der Ansicht Jahr"
-      : "Jahresverlauf: jeder Tag des laufenden Jahres im Vergleich zu allen Jahren";
   }
+
+  // ---------- Aktuell (ERA5, täglich) ----------
+  let akArt = "tag", akEinheit = "k";
+  try {
+    if (localStorage.getItem("akArt") === "monat") akArt = "monat";
+    if (localStorage.getItem("akEinheit") === "c") akEinheit = "c";
+  } catch (e) {}
+  let akDaten = null, akVersion = "";
+  function zeigeAktuell() {
+    ["tag", "monat"].forEach(x => document.getElementById("ak-" + x).setAttribute("aria-pressed", String(akArt === x)));
+    ["c", "k"].forEach(x => document.getElementById("ak-" + x).setAttribute("aria-pressed", String(akEinheit === x)));
+    const name = `ERA5_aktuell_${akArt}_${akEinheit}`;
+    const basis = `daten/Grafiken/${name}${istDunkel() ? "_dunkel" : ""}`;
+    document.getElementById("bild-aktuell").src = `${basis}.png${akVersion}`;
+    document.getElementById("link-aktuell").href = `${basis}_voll.png${akVersion}`;
+    const png = document.getElementById("png-aktuell"), pdf = document.getElementById("pdf-aktuell");
+    png.href = `${basis}_voll.png${akVersion}`; png.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.png`);
+    pdf.href = `${basis}_voll.pdf${akVersion}`; pdf.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.pdf`);
+    document.getElementById("bild-aktuell").alt =
+      `Liniendiagramm der globalen ${akArt === "tag" ? "Tages" : "Monats"}mitteltemperatur ` +
+      `${akEinheit === "c" ? "in °C" : "als Abweichung von 1850–1900"}: das laufende Jahr im Vergleich zu allen Jahren seit 1940, ` +
+      `jede Linie ein Jahr, nach Jahrzehnt eingefärbt, mit Rekorden`;
+    document.querySelector("#aktuell figcaption .nur-gross").textContent =
+      `Mit der Maus über die Grafik fahren zeigt die Werte ${akArt === "tag" ? "des Tages" : "des Monats"} · zum Vergrößern klicken.`;
+    // Maus-Anzeige (gleiche Technik wie bei den anderen Grafiken)
+    const schicht = document.getElementById("hover-aktuell");
+    const schluessel = name + akVersion;
+    if (hoverGeladen.aktuell !== schluessel) {
+      hoverGeladen.aktuell = schluessel;
+      schicht.innerHTML = "";
+      fetch(`daten/Grafiken/${name}.json${akVersion}`, { cache: "no-store" })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d && hoverGeladen.aktuell === schluessel) baueHover("aktuell", schicht, d); })
+        .catch(() => {});
+    }
+    kachelnAktuell();
+  }
+  function kachelnAktuell() {
+    const ziel = document.getElementById("kacheln-aktuell");
+    if (!akDaten) { ziel.innerHTML = ""; return; }
+    const d = akDaten, t = d.tag, u = d.ueber15, j = d.jahr_bisher;
+    const farbe = v => (v >= 0 ? "warm" : "kalt");
+    const rekordNeu = t.abstand > 0;
+    ziel.innerHTML =
+      kachel(`Neuester Tag · ${tagKurz(t.datum)}`, k(t.abw), grad(t.temp), farbe(t.abw)) +
+      kachel(rekordNeu ? "Neuer Tagesrekord" : "Abstand zum Tagesrekord",
+             (t.abstand >= 0 ? "+" : "−") + Math.abs(t.abstand).toFixed(2).replace(".", ",") + " K",
+             `${rekordNeu ? "bisher" : "Rekord"} ${grad(t.rekord)} (${t.rekord_jahr})`, rekordNeu ? "warm" : "") +
+      (akArt === "tag"
+        ? kachel(`Tage über 1,5 K in ${d.jahr}`, String(u.tage), `von ${u.von} Tagen`, u.tage ? "warm" : "")
+        : kachel(`Monate über 1,5 K in ${d.jahr}`, String(u.monate), `von ${u.von_monate} Monaten`, u.monate ? "warm" : "")) +
+      kachel(`Jahr ${d.jahr} bisher`, k(j.abw), `bisher Rang ${j.rang} von ${j.von} · ${grad(j.temp)}`, farbe(j.abw));
+  }
+  function ladeAktuell() {
+    fetch("daten/ERA5_aktuell.json", { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!d) return; akDaten = d; akVersion = "?v=" + encodeURIComponent(d.stand); zeigeAktuell(); })
+      .catch(() => {});
+  }
+  ["tag", "monat"].forEach(x => document.getElementById("ak-" + x).addEventListener("click", () => {
+    akArt = x; try { localStorage.setItem("akArt", x); } catch (e) {} zeigeAktuell();
+  }));
+  ["c", "k"].forEach(x => document.getElementById("ak-" + x).addEventListener("click", () => {
+    akEinheit = x; try { localStorage.setItem("akEinheit", x); } catch (e) {} zeigeAktuell();
+  }));
 
   function anwenden() {
     if (wahl) document.documentElement.setAttribute("data-theme", wahl);
@@ -774,6 +872,7 @@
     document.getElementById("gebiet-europa").setAttribute("aria-selected", String(eu && !meer));
     document.getElementById("gebiet-meer").setAttribute("aria-selected", String(meer));
     zeigeMeer();
+    if (!eu && !meer) zeigeAktuell();
     document.getElementById("qlabel").textContent = eu ? "Bezugszeitraum" : "Datenquelle";
     document.getElementById("untertitel").innerHTML = meer
       ? "Meerestemperatur – Niño 3.4 im äquatorialen Pazifik als Abweichung vom Mittel 1991–2020"
@@ -1331,6 +1430,7 @@
   // bis dahin bleibt die Seite bei Global - danach erscheint der Reiter von selbst
   if (istEuropa()) quelle = zuletzt.global;
   ladeQuelle();
+  ladeAktuell();
   if (GEBIETE.europa) fetch("daten/ERA5_europa_6190_jahreswerte.txt", { method: "HEAD", cache: "no-store" })
     .then(r => { if (r.ok) document.getElementById("gebiet-europa").hidden = false; })
     .catch(() => {});

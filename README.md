@@ -10,6 +10,14 @@ GitHub Pages.
 | Datei / Ordner | Zweck |
 | --- | --- |
 | `skripte/ERA5_Jahresmittel_Balken.py` | Lädt die Daten, rechnet die Jahreswerte, zeichnet die Grafik |
+| `skripte/ERA5_Monatsmittel_Balken.py` | Balken je Monat (alle 12 Monate) |
+| `skripte/ERA5_Jahreszeiten_Balken.py` | Balken je Jahreszeit (Frühling, Sommer, Herbst, Winter) |
+| `skripte/ERA5_Tageswerte_Punkte.py` | Punktdiagramme (ein Punkt je Tag) für Jahr, Jahreszeiten und Monate |
+| `skripte/ERA5_Mittel_Linien.py` | Liniendiagramme der Mitteltemperatur in °C (Farbverlauf nach Abweichung) für Jahr, Jahreszeiten und Monate |
+| `skripte/BerkeleyEarth_Grafiken.py` | Berkeley Earth (Monatswerte ab 1850): Balken und Linien für Jahr, Jahreszeiten und Monate |
+| `skripte/NOAA_Grafiken.py` | NOAA NOAAGlobalTemp (Monatswerte ab 1850): Balken und Linien für Jahr, Jahreszeiten und Monate |
+| `skripte/HadCRUT_Grafiken.py` | HadCRUT5 (Met Office / UEA, Monatswerte ab 1850): Balken für Jahr, Jahreszeiten und Monate |
+| `skripte/Vergleich_Linien.py` | Vergleich ERA5 / Berkeley Earth / NOAA / HadCRUT5 als Liniendiagramm (liest deren TXT-Dateien) |
 | `site/index.html` | Die Webseite, auf der Grafik, Kennzahlen und Downloads erscheinen |
 | `.github/workflows/taeglich.yml` | Steuerdatei: wann und wie GitHub das Skript ausführt |
 | `requirements.txt` | Python-Pakete, die GitHub installiert |
