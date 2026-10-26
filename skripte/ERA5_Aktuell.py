@@ -381,6 +381,7 @@ def zeichne(fassung):
         huelle = tab.max(axis=1)                                     # höchster Wert aller Jahre je Tag/Monat
         unten_y, oben_y = ax.get_ylim()
         hoehe = oben_y - unten_y
+        fig.canvas.draw()
         r = fig.canvas.get_renderer()
         hindernisse = [p for p in ax.patches if isinstance(p, _FB)] + [info.get_bbox_patch()]
         if ax.get_legend():
@@ -388,7 +389,7 @@ def zeichne(fassung):
         inv = ax.transData.inverted()
 
         def kasten(links, y):
-            dx = (25 if art == "tag" else 0.9) * (-1 if links else 1)
+            dx = (20 if art == "tag" else 0.35) * (-1 if links else 1)
             return ax.annotate(
                 f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l), xytext=(x_l + dx, y),
                 ha="right" if links else "left", va="bottom", multialignment="right" if links else "left",
@@ -399,24 +400,30 @@ def zeichne(fassung):
                                 relpos=(1, 0.5) if links else (0, 0.5), shrinkA=0, shrinkB=4))
 
         def frei(m):
-            fig.canvas.draw()
+            m.update_positions(r)                                     # nur den Kasten berechnen (schneller als alles zeichnen)
+            m.update_bbox_position_size(r)
             bb = m.get_bbox_patch().get_window_extent(r)
             achse = ax.get_window_extent(r)
             if bb.x0 < achse.x0 + 2 or bb.x1 > achse.x1 - 2 or bb.y1 > achse.y1 - 2:
                 return False
             if any(bb.overlaps(h.get_window_extent(r)) for h in hindernisse):
                 return False
-            (x0, y0), (x1, _) = inv.transform([[bb.x0, bb.y0], [bb.x1, bb.y1]])
-            bereich = huelle[(huelle.index >= x0 - (3 if art == "tag" else 0.3)) & (huelle.index <= x1 + (3 if art == "tag" else 0.3))]
-            return not len(bereich) or y0 > bereich.max() + 0.02 * hoehe
+            (x0, y0), (x1, _) = ax.transData.inverted().transform([[bb.x0, bb.y0], [bb.x1, bb.y1]])
+            # Hülle auch zwischen den Monaten (die Linien verbinden die Monatswerte gerade)
+            rand = 3 if art == "tag" else 0.15
+            xs = np.linspace(x0 - rand, x1 + rand, 200)
+            spitze = np.interp(xs, huelle.index.to_numpy(float), huelle.to_numpy(float))
+            return y0 > spitze.max() + 0.02 * hoehe
 
+        # erste Jahreshälfte: Kasten nach links (dort liegen die Linien tiefer), zweite Hälfte: nach rechts
+        seiten = (True, False) if x_l <= (182 if art == "tag" else 6.5) else (False, True)
         punkt_kasten = None
         fenster = 40 if art == "tag" else 1.5                          # Suche beginnt knapp über den Linien nahe dem Punkt
         start = float(huelle[(huelle.index >= x_l - fenster) & (huelle.index <= x_l + fenster)].max())
         for _ in range(8):                                           # notfalls oben etwas mehr Platz
             for schritt in range(0, 40):
                 y = start + (0.03 + 0.02 * schritt) * hoehe
-                for links in (True, False):
+                for links in seiten:
                     m = kasten(links, y)
                     if frei(m):
                         punkt_kasten = m
