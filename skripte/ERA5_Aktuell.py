@@ -109,6 +109,7 @@ df["monat"] = df["date"].dt.month
 df["abw"] = df["ano_91-20"] + df["monat"].map(MONTHLY_OFFSETS)
 # feste Position im Jahr (1-365), der 29. Februar fällt heraus
 df["pos"] = pd.to_datetime("2001-" + df["date"].dt.strftime("%m-%d"), errors="coerce").dt.dayofyear
+alle_tage = df.copy()                       # mit 29. Februar - zum Zählen der Tage über einer Schwelle
 df = df.dropna(subset=["pos"]).astype({"pos": int})
 
 LETZTER = df["date"].max()
@@ -155,11 +156,59 @@ alt = [j for j in tag_tab.columns if j < JAHR]
 letzte = akt.iloc[-1]
 rekord_c = tag_tab.loc[letzte["pos"], alt].max()
 rekord_j = int(tag_tab.loc[letzte["pos"], alt].idxmax())
+# Rang des neuesten Tages unter allen gleichen Kalendertagen seit 1940
+heute = tag_abw.loc[letzte["pos"]].dropna()
+rang_tag = int((heute > letzte["abw"]).sum()) + 1
+rekord_abw = float(tag_abw.loc[letzte["pos"], alt].max())
+
+# laufender Monat: Rang unter allen gleichen Monaten, Rekord der Vorjahre
+m_jetzt = monate[monate["jahr"] == JAHR].iloc[-1]
+gleich = monate[monate["monat"] == m_jetzt["monat"]]
+m_vorher = gleich[gleich["jahr"] < JAHR]
+m_rek = m_vorher.loc[m_vorher["k"].idxmax()]
+
+
+def schwelle(s):
+    """Tage und Monate über s K: laufendes Jahr, Rekord bis zum gleichen Tag/Monat, Rekordjahre, erstmals."""
+    def bester(reihe):
+        top = reihe.max()
+        jahre = [int(j) for j in reihe[reihe == top].index[::-1]]              # neuestes zuerst
+        return dict(wert=int(top), jahre=jahre[:3], anzahl=len(jahre))
+    def rangliste(reihe):                                                       # gleich viele: neueres Jahr zuerst
+        t = reihe.reset_index().sort_values([reihe.name, "jahr"], ascending=[False, False]).head(3)
+        return [[int(j), int(v)] for j, v in zip(t["jahr"], t[reihe.name])]
+    akt_alle = alle_tage[alle_tage["jahr"] == JAHR]
+    vor = alle_tage[alle_tage["jahr"] < JAHR]
+    bis_heute = vor[(vor["monat"] < LETZTER.month) | ((vor["monat"] == LETZTER.month) & (vor["date"].dt.day <= LETZTER.day))].groupby("jahr")["abw"].apply(lambda x: int((x > s).sum()))
+    voll_t = vor.groupby("jahr")["abw"].apply(lambda x: int((x > s).sum()))
+    mv = monate[monate["jahr"] < JAHR]
+    n_mon = int((monate["jahr"] == JAHR).sum())
+    bis_mon = mv[mv["monat"] <= n_mon].groupby("jahr")["k"].apply(lambda x: int((x > s).sum()))
+    voll_m = mv.groupby("jahr")["k"].apply(lambda x: int((x > s).sum()))
+    erst_t = alle_tage.loc[alle_tage["abw"] > s, "date"].min()
+    erst_m = monate[monate["k"] > s].sort_values(["jahr", "monat"]).head(1)
+    return dict(
+        schwelle=s,
+        tage=int((akt_alle["abw"] > s).sum()), von=int(len(akt_alle)),
+        tage_rekord=bester(bis_heute), tage_voll=rangliste(voll_t),
+        tage_erstmals=f"{erst_t:%d.%m.%Y}" if pd.notna(erst_t) else None,
+        monate=int((monate[monate["jahr"] == JAHR]["k"] > s).sum()), von_monate=n_mon,
+        monate_rekord=bester(bis_mon), monate_voll=rangliste(voll_m),
+        monate_erstmals=(f"{MONATSNAMEN[int(erst_m.iloc[0]['monat']) - 1]} {int(erst_m.iloc[0]['jahr'])}"
+                         if len(erst_m) else None))
+
+
 kacheln = dict(
     stand=f"{LETZTER:%d.%m.%Y}", jahr=JAHR,
     tag=dict(datum=f"{LETZTER:%d.%m.%Y}", temp=round(float(letzte["2t"]), 3), abw=round(float(letzte["abw"]), 3),
-             rekord=round(float(rekord_c), 3), rekord_jahr=rekord_j,
+             rang=rang_tag, von=int(len(heute)),
+             rekord=round(float(rekord_c), 3), rekord_abw=round(rekord_abw, 3), rekord_jahr=rekord_j,
              abstand=round(float(letzte["2t"] - rekord_c), 3)),
+    monat=dict(monat=int(m_jetzt["monat"]), name=MONATSNAMEN[int(m_jetzt["monat"]) - 1], voll=bool(monat_voll),
+               temp=round(float(m_jetzt["c"]), 3), abw=round(float(m_jetzt["k"]), 3),
+               rang=int((gleich["k"] > m_jetzt["k"]).sum()) + 1, von=int(len(gleich)),
+               rekord=round(float(m_rek["c"]), 3), rekord_abw=round(float(m_rek["k"]), 3), rekord_jahr=int(m_rek["jahr"])),
+    schwellen=[schwelle(s) for s in (1.0, 1.5, 2.0)],
     ueber15=dict(tage=int((akt["abw"] > 1.5).sum()), von=int(len(akt)),
                  monate=int((monate[(monate["jahr"] == JAHR)]["k"] > 1.5).sum()),
                  von_monate=int((monate["jahr"] == JAHR).sum())),
@@ -302,7 +351,7 @@ def zeichne(fassung):
                    bbox=dict(boxstyle="round,pad=0.5", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
 
     # Legende als Kasten im Diagramm (gleicher Stil wie der Info-Kasten):
-    #  °C:         unten in der Mitte - unter dem Sommerbogen ist dort frei
+    #  °C:         oben links unter dem Info-Kasten (dort liegen die Linien tief)
     #  Abweichung: oben in der Mitte zwischen Info-Kasten und Farbleiste
     stil = dict(fontsize=10 * SCHRIFT, facecolor=FARBEN["box_bg"], edgecolor=FARBEN["box_rand"], framealpha=0.95,
                 labelcolor=FARBEN["text"], handlelength=2.4, columnspacing=1.4, borderpad=0.6)
@@ -320,10 +369,34 @@ def zeichne(fassung):
             if b[1][0] - b[0][0] <= rechts - links:
                 break
     else:
-        leg = ax.legend(loc="lower center", bbox_to_anchor=(0.5, 0.015), ncol=1, **stil)
+        fig.canvas.draw()
+        kasten = ax.transAxes.inverted().transform(info.get_bbox_patch().get_window_extent())
+        leg = ax.legend(loc="upper left", bbox_to_anchor=(kasten[0][0], kasten[0][1] - 0.012), ncol=1,
+                        borderaxespad=0, **stil)
     leg.set_zorder(10)
     leg.get_frame().set_boxstyle("round,pad=0.2,rounding_size=0.6")
     plt.setp(leg.get_texts(), fontweight="bold")
+
+    # Kasten am neuesten Wert (nur in PNG/PDF zum Herunterladen - auf der Webseite zeigt das die Maus-Anzeige)
+    letzt = tab[JAHR].dropna()
+    if len(letzt):
+        x_l, y_l = letzt.index[-1], letzt.iloc[-1]
+        if art == "tag":
+            titel = f"{tag_monat(LETZTER)} {JAHR}"
+            c_w, k_w = letzte["2t"], letzte["abw"]
+        else:
+            mm = monate[monate["jahr"] == JAHR].iloc[-1]
+            titel = f"{MONATSNAMEN[int(mm['monat']) - 1]} {JAHR}" + ("" if monat_voll else " (bisher)")
+            c_w, k_w = mm["c"], mm["k"]
+        rechts_frei = (x_l < 300) if art == "tag" else (x_l < 11)
+        punkt_kasten = ax.annotate(
+            f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l),
+            xytext=(14 if rechts_frei else -14, 0), textcoords="offset points",
+            ha="left" if rechts_frei else "right", va="center", multialignment="right",
+            fontsize=11 * SCHRIFT, fontweight="bold", zorder=11,
+            bbox=dict(boxstyle="round,pad=0.3", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
+    else:
+        punkt_kasten = None
 
     # Speichern
     os.makedirs(PNG_FOLDER, exist_ok=True)
@@ -334,6 +407,8 @@ def zeichne(fassung):
     if WEB:
         speichere_hover(fig, ax, info, art, einheit, tab, warm, kalt, os.path.join(PNG_FOLDER, name + ".json"))
         info.set_visible(False)
+        if punkt_kasten is not None:
+            punkt_kasten.set_visible(False)
         fig.savefig(basis + ".png", dpi=PNG_DPI, facecolor=FARBEN["bg"])
     print(f"Grafik gespeichert: {basis}_voll.png")
     plt.close(fig)
