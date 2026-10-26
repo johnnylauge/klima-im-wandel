@@ -263,15 +263,16 @@ def zeichne(fassung):
         ax.scatter([cur.index[-1]], [cur.values[-1]], s=80, color=FARBEN["jahr"], edgecolor=FARBEN["jahr_rand"],
                    lw=1.5, zorder=5)
     else:
+        # ohne Punkte; der angefangene Monat gestrichelt (mit Rand, damit er zwischen den Linien sichtbar bleibt)
+        import matplotlib.patheffects as pe
         voll = cur if monat_voll else cur.iloc[:-1]
         ax.plot(voll.index, voll.values, color=FARBEN["jahr_rand"], lw=7, zorder=3, solid_capstyle="round")
-        ax.plot(voll.index, voll.values, color=FARBEN["jahr"], lw=4, zorder=4, marker="o", ms=9,
-                mec=FARBEN["jahr_rand"], label=f"{JAHR}")
-        if not monat_voll and len(cur) >= 1:                          # laufender Monat: gestrichelt, hohler Punkt
-            teil = cur.iloc[-2:] if len(cur) >= 2 else cur
-            ax.plot(teil.index, teil.values, color=FARBEN["jahr"], lw=3, ls=(0, (3, 2)), zorder=4)
-            ax.scatter([cur.index[-1]], [cur.values[-1]], s=90, facecolor=FARBEN["bg"], edgecolor=FARBEN["jahr"],
-                       lw=2.2, zorder=5, label=f"{MONATSNAMEN[LETZTER.month - 1]} unvollständig (bis {tag_monat(LETZTER)})")
+        ax.plot(voll.index, voll.values, color=FARBEN["jahr"], lw=4, zorder=4, solid_capstyle="round", label=f"{JAHR}")
+        if not monat_voll and len(cur) >= 2:
+            teil = cur.iloc[-2:]
+            ax.plot(teil.index, teil.values, color=FARBEN["jahr"], lw=4, ls=(0, (2.5, 1.5)), zorder=4,
+                    dash_capstyle="butt", label=f"{MONATSNAMEN[LETZTER.month - 1]} bis {tag_monat(LETZTER)}",
+                    path_effects=[pe.Stroke(linewidth=7, foreground=FARBEN["jahr_rand"]), pe.Normal()])
 
     # Achsen
     if art == "tag":
@@ -286,7 +287,7 @@ def zeichne(fassung):
     if einheit == "k":
         oben = max(oben, 1.6)
     spanne = oben - unten
-    ax.set_ylim(unten - 0.04 * spanne, oben + (0.30 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
+    ax.set_ylim(unten - 0.04 * spanne, oben + (0.34 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
     fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9 else f"{v:.1f}".replace(".", ",").replace("-", "−"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt))
     ax.set_ylabel("Temperatur [°C]" if einheit == "c" else "Temperaturabweichung [K]",
@@ -351,28 +352,14 @@ def zeichne(fassung):
                    bbox=dict(boxstyle="round,pad=0.5", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
 
     # Legende als Kasten im Diagramm (gleicher Stil wie der Info-Kasten):
-    #  °C:         oben links unter dem Info-Kasten (dort liegen die Linien tief)
-    #  Abweichung: oben in der Mitte zwischen Info-Kasten und Farbleiste
     stil = dict(fontsize=10 * SCHRIFT, facecolor=FARBEN["box_bg"], edgecolor=FARBEN["box_rand"], framealpha=0.95,
                 labelcolor=FARBEN["text"], handlelength=2.4, columnspacing=1.4, borderpad=0.6)
-    if einheit == "k":
-        # genau mittig in die Lücke zwischen Info-Kasten und Farbleiste; wird es zu eng, kleinere Schrift
-        fig.canvas.draw()
-        inv = ax.transAxes.inverted()
-        links = inv.transform(info.get_bbox_patch().get_window_extent())[1][0] + 0.012
-        rechts = 0.765 - 0.012
-        for groesse in (10, 9.5, 9, 8.5, 8):
-            stil["fontsize"] = groesse * SCHRIFT
-            leg = ax.legend(loc="upper center", bbox_to_anchor=((links + rechts) / 2, 0.985), ncol=2, **stil)
-            fig.canvas.draw()
-            b = inv.transform(leg.get_window_extent())
-            if b[1][0] - b[0][0] <= rechts - links:
-                break
-    else:
-        fig.canvas.draw()
-        kasten = ax.transAxes.inverted().transform(info.get_bbox_patch().get_window_extent())
-        leg = ax.legend(loc="upper left", bbox_to_anchor=(kasten[0][0], kasten[0][1] - 0.012), ncol=1,
-                        borderaxespad=0, **stil)
+    # unter dem Info-Kasten links; bei der Abweichung in zwei Zeilen (sonst läge sie in den Linien)
+    fig.canvas.draw()
+    kasten = ax.transAxes.inverted().transform(info.get_bbox_patch().get_window_extent())
+    n = len(ax.get_legend_handles_labels()[0])
+    leg = ax.legend(loc="upper left", bbox_to_anchor=(kasten[0][0], kasten[0][1] - 0.012),
+                    ncol=1 if einheit == "c" else (n + 1) // 2, borderaxespad=0, **stil)
     leg.set_zorder(10)
     leg.get_frame().set_boxstyle("round,pad=0.2,rounding_size=0.6")
     plt.setp(leg.get_texts(), fontweight="bold")
