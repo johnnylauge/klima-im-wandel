@@ -134,6 +134,11 @@
   }
   .reiter button:hover { color: var(--accent); }
   .reiter button[aria-selected="true"] { background: var(--accent); color: #fff; }
+  /* gewählter Reiter bleibt lesbar, auch wenn die Maus darüber ist (am Handy "klebt" der Hover nach dem Antippen) */
+  .reiter button[aria-pressed="true"], .reiter button[aria-pressed="true"]:hover,
+  .reiter button[aria-selected="true"]:hover { background: var(--accent); color: #fff; }
+  @media (hover: none) { .reiter button:hover:not([aria-pressed="true"]):not([aria-selected="true"]),
+                         .art button:hover { color: inherit; } }
   .reiter button:focus-visible, .art button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* Umschalter Balken / Punkte */
   .art button {
