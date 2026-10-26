@@ -838,10 +838,27 @@
   const zahlK = v => v.toFixed(1).replace(".", ",");
   const jahreText = r => r.jahre.join(", ") + (r.anzahl > r.jahre.length ? " u. a." : "");
   const jahrKurz = r => r.jahre[0] + (r.anzahl > 1 ? " u. a." : "");                 // für die Kachel selbst
+  function kachelnAktuellAlt() {
+    // Fallback für eine ältere ERA5_aktuell.json ohne die neuen Zahlen
+    const ziel = document.getElementById("kacheln-aktuell");
+    const d = akDaten, t = d.tag, u = d.ueber15 || {}, j = d.jahr_bisher;
+    const farbe = v => (v >= 0 ? "warm" : "kalt");
+    const neu = t.abstand > 0;
+    ziel.innerHTML =
+      kachel(`Neuester Tag · ${tagKurz(t.datum)}`, k(t.abw), grad(t.temp), farbe(t.abw)) +
+      kachel(neu ? "Neuer Tagesrekord" : "Abstand zum Tagesrekord",
+             (t.abstand >= 0 ? "+" : "−") + Math.abs(t.abstand).toFixed(2).replace(".", ",") + " K",
+             `${neu ? "bisher" : "Rekord"} ${grad(t.rekord)} (${t.rekord_jahr})`, neu ? "warm" : "") +
+      (akArt === "tag"
+        ? kachel(`Tage über 1,5 K in ${d.jahr}`, String(u.tage), `von ${u.von} Tagen`, u.tage ? "warm" : "")
+        : kachel(`Monate über 1,5 K in ${d.jahr}`, String(u.monate), `von ${u.von_monate} Monaten`, u.monate ? "warm" : "")) +
+      kachel(`Jahr ${d.jahr} bisher`, k(j.abw), `bisher Rang ${j.rang} von ${j.von} · ${grad(j.temp)}`, farbe(j.abw));
+  }
   function kachelnAktuell() {
     const ziel = document.getElementById("kacheln-aktuell");
     if (!akDaten) { ziel.innerHTML = ""; return; }
     const d = akDaten, t = d.tag, j = d.jahr_bisher, tagesweise = akArt === "tag";
+    if (!d.schwellen || t.rang === undefined) { kachelnAktuellAlt(); return; }   // ältere Datei (Skript noch nicht gelaufen)
     const farbe = v => (v >= 0 ? "warm" : "kalt");
     const beide = (c, a) => `${grad(c)} <span class="trenn">|</span> ${k(a)}`;
     const jahrZeile = `<b>Jahr ${d.jahr} bisher</b><br>${grad(j.temp)} | ${k(j.abw)} · Rang ${j.rang} von ${j.von}`;
