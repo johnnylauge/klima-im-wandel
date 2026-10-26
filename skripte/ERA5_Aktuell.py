@@ -54,7 +54,7 @@ DREI = ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.", "Sep.", 
 FARBEN = {
     False: dict(bg="white", fg="black", text="#1d1d1f", box_bg="white", box_rand="lightgray", fuss="gray",
                 jahr="#111111", jahr_rand="white", rekord="#3a3a40", limit="#b2182b", gitter="#d0d0d4",
-                alpha_tag=0.45, alpha_monat=0.75),
+                alpha_tag=0.55, alpha_monat=0.85),
     True:  dict(bg="#1e1e21", fg="#e6e6e9", text="#ececee", box_bg="#2a2a2e", box_rand="#4a4a50", fuss="#9a9aa2",
                 jahr="#ffffff", jahr_rand="#1e1e21", rekord="#ececee", limit="#ff6b6b", gitter="#4a4a50",
                 alpha_tag=0.35, alpha_monat=0.8),
@@ -119,7 +119,23 @@ rang = int((jahre["k"] > jahre.loc[JAHR, "k"]).sum()) + 1
 
 # Farben je Jahrzehnt
 DEKADEN = list(range(START, (JAHR // 10) * 10 + 10, 10))
-CMAP = plt.get_cmap("RdYlBu_r", len(DEKADEN))
+# Kräftigere Farben als die Standard-Palette: hell nichts zu Helles (Gelb und Hellblau verschwinden sonst
+# auf Weiß), dunkel nichts zu Dunkles (das tiefe Blau der 1940er verschwindet sonst im Hintergrund).
+def _palette(n):
+    from matplotlib.colors import ListedColormap, rgb_to_hsv, hsv_to_rgb
+    farben = plt.get_cmap("RdYlBu_r")(np.linspace(0, 1, n))[:, :3]
+    hsv = rgb_to_hsv(farben)
+    hsv[:, 1] = np.clip(hsv[:, 1] * 1.35 + 0.12, 0, 1)              # mehr Farbe (hell und dunkel)
+    if DUNKEL:
+        hsv[:, 2] = np.maximum(hsv[:, 2], 0.80)
+        hsv[:, 1] = np.minimum(hsv[:, 1], 0.85)                    # und nicht ganz so grell                    # tiefes Blau nicht im dunklen Hintergrund versinken lassen
+    else:
+        hsv[:, 2] = np.minimum(hsv[:, 2], 0.82)                    # nichts heller als 82 %
+    farben = hsv_to_rgb(hsv)
+    return ListedColormap(farben)
+
+
+CMAP = _palette(len(DEKADEN))
 NORM = BoundaryNorm(DEKADEN + [DEKADEN[-1] + 10], len(DEKADEN))
 
 # =========================================================
