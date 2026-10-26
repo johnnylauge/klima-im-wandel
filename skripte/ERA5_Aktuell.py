@@ -271,7 +271,7 @@ def zeichne(fassung):
         if not monat_voll and len(cur) >= 2:
             teil = cur.iloc[-2:]
             ax.plot(teil.index, teil.values, color=FARBEN["jahr"], lw=4, ls=(0, (2.5, 1.5)), zorder=4,
-                    dash_capstyle="butt", label=f"{MONATSNAMEN[LETZTER.month - 1]} bis {tag_monat(LETZTER)}",
+                    dash_capstyle="butt", label=f"{MONATSNAMEN[LETZTER.month - 1]} (bisher)",
                     path_effects=[pe.Stroke(linewidth=7, foreground=FARBEN["jahr_rand"]), pe.Normal()])
 
     # Achsen
@@ -399,6 +399,31 @@ def zeichne(fassung):
                                 connectionstyle="angle,angleA=0,angleB=90,rad=0",
                                 relpos=(1, 0.5) if links else (0, 0.5), shrinkA=0, shrinkB=4))
 
+        def kasten_oben(y):
+            """Kasten direkt über dem Punkt, nur mit senkrechtem Strich; am Rand so weit eingerückt, dass er in die Grafik passt."""
+            m = ax.annotate(f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l), xytext=(x_l, y),
+                            ha="center", va="bottom", multialignment="center",
+                            fontsize=11 * SCHRIFT, fontweight="bold", zorder=11, linespacing=1.3,
+                            bbox=dict(boxstyle="round,pad=0.35", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95))
+            m.update_positions(r)
+            m.update_bbox_position_size(r)
+            bb = m.get_bbox_patch().get_window_extent(r)
+            achse = ax.get_window_extent(r)
+            # so weit nach links/rechts einrücken, dass der Kasten ganz in der Grafik bleibt
+            p_px = ax.transData.transform((x_l, y))[0]
+            verschieben = max(0, achse.x0 + 6 - bb.x0) - max(0, bb.x1 - (achse.x1 - 6))
+            mitte_px = p_px + verschieben
+            x_neu = ax.transData.inverted().transform((mitte_px, 0))[0]
+            m.remove()
+            anteil = 0.5 - verschieben / bb.width                       # Stelle am unteren Rand genau über dem Punkt
+            return ax.annotate(f"{titel}\n{c_(c_w)} °C | {k_(k_w)} K", xy=(x_l, y_l), xytext=(x_neu, y),
+                               ha="center", va="bottom", multialignment="center",
+                               fontsize=11 * SCHRIFT, fontweight="bold", zorder=11, linespacing=1.3,
+                               bbox=dict(boxstyle="round,pad=0.35", fc=FARBEN["box_bg"], ec=FARBEN["box_rand"], alpha=0.95),
+                               arrowprops=dict(arrowstyle="-", color=FARBEN["fuss"], lw=1.2,
+                                               relpos=(min(max(anteil, 0.04), 0.96), 0), shrinkA=0, shrinkB=4),
+                               gid="oben")
+
         def frei(m):
             m.update_positions(r)                                     # nur den Kasten berechnen (schneller als alles zeichnen)
             m.update_bbox_position_size(r)
@@ -417,6 +442,9 @@ def zeichne(fassung):
 
         # erste Jahreshälfte: Kasten nach links (dort liegen die Linien tiefer), zweite Hälfte: nach rechts
         seiten = (True, False) if x_l <= (182 if art == "tag" else 6.5) else (False, True)
+        # ganz am Anfang oder Ende des Jahres zuerst direkt darüber (nur senkrechter Strich), sonst seitlich
+        am_rand = (x_l < 40 or x_l > 325) if art == "tag" else (x_l <= 1.5 or x_l >= 11.5)
+        seiten = (("oben",) + seiten) if am_rand else (seiten + ("oben",))
         punkt_kasten = None
         start = float(y_l)                                           # Suche beginnt auf Höhe des Punkts -> kurze Linie
 
@@ -424,7 +452,7 @@ def zeichne(fassung):
             for schritt in range(0, 80):
                 y = start + (0.02 + 0.01 * schritt) * hoehe
                 for links in seiten:
-                    m = kasten(links, y)
+                    m = kasten_oben(y) if links == "oben" else kasten(links, y)
                     if frei(m):
                         punkt_kasten = m
                         break
