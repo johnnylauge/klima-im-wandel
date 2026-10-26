@@ -418,11 +418,11 @@ def zeichne(fassung):
         # erste Jahreshälfte: Kasten nach links (dort liegen die Linien tiefer), zweite Hälfte: nach rechts
         seiten = (True, False) if x_l <= (182 if art == "tag" else 6.5) else (False, True)
         punkt_kasten = None
-        fenster = 40 if art == "tag" else 1.5                          # Suche beginnt knapp über den Linien nahe dem Punkt
-        start = float(huelle[(huelle.index >= x_l - fenster) & (huelle.index <= x_l + fenster)].max())
+        start = float(y_l)                                           # Suche beginnt auf Höhe des Punkts -> kurze Linie
+
         for _ in range(8):                                           # notfalls oben etwas mehr Platz
-            for schritt in range(0, 40):
-                y = start + (0.03 + 0.02 * schritt) * hoehe
+            for schritt in range(0, 80):
+                y = start + (0.02 + 0.01 * schritt) * hoehe
                 for links in seiten:
                     m = kasten(links, y)
                     if frei(m):
