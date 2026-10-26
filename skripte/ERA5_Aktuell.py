@@ -5,7 +5,7 @@ Jahres im Vergleich zu allen Jahren seit 1940 - vier Fassungen:
   tag_c    Tageswerte in °C           tag_k    Tageswerte als Abweichung von 1850-1900 (mit 1,5-K-Linie)
   monat_c  Monatswerte in °C          monat_k  Monatswerte als Abweichung von 1850-1900
 
-Jede Linie ist ein Jahr, eingefärbt nach Jahrzehnt (1940er blau ... 2020er rot, Farbleiste rechts).
+Jede Linie ist ein Jahr, eingefärbt nach Jahrzehnt (1940er blau ... 2020er rot, Farbleiste oben rechts).
 Das laufende Jahr ist weiß (dunkel) bzw. schwarz (hell) hervorgehoben, dazu die Tagesrekorde bzw.
 Monatsrekorde (gestrichelt) und ein Info-Kasten oben links.
 
@@ -169,7 +169,7 @@ def zeichne(fassung):
     art, einheit = fassung.split("_")          # "tag"/"monat", "c"/"k"
     spalte = "2t" if einheit == "c" else "abw"
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
-    fig.subplots_adjust(left=0.07, right=0.935, bottom=0.125, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.125, top=0.87)
 
     if art == "tag":
         tab = tag_tab if einheit == "c" else tag_abw
@@ -250,10 +250,27 @@ def zeichne(fassung):
                 ha="center", va="bottom", fontsize=24 * SCHRIFT, fontweight="bold")
     fig.text(0.99, 0.01, QUELLE, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
-    # Farbleiste: Jahrzehnte
+    # Farbleiste der Jahrzehnte: waagrecht in einem Kasten oben rechts (gleicher Stil wie der Info-Kasten),
+    # beschriftet nur an den Enden ("1940er" ... "2020er")
+    from matplotlib.patches import FancyBboxPatch
+    ax.add_patch(FancyBboxPatch((0.765, 0.885), 0.226, 0.09, boxstyle="round,pad=0.004,rounding_size=0.008",
+                                transform=ax.transAxes, fc=FARBEN["box_bg"], ec=FARBEN["box_rand"],
+                                alpha=0.95, zorder=9))
+    cax = ax.inset_axes([0.775, 0.905, 0.206, 0.03])
+    cax.set_zorder(11)
     sm = plt.cm.ScalarMappable(cmap=CMAP, norm=NORM)
-    cb = fig.colorbar(sm, ax=ax, pad=0.01, fraction=0.022, ticks=[d + 5 for d in DEKADEN])
-    cb.ax.set_yticklabels([f"{d}er" for d in DEKADEN], fontsize=11 * SCHRIFT, fontweight="bold")
+    cb = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=[DEKADEN[0] + 5, DEKADEN[-1] + 5])
+    cb.ax.set_xticklabels([f"{DEKADEN[0]}er", f"{DEKADEN[-1]}er"], fontsize=10 * SCHRIFT, fontweight="bold")
+    cb.ax.xaxis.set_ticks_position("top")
+    cb.ax.tick_params(length=0, pad=3)
+    cb.ax.get_xticklabels()[0].set_ha("left")
+    cb.ax.get_xticklabels()[-1].set_ha("right")
+    # Beschriftung genau an die Enden der Leiste schieben
+    from matplotlib.transforms import ScaledTranslation
+    cb.ax.get_xticklabels()[0].set_transform(cb.ax.get_xticklabels()[0].get_transform()
+        + ScaledTranslation(-cax.get_window_extent().width / len(DEKADEN) / 2 / fig.dpi, 0, fig.dpi_scale_trans))
+    cb.ax.get_xticklabels()[-1].set_transform(cb.ax.get_xticklabels()[-1].get_transform()
+        + ScaledTranslation(cax.get_window_extent().width / len(DEKADEN) / 2 / fig.dpi, 0, fig.dpi_scale_trans))
     cb.outline.set_edgecolor(FARBEN["box_rand"])
 
     # Info-Kasten oben links
