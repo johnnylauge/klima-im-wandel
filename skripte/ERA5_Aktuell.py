@@ -281,7 +281,7 @@ def zeichne(fassung):
         ax.set_xlim(1, 365)
     else:
         ax.set_xticks(range(1, 13), MONATE)
-        ax.set_xlim(0.7, 12.3)
+        ax.set_xlim(1, 12)                                           # Linien beginnen und enden an der Achse
     werte = pd.concat([tab[j] for j in tab.columns]).dropna()
     unten, oben = float(werte.min()), float(werte.max())
     if einheit == "k":
@@ -491,7 +491,8 @@ def speichere_hover(fig, ax, info, art, einheit, tab, warm, kalt, datei):
         else:
             text = f"{wann}: noch keine Daten für {JAHR}<br>{rek}"
         halb = 0.5
-        x0, x1 = zu_px((x - halb, 0))[0], zu_px((x + halb, 0))[0]
+        links_x, rechts_x = ax.get_xlim()                            # Felder am Rand nicht über die Achse hinaus
+        x0, x1 = zu_px((max(x - halb, links_x), 0))[0], zu_px((min(x + halb, rechts_x), 0))[0]
         y0, y1 = zu_px((x, warm[x]))[1], zu_px((x, kalt[x]))[1]
         felder.append(dict(text=text, x0=fx(x0), x1=fx(x1), y0=fy(y0), y1=fy(y1)))
     werte_jahr = tab[JAHR].dropna() if JAHR in tab.columns else pd.Series(dtype=float)
