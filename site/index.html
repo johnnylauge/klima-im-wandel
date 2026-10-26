@@ -93,6 +93,7 @@
   /* Aktuell: nur bei Global; darunter beginnt der Vergleich der Jahre */
   #aktuell { margin-top: 22px; }
   #aktuell .ak-leiste { margin: 10px 0 14px; }
+  #ak-stand { margin: 0 0 0 6px; vertical-align: middle; position: relative; top: -2px; }
   .h-zusatz { font-weight: 500; color: var(--muted); font-size: 1rem; }
   .vergleich-titel { margin: 36px 0 0; padding-top: 20px; border-top: 1px solid var(--line); }
   body.europa #aktuell, body.meer #aktuell, body.europa .vergleich-titel, body.meer .vergleich-titel { display: none; }
@@ -314,7 +315,7 @@
     <p id="untertitel">Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C</p>
     <!-- ======================= AKTUELL (ERA5, täglich) ======================= -->
     <section id="aktuell" aria-labelledby="h-aktuell">
-      <h2 id="h-aktuell">Aktuell <span class="h-zusatz">· ERA5, täglich</span></h2>
+      <h2 id="h-aktuell">Aktuell <span class="h-zusatz">· ERA5, täglich</span> <span class="stand" id="ak-stand">Daten werden geladen …</span></h2>
       <p class="unter" id="ak-unter">Das laufende Jahr im Vergleich zu allen Jahren seit 1940 · jede Linie ein Jahr, gefärbt nach Jahrzehnt</p>
       <div class="leiste ak-leiste">
         <div class="reiter" role="group" aria-label="Tages- oder Monatswerte">
@@ -833,8 +834,12 @@
   function ladeAktuell() {
     fetch("daten/ERA5_aktuell.json", { cache: "no-store" })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (!d) return; akDaten = d; akVersion = "?v=" + encodeURIComponent(d.stand); zeigeAktuell(); })
-      .catch(() => {});
+      .then(d => {
+        const st = document.getElementById("ak-stand");
+        if (!d) { st.textContent = "Stand: unbekannt"; return; }
+        st.textContent = `Stand: ${standKurz(d.stand)}`;
+        akDaten = d; akVersion = "?v=" + encodeURIComponent(d.stand); zeigeAktuell(); })
+      .catch(() => { document.getElementById("ak-stand").textContent = "Stand: unbekannt"; });
   }
   ["tag", "monat"].forEach(x => document.getElementById("ak-" + x).addEventListener("click", () => {
     akArt = x; try { localStorage.setItem("akArt", x); } catch (e) {} zeigeAktuell();
