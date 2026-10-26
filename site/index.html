@@ -91,7 +91,7 @@
   body.meer #ansicht-jahr, body.meer #ansicht-saison, body.meer #ansicht-monat { display: none !important; }
   .meer-quellen { margin: 0 0 14px; }
   /* Aktuell: nur bei Global; darunter beginnt der Vergleich der Jahre */
-  #aktuell { margin-top: 22px; }
+  #aktuell { margin-top: 22px; margin-right: -56px; }   /* Kopf hält rechts Platz für den Hell/Dunkel-Knopf frei */
   #aktuell .ak-leiste { margin: 10px 0 14px; }
   #ak-stand { margin: 0 0 0 6px; vertical-align: middle; position: relative; top: -2px; }
   .h-zusatz { font-weight: 500; color: var(--muted); font-size: 1rem; }
@@ -253,6 +253,7 @@
   @media (max-width: 600px) {
     main { padding: 16px 16px 40px; }
     header { padding-right: 48px; }
+    #aktuell { margin-right: -48px; }
     header h1 { font-size: 1.5rem; }
     .titelzeile { gap: 2px 16px; }
     .gebiet { margin-left: -12px; }
