@@ -188,6 +188,19 @@
   .kachel .label { color: var(--muted); font-size: 0.85rem; }
   .kachel .wert { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .kachel .zusatz { color: var(--muted); font-size: 0.85rem; }
+  .kachel .wert .trenn { color: var(--muted); font-weight: 400; margin: 0 2px; }
+  .kachel .wert.doppel { white-space: nowrap; font-size: clamp(1.05rem, 2.1vw, 1.7rem); }
+  .kachel.mit-pop { cursor: help; }
+  .kachel.mit-pop:hover, .kachel.mit-pop:focus-visible, .kachel.mit-pop.offen { border-color: var(--accent); outline: none; }
+  .k-pop { display: none; position: absolute; z-index: 20; left: -1px; top: calc(100% + 6px); min-width: calc(100% + 2px);
+           width: max-content; max-width: min(300px, 86vw); background: var(--card); color: var(--text);
+           border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; line-height: 1.4;
+           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+  .mit-pop:hover .k-pop, .mit-pop:focus-visible .k-pop, .mit-pop.offen .k-pop { display: block; }
+  #kacheln-aktuell .kachel:nth-child(4) .k-pop { left: auto; right: -1px; }
+  @media (max-width: 900px) { #kacheln-aktuell .kachel:nth-child(even) .k-pop { left: auto; right: -1px; } }
+  @media (hover: none) { .mit-pop:hover .k-pop { display: none; } .mit-pop.offen .k-pop { display: block; } }
+
   .warm { color: var(--accent); }
   .kalt { color: var(--cool); }
   figure {
@@ -816,22 +829,62 @@
     }
     kachelnAktuell();
   }
+  // Kacheln "Aktuell": neuester Tag (bzw. Monat) und Tage (bzw. Monate) über 1,0 / 1,5 / 2,0 K.
+  // Maus darüber (am Handy antippen) zeigt einen Kasten mit Rekorden und Rekordjahren.
+  const akKachel = (label, wert, zusatz, klasse, pop, doppel = false) =>
+    `<div class="kachel mit-pop" tabindex="0"><div class="label">${label}</div>` +
+    `<div class="wert ${klasse}${doppel ? " doppel" : ""}">${wert}</div><div class="zusatz">${zusatz}</div>` +
+    `<div class="k-pop" role="tooltip">${pop}</div></div>`;
+  const zahlK = v => v.toFixed(1).replace(".", ",");
+  const jahreText = r => r.jahre.join(", ") + (r.anzahl > r.jahre.length ? " u. a." : "");
+  const jahrKurz = r => r.jahre[0] + (r.anzahl > 1 ? " u. a." : "");                 // für die Kachel selbst
   function kachelnAktuell() {
     const ziel = document.getElementById("kacheln-aktuell");
     if (!akDaten) { ziel.innerHTML = ""; return; }
-    const d = akDaten, t = d.tag, u = d.ueber15, j = d.jahr_bisher;
+    const d = akDaten, t = d.tag, j = d.jahr_bisher, tagesweise = akArt === "tag";
     const farbe = v => (v >= 0 ? "warm" : "kalt");
-    const rekordNeu = t.abstand > 0;
-    ziel.innerHTML =
-      kachel(`Neuester Tag · ${tagKurz(t.datum)}`, k(t.abw), grad(t.temp), farbe(t.abw)) +
-      kachel(rekordNeu ? "Neuer Tagesrekord" : "Abstand zum Tagesrekord",
-             (t.abstand >= 0 ? "+" : "−") + Math.abs(t.abstand).toFixed(2).replace(".", ",") + " K",
-             `${rekordNeu ? "bisher" : "Rekord"} ${grad(t.rekord)} (${t.rekord_jahr})`, rekordNeu ? "warm" : "") +
-      (akArt === "tag"
-        ? kachel(`Tage über 1,5 K in ${d.jahr}`, String(u.tage), `von ${u.von} Tagen`, u.tage ? "warm" : "")
-        : kachel(`Monate über 1,5 K in ${d.jahr}`, String(u.monate), `von ${u.von_monate} Monaten`, u.monate ? "warm" : "")) +
-      kachel(`Jahr ${d.jahr} bisher`, k(j.abw), `bisher Rang ${j.rang} von ${j.von} · ${grad(j.temp)}`, farbe(j.abw));
+    const beide = (c, a) => `${grad(c)} <span class="trenn">|</span> ${k(a)}`;
+    const jahrZeile = `<b>Jahr ${d.jahr} bisher</b><br>${grad(j.temp)} | ${k(j.abw)} · Rang ${j.rang} von ${j.von}`;
+    let html;
+    if (tagesweise || !d.monat) {
+      const neu = t.abstand > 0;
+      html = akKachel(`Neuester Tag · ${tagKurz(t.datum)}`, beide(t.temp, t.abw), `Rang ${t.rang} von ${t.von}`, farbe(t.abw),
+        `<b>${tagKurz(t.datum)} ${d.jahr}</b><br>${grad(t.temp)} | ${k(t.abw)} · Rang ${t.rang} von ${t.von}<br><br>` +
+        `<b>${neu ? "Bisheriger " : ""}Tagesrekord ${tagKurz(t.datum)}</b><br>${grad(t.rekord)} | ${k(t.rekord_abw)} (${t.rekord_jahr})<br>` +
+        (neu ? `<strong>neuer Rekord</strong>, ${k(t.abstand)} darüber` : `Abstand ${k(t.abstand)}`) + `<br><br>${jahrZeile}`, true);
+    } else {
+      const m = d.monat, neu = m.rang === 1;
+      html = akKachel(`${m.name} ${d.jahr}${m.voll ? "" : " · bisher"}`, beide(m.temp, m.abw),
+        `${m.voll ? "" : "bisher "}Rang ${m.rang} von ${m.von}`, farbe(m.abw),
+        `<b>${m.name} ${d.jahr}${m.voll ? "" : ` (bis ${tagKurz(t.datum)})`}</b><br>${grad(m.temp)} | ${k(m.abw)} · Rang ${m.rang} von ${m.von}<br><br>` +
+        `<b>${neu ? "Bisheriger " : ""}Rekord ${m.name}</b><br>${grad(m.rekord)} | ${k(m.rekord_abw)} (${m.rekord_jahr})<br><br>${jahrZeile}`, true);
+    }
+    (d.schwellen || []).forEach(sw => {
+      const art = tagesweise ? "tage" : "monate", Wort = tagesweise ? "Tage" : "Monate", Wortn = tagesweise ? "Tagen" : "Monaten";
+      const n = sw[art], von = tagesweise ? sw.von : sw.von_monate, rek = sw[art + "_rekord"], voll = sw[art + "_voll"];
+      const erst = sw[art + "_erstmals"];
+      const bis = tagesweise ? tagKurz(t.datum) : (d.monat ? d.monat.name : "");
+      let zusatz;
+      if (rek.wert === 0) zusatz = n ? `<strong>erstmals</strong> bis ${bis}` : `bis ${bis} noch nie`;
+      else if (n > rek.wert) zusatz = `<strong>neuer Rekord</strong> (bisher ${rek.wert}, ${rek.jahre[0]})`;
+      else if (n === rek.wert) zusatz = `<strong>Rekord eingestellt</strong> (${jahrKurz(rek)})`;
+      else zusatz = `Rekord bis ${bis}: ${rek.wert} (${jahrKurz(rek)})`;
+      const ganz = voll.length && voll[0][1] > 0 ? voll.filter(v => v[1] > 0).map(v => `${v[0]}: ${v[1]}`).join(" · ") : "noch nie";
+      html += akKachel(`${Wort} über ${zahlK(sw.schwelle)} K in ${d.jahr}`, String(n), zusatz, n ? "warm" : "",
+        `<b>${Wort} über ${zahlK(sw.schwelle)} K</b><br>${d.jahr} bisher: ${n} von ${von} ${Wortn}<br><br>` +
+        `<b>Rekord bis ${bis}</b><br>${rek.wert ? `${rek.wert} ${Wort} (${jahreText(rek)})` : "noch nie"}<br><br>` +
+        `<b>Ganze Jahre</b><br>${ganz}<br><br>` +
+        `erstmals über ${zahlK(sw.schwelle)} K: ${erst ? (tagesweise ? standKurz(erst) : erst) : "noch nie"}`);
+    });
+    ziel.innerHTML = html;
   }
+  // Handy: Antippen öffnet den Kasten, erneutes Antippen oder Tippen daneben schließt ihn
+  document.addEventListener("click", e => {
+    const kachelEl = e.target.closest("#kacheln-aktuell .mit-pop");
+    document.querySelectorAll("#kacheln-aktuell .mit-pop.offen").forEach(x => { if (x !== kachelEl) x.classList.remove("offen"); });
+    if (kachelEl) kachelEl.classList.toggle("offen");
+  });
+
   function ladeAktuell() {
     fetch("daten/ERA5_aktuell.json", { cache: "no-store" })
       .then(r => (r.ok ? r.json() : null))
