@@ -68,10 +68,10 @@ def temp_info(tabelle, jahr, unvollstaendig):
     Temperatur - Abweichung der vollständigen Zeiträume."""
     z = tabelle.loc[jahr]
     if not (EUROPA and unvollstaendig):
-        return f"{dz(z['temp'], ".2f")} °C"
+        return f"{dz(z['temp'], '.2f')} °C"
     voll = tabelle.drop(jahr)
     abstand = float((voll["temp"] - voll["anomaly"]).median())
-    return f"≈ {dz(z['anomaly'] + abstand, ".2f")} °C (hochgerechnet)"
+    return f"≈ {dz(z['anomaly'] + abstand, '.2f')} °C (hochgerechnet)"
 
 
 def temp_hover(tabelle, jahr, laufend_jahr):

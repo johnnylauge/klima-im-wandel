@@ -360,7 +360,7 @@ def erstelle(wahl, anzeigen=True):
     cur = werte.loc[current_year]
     info = (f"Temperaturmittel {label(current_year)}"
             f"{f' (bis {bis_tag})' if is_partial else ''}: {region.temp_info(werte, current_year, is_partial)}\n"
-            f"Temperaturabweichung {region.BEZUG}: {dz(cur['anomaly'], "+.2f")} K  "
+            f"Temperaturabweichung {region.BEZUG}: {dz(cur['anomaly'], '+.2f')} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)

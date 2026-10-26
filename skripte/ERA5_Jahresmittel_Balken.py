@@ -312,7 +312,7 @@ if SHOW_VALUES:
             farbe = FARBEN["fg"]
         else:
             farbe = FARBEN["zahl"]                            # Zahl steht (teils) auf dem Hintergrund
-        ax.text(year, 0.02 if val >= 0 else -0.02, f"{dz(val, "+.2f")}",
+        ax.text(year, 0.02 if val >= 0 else -0.02, f"{dz(val, '+.2f')}",
                 va="bottom" if val >= 0 else "top", ha="center", rotation=90,
                 fontsize=8 * SCHRIFT, fontweight="bold", zorder=6,
                 color=farbe,
@@ -359,10 +359,10 @@ full_years = annual.drop(current_year) if is_partial else annual
 warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Jahren
 info = (f"Temperaturmittel {current_year}"
         f"{f' (bis {tag_monat(last_date)})' if is_partial else ''}: {region.temp_info(annual, current_year, is_partial)}\n"
-        f"Temperaturabweichung {BASELINE}: {dz(cur['anomaly'], "+.2f")} K  "
+        f"Temperaturabweichung {BASELINE}: {dz(cur['anomaly'], '+.2f')} K  "
         f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
 if not SHOW_RECORD:   # sonst steht das wärmste Jahr schon als Markierung in der Grafik
-    info += f"\nWärmstes Jahr: {warmest} ({dz(annual.loc[warmest, 'anomaly'], "+.2f")} K)"
+    info += f"\nWärmstes Jahr: {warmest} ({dz(annual.loc[warmest, 'anomaly'], '+.2f')} K)"
 info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)
 info_text.set_visible(SHOW_INFO)
@@ -464,7 +464,7 @@ if SHOW_RECORD:
 
     def record_box(left, dy):
         return ax.annotate(f"Wärmstes Jahr {warmest}\n"
-                           f"{dz(annual.loc[warmest, 'temp'], ".2f")} °C | {dz(w_val, "+.2f")} K",
+                           f"{dz(annual.loc[warmest, 'temp'], '.2f')} °C | {dz(w_val, '+.2f')} K",
                            xy=(warmest, w_val), xytext=(-50 if left else 50, dy),
                            textcoords="offset points", ha="right" if left else "left",
                            va="bottom", fontsize=10 * SCHRIFT, fontweight="bold", linespacing=1.3,

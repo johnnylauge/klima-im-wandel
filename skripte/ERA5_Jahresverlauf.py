@@ -198,7 +198,7 @@ if not cur.empty:
 
     letzter_kasten = ax.annotate(
         f"{tag_monat(last['date'])} {last['date'].year}\n"
-        f"{dz(last['2t'], ".2f")} °C | {dz(last['preindustrial_anomaly'], "+.2f")} K",
+        f"{dz(last['2t'], '.2f')} °C | {dz(last['preindustrial_anomaly'], '+.2f')} K",
         xy=(last["pos"], last["2t"]), xytext=(10, 0), textcoords="offset points",
         ha="left", va="center", multialignment="right",   # beide Zeilen rechts bündig
         fontsize=12 * SCHRIFT, fontweight="bold",
@@ -207,8 +207,8 @@ if not cur.empty:
 
     # zwei Spalten: Beschriftung links, Zahlen rechtsbündig
     zeilen = [
-        (f"Temperaturmittel {current_year}{bis}:", f"{dz(cur['2t'].mean(), ".2f")} °C"),
-        ("Temperaturabweichung 1850-1900:", f"{dz(cur['preindustrial_anomaly'].mean(), "+.2f")} K"),
+        (f"Temperaturmittel {current_year}{bis}:", f"{dz(cur['2t'].mean(), '.2f')} °C"),
+        ("Temperaturabweichung 1850-1900:", f"{dz(cur['preindustrial_anomaly'].mean(), '+.2f')} K"),
     ]
     stil = dict(fontsize=10 * SCHRIFT, fontweight="bold", linespacing=1.3, color=FARBEN["text"])
     spalten = HPacker(children=[

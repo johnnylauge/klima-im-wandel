@@ -392,17 +392,17 @@ def erstelle(season, anzeigen=True):
                 else:
                     farbe = FARBEN["zahl"]                            # Zahl steht (teils) auf dem Hintergrund
                 # positive Werte knapp über 0, negative knapp unter 0
-                ax.text(year, 0.02 if val >= 0 else -0.02, f"{dz(val, "+.2f")}",
+                ax.text(year, 0.02 if val >= 0 else -0.02, f"{dz(val, '+.2f')}",
                         va="bottom" if val >= 0 else "top", ha="center", rotation=90,
                         fontsize=8 * SCHRIFT, fontweight="bold", zorder=6, color=farbe,
                         gid="laufend_zahl" if is_partial and year == current_year else None)
             elif LABEL_MODE == "unten":
                 # alle Zahlen direkt unter der Nulllinie, Rand in Hintergrundfarbe für Lesbarkeit
-                ax.text(year, label_row, f"{dz(val, "+.2f")}", va="top",
+                ax.text(year, label_row, f"{dz(val, '+.2f')}", va="top",
                         **style)
             else:
                 # über positiven bzw. unter negativen Balken, mit Rand in Hintergrundfarbe
-                ax.text(year, val + (0.02 if val >= 0 else -0.02), f"{dz(val, "+.2f")}",
+                ax.text(year, val + (0.02 if val >= 0 else -0.02), f"{dz(val, '+.2f')}",
                         va="bottom" if val >= 0 else "top",
                         **style)
 
@@ -447,11 +447,11 @@ def erstelle(season, anzeigen=True):
     warmest = full_years["anomaly"].idxmax()        # Rekord nur aus vollständigen Jahreszeiten
     info = (f"Temperaturmittel {season_label(current_year)}"
             f"{f' (bis {tag_monat(last_date)})' if is_partial else ''}: {region.temp_info(annual, current_year, is_partial)}\n"
-            f"Temperaturabweichung {BASELINE}: {dz(cur['anomaly'], "+.2f")} K  "
+            f"Temperaturabweichung {BASELINE}: {dz(cur['anomaly'], '+.2f')} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     if not SHOW_RECORD:   # sonst steht die wärmste Jahreszeit schon als Markierung in der Grafik
         info += (f"\nWärmster {SEASON}: {season_label(warmest).split(' ', 1)[1]} "
-                 f"({dz(annual.loc[warmest, 'anomaly'], "+.2f")} K)")
+                 f"({dz(annual.loc[warmest, 'anomaly'], '+.2f')} K)")
     info_text = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                         fontsize=10 * SCHRIFT, fontweight="bold", bbox=box, zorder=10)
     info_text.set_visible(SHOW_INFO)
@@ -561,7 +561,7 @@ def erstelle(season, anzeigen=True):
 
         def record_box(left, dy):
             return ax.annotate(f"Wärmster {season_label(warmest)}\n"
-                               f"{dz(annual.loc[warmest, 'temp'], ".2f")} °C | {dz(w_val, "+.2f")} K",
+                               f"{dz(annual.loc[warmest, 'temp'], '.2f')} °C | {dz(w_val, '+.2f')} K",
                                xy=(warmest, w_val), xytext=(-50 if left else 50, dy),
                                textcoords="offset points", ha="right" if left else "left",
                                va="bottom", fontsize=10 * SCHRIFT, fontweight="bold", linespacing=1.3,

@@ -307,8 +307,8 @@ def achsen_beschriften(ax, ylabel):
 def info_kasten(ax, werte, current_year, is_partial, label):
     cur = werte.loc[current_year]
     bis = f" (bis {tag_monat(cur['last_date'])})" if is_partial else ""
-    info = (f"Temperaturmittel {label(current_year)}{bis}: {dz(cur['temp'], ".2f")} °C\n"
-            f"Temperaturabweichung 1850-1900: {dz(cur['anomaly'], "+.2f")} K  "
+    info = (f"Temperaturmittel {label(current_year)}{bis}: {dz(cur['temp'], '.2f')} °C\n"
+            f"Temperaturabweichung 1850-1900: {dz(cur['anomaly'], '+.2f')} K  "
             f"({'bisher ' if is_partial else ''}Rang {cur['rank']})")
     t = ax.text(0.01, 0.97, info, transform=ax.transAxes, ha="left", va="top",
                 fontsize=10 * SCHRIFT, fontweight="bold", zorder=10,
