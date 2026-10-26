@@ -288,13 +288,25 @@ def zeichne(fassung):
         oben = max(oben, 1.6)
     spanne = oben - unten
     ax.set_ylim(unten - 0.04 * spanne, oben + (0.34 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
-    fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9 else f"{v:.1f}".replace(".", ",").replace("-", "−"))
+    # Abweichung mit zwei Nachkommastellen wie bei den anderen Grafiken (1,00 · 1,50 ...)
+    fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9
+           else f"{v:.2f}".replace(".", ",").replace("-", "−"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt))
     ax.set_ylabel("Temperatur [°C]" if einheit == "c" else "Temperaturabweichung [K]",
                   fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for lab in ax.get_xticklabels() + ax.get_yticklabels():
         lab.set_fontweight("bold")
+    # Achsentitel genauso weit außen wie bei den anderen Grafiken (deren breiteste Beschriftung ist z. B. "−0,25")
+    fig.canvas.draw()
+    rr = fig.canvas.get_renderer()
+    lo_, hi_ = ax.get_ylim()
+    breit = max((t.get_window_extent(rr).width for t, v in zip(ax.get_yticklabels(), ax.get_yticks())
+                 if t.get_text() and lo_ <= v <= hi_), default=0)                     # nur sichtbare Beschriftungen
+    probe = fig.text(0, 0, "−0,25", fontsize=11 * SCHRIFT, fontweight="bold")
+    ziel = probe.get_window_extent(rr).width
+    probe.remove()
+    ax.yaxis.labelpad = plt.rcParams["axes.labelpad"] + max(0, ziel - breit) * 72 / fig.dpi
     ax.grid(True, color=FARBEN["gitter"], alpha=0.5, lw=0.8)
     ax.set_axisbelow(True)
 
