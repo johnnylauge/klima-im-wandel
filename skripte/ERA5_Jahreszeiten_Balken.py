@@ -57,6 +57,7 @@ import json
 
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
+import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -186,9 +187,7 @@ plt.rcParams.update({
 })
 
 # Vorindustrielle Offsets je Monat (Januar bis Dezember)
-MONTHLY_OFFSETS = dict(zip(range(1, 13), [
-    0.97, 0.98, 0.97, 0.93, 0.88, 0.83, 0.79, 0.78, 0.80, 0.83, 0.88, 0.93,
-]))
+MONTHLY_OFFSETS = dict(angleichung.OFFSETS)      # Copernicus, siehe angleichung.py
 
 # Meteorologische Jahreszeiten (Nordhalbkugel)
 # Winter: Dezember des Vorjahres + Januar + Februar -> zählt zum Jahr von Jan/Feb
@@ -263,7 +262,7 @@ def erstelle(season, anzeigen=True):
     # DATEN AUFBEREITEN
     # =========================================================
     df = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
-    df["ano_pre"] = df["ano_91-20"] + df["date"].dt.month.map(MONTHLY_OFFSETS)
+    df["ano_pre"] = df["ano_91-20"] + angleichung.offset_tag(df["date"], MONTHLY_OFFSETS)
     df = df[df["date"].dt.month.isin(SEASON_MONTHS)]   # nur Monate der Jahreszeit
 
     # Jahr der Jahreszeit: Dezember zählt beim Winter zum Folgejahr

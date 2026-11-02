@@ -52,6 +52,7 @@ from matplotlib.ticker import MultipleLocator
 
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
+import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -118,9 +119,7 @@ plt.rcParams.update({
 })
 
 # Vorindustrielle Offsets je Monat (Januar bis Dezember)
-MONTHLY_OFFSETS = dict(zip(range(1, 13), [
-    0.97, 0.98, 0.97, 0.93, 0.88, 0.83, 0.79, 0.78, 0.80, 0.83, 0.88, 0.93,
-]))
+MONTHLY_OFFSETS = dict(angleichung.OFFSETS)      # Copernicus, siehe angleichung.py
 
 # Meteorologische Jahreszeiten: Monate und Dateiname
 SEASONS = {
@@ -215,7 +214,7 @@ else:
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
 
 ALLE_TAGE = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
-ALLE_TAGE["ano_pre"] = ALLE_TAGE["ano_91-20"] + ALLE_TAGE["date"].dt.month.map(MONTHLY_OFFSETS)
+ALLE_TAGE["ano_pre"] = ALLE_TAGE["ano_91-20"] + angleichung.offset_tag(ALLE_TAGE["date"], MONTHLY_OFFSETS)
 
 
 def zeitraum(wahl):

@@ -18,15 +18,14 @@ import os
 import re
 import glob
 import pandas as pd
+import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
 
 FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
 ERA5_ROH = os.path.join(FOLDER, "ERA5_global_tag.txt")          # Original von Climate Pulse
 ERA5_TAGE = os.path.join(FOLDER, "ERA5_global_tageswerte.txt")
 
 # Vorindustrielle Offsets je Monat (1991-2020 -> 1850-1900), wie in den ERA5-Skripten
-MONTHLY_OFFSETS = dict(zip(range(1, 13), [
-    0.97, 0.98, 0.97, 0.93, 0.88, 0.83, 0.79, 0.78, 0.80, 0.83, 0.88, 0.93,
-]))
+MONTHLY_OFFSETS = dict(angleichung.OFFSETS)      # Copernicus, siehe angleichung.py
 
 ZAHL = re.compile(r"^[+-]?\d+\.\d+$")
 
@@ -67,7 +66,7 @@ def tage_je_zeitraum(tage, basis, gebiet, bezug):
 # Global: Climate Pulse, Abweichung zu 1991-2020 plus Offset -> 1850-1900
 if os.path.exists(ERA5_ROH):
     tage = pd.read_csv(ERA5_ROH, comment="#", parse_dates=["date"])
-    tage["abw"] = tage["ano_91-20"] + tage["date"].dt.month.map(MONTHLY_OFFSETS)
+    tage["abw"] = tage["ano_91-20"] + angleichung.offset_tag(tage["date"], MONTHLY_OFFSETS)
     tage_je_zeitraum(tage, os.path.splitext(ERA5_TAGE)[0], "Global (ERA5, Copernicus Climate Pulse)", "1850-1900")
 else:
     print(f"Hinweis: {ERA5_ROH} fehlt - keine globalen ERA5-Tageswerte")

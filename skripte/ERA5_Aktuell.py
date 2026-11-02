@@ -34,6 +34,7 @@ from matplotlib.lines import Line2D
 
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
+import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -53,7 +54,7 @@ if os.environ.get("AKTUELL_WAHL"):
     FASSUNGEN = [f.strip() for f in os.environ["AKTUELL_WAHL"].split(",")]
 
 # Vorindustrielle Offsets je Monat (wie in den anderen ERA5-Skripten)
-MONTHLY_OFFSETS = dict(zip(range(1, 13), [0.97, 0.98, 0.97, 0.93, 0.88, 0.83, 0.79, 0.78, 0.80, 0.83, 0.88, 0.93]))
+MONTHLY_OFFSETS = dict(angleichung.OFFSETS)      # Copernicus, siehe angleichung.py
 MONATE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
 MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September",
                "Oktober", "November", "Dezember"]
@@ -106,7 +107,7 @@ df = pd.read_csv(FILE, comment="#", parse_dates=["date"])
 df = df[df["date"].dt.year >= START].copy()
 df["jahr"] = df["date"].dt.year
 df["monat"] = df["date"].dt.month
-df["abw"] = df["ano_91-20"] + df["monat"].map(MONTHLY_OFFSETS)
+df["abw"] = df["ano_91-20"] + angleichung.offset_tag(df["date"])
 # feste Position im Jahr (1-365), der 29. Februar fällt heraus
 df["pos"] = pd.to_datetime("2001-" + df["date"].dt.strftime("%m-%d"), errors="coerce").dt.dayofyear
 alle_tage = df.copy()                       # mit 29. Februar - zum Zählen der Tage über einer Schwelle
