@@ -819,6 +819,11 @@
     const png = document.getElementById("png-aktuell"), pdf = document.getElementById("pdf-aktuell");
     png.href = `${basis}_voll.png${akVersion}`; png.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.png`);
     pdf.href = `${basis}_voll.pdf${akVersion}`; pdf.setAttribute("download", `${name}${istDunkel() ? "_dunkel" : ""}.pdf`);
+    // Daten: bei Tageswerten alle Tage, bei Monatswerten alle Monate
+    const dat = akArt === "tag" ? "tageswerte" : "monatswerte", Dat = akArt === "tag" ? "Tageswerte" : "Monatswerte";
+    const txt = document.getElementById("txt-aktuell"), csv = document.getElementById("csv-aktuell");
+    txt.href = `daten/ERA5_global_${dat}.txt`; txt.textContent = `${Dat} (TXT)`;
+    csv.href = `daten/ERA5_global_${dat}.csv`; csv.textContent = `${Dat} (CSV)`;
     document.getElementById("bild-aktuell").alt =
       `Liniendiagramm der globalen ${akArt === "tag" ? "Tages" : "Monats"}mitteltemperatur ` +
       `${akEinheit === "c" ? "in °C" : "als Abweichung von 1850–1900"}: das laufende Jahr im Vergleich zu allen Jahren seit 1940, ` +
