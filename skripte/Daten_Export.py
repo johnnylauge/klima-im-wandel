@@ -3,7 +3,8 @@ Bereitet die Daten-Downloads der Webseite einheitlich auf:
 
   1. ERA5-Tageswerte im gleichen Stil wie die anderen TXT-Dateien (Datum, Temperatur in °C,
      Abweichung von 1850-1900) - passend zu den Punktdiagrammen: alle Tage
-     (ERA5_global_tageswerte.txt), je Jahreszeit (..._saison_herbst.txt) und je Monat (..._monat_10.txt).
+     (ERA5_global_tageswerte.txt), je Jahreszeit (..._saison_herbst.txt) und je Monat (..._monat_10.txt),
+     dazu alle Monate hintereinander (ERA5_global_monatswerte.txt) für die Monatswerte im Abschnitt "Aktuell".
      Für Europa genauso je Bezugszeitraum (ERA5_europa_6190_tageswerte..., ERA5_europa_9120_...).
   2. Zu jeder TXT-Datei *_global_*.txt und ERA5_europa_*.txt (Jahres-, Jahreszeiten-, Monatswerte, Tageswerte,
      Vergleichstabellen) eine CSV-Datei für Excel: Trennzeichen Semikolon, Dezimalkomma,
@@ -63,11 +64,31 @@ def tage_je_zeitraum(tage, basis, gebiet, bezug):
     print(f"Tageswerte {os.path.basename(basis)} (gesamt, je Jahreszeit, je Monat) gespeichert")
 
 
+def schreibe_monate(tage, datei, gebiet="Global (ERA5, Copernicus Climate Pulse)", bezug="1850-1900"):
+    """Alle Monate seit 1940 hintereinander (zu den Monatswerten im Abschnitt "Aktuell"):
+    Mittel aus den Tageswerten, Rang unter allen gleichen Kalendermonaten, Zahl der Tage."""
+    t = tage.assign(jahr=tage["date"].dt.year, monat=tage["date"].dt.month)
+    m = t.groupby(["jahr", "monat"]).agg(temp=("2t", "mean"), abw=("abw", "mean"), tage=("2t", "size"),
+                                         letzter=("date", "max")).reset_index()
+    m["rang"] = m.groupby("monat")["abw"].rank(ascending=False, method="min").astype(int)
+    stand = tage["date"].max()
+    with open(datei, "w", encoding="utf-8") as f:
+        f.write(f"# Monatsmitteltemperatur – {gebiet}\n"
+                f"# Abweichung bezogen auf {bezug}; Rang unter allen gleichen Monaten seit {m['jahr'].min()}\n"
+                f"# Stand: {stand:%d.%m.%Y}\n"
+                "#\n"
+                f"{'Jahr':>4}  {'Monat':>5}  {'Temp_°C':>8}  {'Abw_K':>6}  {'Rang':>4}  {'Tage':>4}  letzter_Tag\n")
+        for z in m.itertuples():
+            f.write(f"{z.jahr:>4}  {z.monat:>5}  {z.temp:>8.3f}  {z.abw:>+6.3f}  {z.rang:>4}  {z.tage:>4}  {z.letzter:%d.%m.%Y}\n")
+    print(f"Monatswerte gespeichert: {datei}")
+
+
 # Global: Climate Pulse, Abweichung zu 1991-2020 plus Offset -> 1850-1900
 if os.path.exists(ERA5_ROH):
     tage = pd.read_csv(ERA5_ROH, comment="#", parse_dates=["date"])
     tage["abw"] = tage["ano_91-20"] + angleichung.offset_tag(tage["date"], MONTHLY_OFFSETS)
     tage_je_zeitraum(tage, os.path.splitext(ERA5_TAGE)[0], "Global (ERA5, Copernicus Climate Pulse)", "1850-1900")
+    schreibe_monate(tage, os.path.join(FOLDER, "ERA5_global_monatswerte.txt"))
 else:
     print(f"Hinweis: {ERA5_ROH} fehlt - keine globalen ERA5-Tageswerte")
 
