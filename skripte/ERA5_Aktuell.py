@@ -56,7 +56,7 @@ SCHRIFT = 1.3
 START = 1940
 GEBIET = os.environ.get("AKTUELL_GEBIET", "luft").strip().lower()
 MEERE = {   # Kürzel: (Datei bei Climate Pulse, Name, Ausdehnung, Schwellen für die Kacheln)
-    "meer":   ("60S-60N_ocean", "Meer 60° S–60° N", "60° S–60° N", (0.5, 0.75, 1.0)),
+    "meer":   ("60S-60N_ocean", "60° N bis 60° S", "60° N bis 60° S", (0.5, 0.75, 1.0)),
     "nino34": ("nino34", "Niño 3.4", "5° S–5° N, 170° W–120° W", (0.5, 1.5)),
     "nino12": ("nino12", "Niño 1+2", "10° S–0°, 90° W–80° W", (0.5, 1.5)),
     "nino3":  ("nino3", "Niño 3", "5° S–5° N, 150° W–90° W", (0.5, 1.5)),
