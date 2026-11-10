@@ -348,7 +348,7 @@
       <h2 id="h-aktuell">Aktuell <span class="h-zusatz">· ERA5, täglich</span> <span class="stand" id="ak-stand">Daten werden geladen …</span></h2>
       <p class="unter" id="ak-unter">Das laufende Jahr im Vergleich zu allen Jahren seit 1940 · jede Linie ein Jahr, gefärbt nach Jahrzehnt</p>
       <div class="quelle ak-meere" id="ak-meere" role="group" aria-label="Meeresgebiet wählen">
-        <button type="button" id="mr-meer" aria-pressed="true" title="Meeresoberfläche zwischen 60° S und 60° N">Meer<span class="lang"> 60° S–60° N</span></button>
+        <button type="button" id="mr-meer" aria-pressed="true" title="Meeresoberfläche zwischen 60° N und 60° S">60° N bis 60° S</button>
         <button type="button" id="mr-nino34" aria-pressed="false" title="5° S–5° N, 170° W–120° W">Niño 3.4</button>
         <button type="button" id="mr-nino12" aria-pressed="false" title="10° S–0°, 90° W–80° W">Niño 1+2</button>
         <button type="button" id="mr-nino3" aria-pressed="false" title="5° S–5° N, 150° W–90° W">Niño 3</button>
@@ -717,7 +717,7 @@
   } catch (e) {}
   // Meeresgebiete (Copernicus Climate Pulse, ERA5, seit 1979)
   const MEERE = {
-    meer:   { name: "Meer 60° S–60° N", lage: "ohne Polarmeere" },
+    meer:   { name: "60° N bis 60° S", lage: "Meeresoberfläche ohne Polarmeere" },
     nino34: { name: "Niño 3.4", lage: "5° S–5° N, 170° W–120° W" },
     nino12: { name: "Niño 1+2", lage: "10° S–0°, 90° W–80° W" },
     nino3:  { name: "Niño 3", lage: "5° S–5° N, 150° W–90° W" },
@@ -729,7 +729,7 @@
   const akDatenJe = {}, akVersionJe = {}, akFertig = {};
   let akDaten = null, akVersion = "";
   const MEER_TEXT = {
-    meer: "Mittlere Temperatur der Meeresoberfläche zwischen 60° S und 60° N (ohne Polarmeere, dort verfälscht " +
+    meer: "Mittlere Temperatur der Meeresoberfläche zwischen 60° N und 60° S (ohne Polarmeere, dort verfälscht " +
           "das Meereis die Werte). Die Meere nehmen über 90 % der zusätzlichen Wärme auf; ihre Temperatur steigt " +
           "langsamer und gleichmäßiger als die der Luft.",
     nino: "Die Niño-Gebiete liegen im äquatorialen Pazifik. Ist das Meer dort deutlich wärmer als üblich, herrscht " +
