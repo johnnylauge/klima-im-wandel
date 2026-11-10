@@ -76,7 +76,7 @@ plt.rcParams.update({
     "figure.facecolor": FARBEN["bg"],
 })
 
-URL = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv"
+URL = angleichung.CLIMATE_PULSE_URL      # neue CSV von Copernicus Climate Pulse
 FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
 FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
@@ -101,8 +101,7 @@ if not (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
     os.makedirs(FOLDER, exist_ok=True)
     r = requests.get(URL, timeout=60)
     r.raise_for_status()
-    with open(FILE, "wb") as f:
-        f.write(r.content)
+    angleichung.climate_pulse_speichern(r.content, FILE)   # ins bisherige Format
 
 df = pd.read_csv(FILE, comment="#", parse_dates=["date"])
 df = df[df["date"].dt.year >= START].copy()

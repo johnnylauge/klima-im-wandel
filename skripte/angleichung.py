@@ -53,3 +53,33 @@ def auf_1850_1900(df, spalte):
         raise ValueError(f"Zeitraum {VON}-{BIS} nicht vollständig - Angleichung nicht möglich")
     mittel = basis.groupby("monat")[spalte].mean()
     return df[spalte] - df["monat"].map(mittel) + df["monat"].map(OFFSETS)
+
+
+# ---------------------------------------------------------------------------------------------
+# Climate Pulse: Tageswerte (neue CSV seit November 2026)
+# ---------------------------------------------------------------------------------------------
+CLIMATE_PULSE_URL = ("https://sites.ecmwf.int/data/climatepulse/timeseries/csv/daily/"
+                     "timeseries_era5_t2m_daily_global.csv")
+SPALTEN_NEU = {"t2m": "2t", "clim_1991_2020": "clim_91-20", "anom_1991_2020": "ano_91-20"}
+
+
+def climate_pulse_text(inhalt):
+    """Neue Climate-Pulse-CSV in das bisherige Format bringen, das alle Skripte lesen
+    (date, 2t, clim_91-20, ano_91-20, ...). Die neuen Spalten offset_1850_1900 und
+    anom_1850_1900 bleiben erhalten. Eine Datei im alten Format bleibt unverändert."""
+    if isinstance(inhalt, bytes):
+        inhalt = inhalt.decode("utf-8-sig")
+    zeilen = inhalt.splitlines()
+    for i, z in enumerate(zeilen):
+        if z and not z.startswith("#"):
+            spalten = [SPALTEN_NEU.get(c.strip(), c.strip()) for c in z.split(",")]
+            if "date" not in spalten or "2t" not in spalten or "ano_91-20" not in spalten:
+                raise ValueError(f"Climate Pulse: unbekannte Spalten {z!r}")
+            zeilen[i] = ",".join(spalten)
+            break
+    return "\n".join(zeilen) + "\n"
+
+
+def climate_pulse_speichern(inhalt, datei):
+    with open(datei, "w", encoding="utf-8") as f:
+        f.write(climate_pulse_text(inhalt))

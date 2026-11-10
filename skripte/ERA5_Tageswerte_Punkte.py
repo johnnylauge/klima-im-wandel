@@ -135,8 +135,7 @@ MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
 MONATE_KURZ = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni",
                "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."]
 
-URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
-       "era5_daily_series_2t_global.csv")
+URL = angleichung.CLIMATE_PULSE_URL      # neue CSV von Copernicus Climate Pulse
 # Lokal: Windows-Ordner. Auf GitHub setzt die Steuerdatei ERA5_FOLDER auf einen Ordner im Projekt.
 FOLDER = os.environ.get("ERA5_FOLDER",
                         r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
@@ -210,8 +209,7 @@ else:
                 raise
             print(f"Download fehlgeschlagen ({fehler}) - neuer Versuch in 60 Sekunden ...")
             time.sleep(60)
-    with open(FILE, "wb") as f:
-        f.write(response.content)
+    angleichung.climate_pulse_speichern(response.content, FILE)   # ins bisherige Format
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
 
 ALLE_TAGE = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))

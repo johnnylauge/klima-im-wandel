@@ -96,8 +96,7 @@ def tag_monat(d):
     return f"{d.day}. {DREI[d.month - 1]}"
 
 
-URL = ("https://sites.ecmwf.int/data/climatepulse/data/series/"
-       "era5_daily_series_2t_global.csv")
+URL = angleichung.CLIMATE_PULSE_URL      # neue CSV von Copernicus Climate Pulse
 FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
 FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")              # Tageswerte (Original)
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")                   # Unterordner für Grafiken
@@ -115,8 +114,7 @@ else:
     os.makedirs(FOLDER, exist_ok=True)
     response = requests.get(URL, timeout=60)
     response.raise_for_status()
-    with open(FILE, "wb") as f:
-        f.write(response.content)
+    angleichung.climate_pulse_speichern(response.content, FILE)   # ins bisherige Format
     print(f"Download abgeschlossen.\nDatei gespeichert unter:\n{FILE}")
 
 # =========================================================

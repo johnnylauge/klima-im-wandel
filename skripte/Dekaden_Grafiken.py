@@ -61,7 +61,7 @@ SCHRIFT = 1.3
 FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 SEITE = "https://johnnylauge.github.io/klima-im-wandel/daten/"
-CLIMATE_PULSE = "https://sites.ecmwf.int/data/climatepulse/data/series/era5_daily_series_2t_global.csv"
+CLIMATE_PULSE = angleichung.CLIMATE_PULSE_URL
 QS = ["ERA5", "NASA", "NOAA", "HadCRUT5", "Berkeley"]
 DREI = ["Jan.", "Feb.", "Mär.", "Apr.", "Mai", "Jun.", "Jul.", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."]
 
@@ -114,7 +114,7 @@ if NUR_VOLLE_JAHRE:
 vgl["dek"] = (vgl.index // 10) * 10
 
 # ERA5-Tageswerte (für die Glockenkurven)
-tag = pd.read_csv(io.StringIO(text_laden("ERA5_global_tag.txt", CLIMATE_PULSE)), comment="#", parse_dates=["date"])
+tag = pd.read_csv(io.StringIO(angleichung.climate_pulse_text(text_laden("ERA5_global_tag.txt", CLIMATE_PULSE))), comment="#", parse_dates=["date"])
 tag = tag[tag["date"].dt.year >= START].copy()
 tag["abw"] = tag["ano_91-20"] + angleichung.offset_tag(tag["date"])
 tag["dek"] = (tag["date"].dt.year // 10) * 10
