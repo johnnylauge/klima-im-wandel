@@ -33,6 +33,7 @@ from matplotlib.colors import TwoSlopeNorm, rgb_to_hsv, hsv_to_rgb
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5)
 from matplotlib.ticker import ScalarFormatter as _SF
 import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
+import kopf             # einheitliche Überschrift
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -172,12 +173,13 @@ LINIE = {d: linienfarbe(c) for d, c in FUELL.items()}
 # =========================================================
 def geruest(zeile2, zeile3, quelle):
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=kopf.DIAGRAMM_OBEN)
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
     mi = ax.annotate(zeile2, xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3), textcoords="offset points",
                      ha="center", va="bottom", fontsize=16 * SCHRIFT, fontweight="bold")
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mi, xytext=(0, 3), textcoords="offset points",
                 ha="center", va="bottom", fontsize=24 * SCHRIFT, fontweight="bold")
+    kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
     fig.text(0.99, 0.01, quelle, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"], fontweight="normal")
     ax.grid(True, color=FARBEN["gitter"], alpha=0.5, lw=0.8)
     ax.set_axisbelow(True)

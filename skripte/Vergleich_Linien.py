@@ -33,6 +33,7 @@ from matplotlib.ticker import MultipleLocator
 
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
+import kopf             # einheitliche Überschrift
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -274,6 +275,7 @@ def erstelle(wahl):
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
                 textcoords="offset points", ha="center", va="bottom",
                 fontsize=24 * SCHRIFT, fontweight="bold")
+    kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
 
     hindernisse = []
     handles, labels = [], []
@@ -360,7 +362,7 @@ def erstelle(wahl):
              "HadCRUT5 (© British Crown Copyright, Met Office, OGL v3.0) · Berkeley Earth (CC BY-NC 4.0) · eigene Berechnung\n"
              "Visualisierung: JohnnyLauge.bsky.social",
              ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=kopf.DIAGRAMM_OBEN)
 
     legend = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(0.01, 0.80), frameon=True,
                        fontsize=10 * SCHRIFT, fancybox=True, framealpha=0.85, edgecolor=FARBEN["box_rand"],

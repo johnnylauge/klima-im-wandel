@@ -50,6 +50,7 @@ import json
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
 import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
+import kopf             # einheitliche Überschrift
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -456,6 +457,7 @@ def erstelle(monat, anzeigen=True):
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3),
                 textcoords="offset points", ha="center", va="bottom",
                 fontsize=24 * SCHRIFT, fontweight="bold")
+    kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
     # keine Beschriftung der x-Achse: Jahreszahlen bzw. Monate erklären sich selbst
     ax.set_ylabel("Temperaturabweichung [K]", fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
@@ -470,7 +472,7 @@ def erstelle(monat, anzeigen=True):
 
     # Feste Ränder statt tight_layout -> gleiches Ergebnis auf jedem Rechner
     # (oben etwas mehr Platz für die dreizeilige Überschrift)
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=kopf.DIAGRAMM_OBEN)
 
     # Legende: der laufende Monat steht mit drin
     handles, labels = ax.get_legend_handles_labels()

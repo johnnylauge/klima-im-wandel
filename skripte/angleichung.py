@@ -38,6 +38,9 @@ def offset_tag(daten, offsets=None):
     n = n.where(~(schalt & (tag == 60)), 59.5)
     x = 2 * np.pi * (n - 0.5) / 365
     return 0.88 + 0.05 * np.sin(x) + 0.07 * np.cos(x)
+
+
+# Zeitraum, über den die anderen Datensätze an ERA5 angeglichen werden
 VON, BIS = 1991, 2020
 HINWEIS = "angeglichen über 1991-2020"
 

@@ -35,6 +35,7 @@ from matplotlib.lines import Line2D
 # Achsenbeschriftung in deutscher Schreibweise (1,5 statt 1.5) - gilt für alle Achsen ohne eigene Formatierung
 from matplotlib.ticker import ScalarFormatter as _SF
 import angleichung      # Abstand 1991-2020 -> 1850-1900 wie Copernicus (je Tag)
+import kopf             # einheitliche Überschrift
 if not getattr(_SF, "_komma", False):
     _sf_alt = _SF.__call__
     _SF.__call__ = lambda self, x, pos=None: _sf_alt(self, x, pos).replace(".", ",")
@@ -227,7 +228,7 @@ def zeichne(fassung):
     art, einheit = fassung.split("_")          # "tag"/"monat", "c"/"k"
     spalte = "2t" if einheit == "c" else "abw"
     fig, ax = plt.subplots(figsize=GROESSE, facecolor=FARBEN["bg"])
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=0.87)
+    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.10, top=kopf.DIAGRAMM_OBEN)
 
     if art == "tag":
         tab = tag_tab if einheit == "c" else tag_abw
@@ -320,6 +321,7 @@ def zeichne(fassung):
                         textcoords="offset points", ha="center", va="bottom", fontsize=16 * SCHRIFT, fontweight="bold")
     ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3), textcoords="offset points",
                 ha="center", va="bottom", fontsize=24 * SCHRIFT, fontweight="bold")
+    kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
     fig.text(0.99, 0.01, QUELLE, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
 
     # Farbleiste der Jahrzehnte: waagrecht in einem Kasten oben rechts (gleicher Stil wie der Info-Kasten),
