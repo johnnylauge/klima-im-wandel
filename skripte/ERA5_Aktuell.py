@@ -17,6 +17,12 @@ und ERA5_FOLDER/ERA5_aktuell.json mit den Werten für die Kacheln.
 
 Umgebungsvariablen: ERA5_FOLDER, ERA5_OHNE_DOWNLOAD=1, ERA5_DUNKEL=1, AKTUELL_WAHL (z. B. "tag_k",
 Standard: alle vier). Lokal (ohne CI) wird nur die volle Fassung gespeichert.
+
+Reiter "Meer": dieselben Grafiken für die Meeresoberflächentemperatur (Climate Pulse, ERA5, seit 1979),
+gewählt mit AKTUELL_GEBIET = meer (60° S-60° N), nino34, nino12, nino3 oder nino4.
+Abweichung dort vom Mittel 1991-2020 (für das Meer gibt Copernicus keinen Bezug 1850-1900 an).
+Dateien: MEER_<gebiet>_<fassung>..., MEER_<gebiet>.json (Kacheln) sowie
+MEER_<gebiet>_tageswerte.txt und MEER_<gebiet>_monatswerte.txt (Downloads).
 """
 
 import os
@@ -48,6 +54,24 @@ PNG_DPI = 150                   # 20 x 11.25 Zoll x 150 dpi = 3000 x 1688 Pixel
 GROESSE = (20, 11.25)
 SCHRIFT = 1.3
 START = 1940
+GEBIET = os.environ.get("AKTUELL_GEBIET", "luft").strip().lower()
+MEERE = {   # Kürzel: (Datei bei Climate Pulse, Name, Ausdehnung, Schwellen für die Kacheln)
+    "meer":   ("60S-60N_ocean", "Meer 60° S–60° N", "60° S–60° N", (0.5, 0.75, 1.0)),
+    "nino34": ("nino34", "Niño 3.4", "5° S–5° N, 170° W–120° W", (0.5, 1.5)),
+    "nino12": ("nino12", "Niño 1+2", "10° S–0°, 90° W–80° W", (0.5, 1.5)),
+    "nino3":  ("nino3", "Niño 3", "5° S–5° N, 150° W–90° W", (0.5, 1.5)),
+    "nino4":  ("nino4", "Niño 4", "5° S–5° N, 160° O–150° W", (0.5, 1.5)),
+}
+IST_MEER = GEBIET in MEERE
+if IST_MEER:
+    START = 1979
+    MEER_DATEI, GEBIET_NAME, GEBIET_LAGE, SCHWELLEN = MEERE[GEBIET]
+    IST_NINO = GEBIET.startswith("nino")
+else:
+    GEBIET_NAME, SCHWELLEN, IST_NINO = "Global", (1.0, 1.5, 2.0), False
+HAUPT = 1.5 if not IST_MEER else 0.5           # Schwelle im Info-Kasten
+STAMM = f"MEER_{GEBIET}" if IST_MEER else "ERA5_aktuell"
+BEZUG_TEXT = "Abweichung vom Mittel 1991-2020" if IST_MEER else "Abweichung von der vorindustriellen Zeit (1850-1900)"
 DUNKEL = os.environ.get("ERA5_DUNKEL") == "1"
 WEB = os.environ.get("ERA5_WEB", "1" if os.environ.get("CI") else "0") == "1"
 FASSUNGEN = ["tag_c", "tag_k", "monat_c", "monat_k"]
@@ -79,6 +103,10 @@ plt.rcParams.update({
 URL = angleichung.CLIMATE_PULSE_URL      # neue CSV von Copernicus Climate Pulse
 FOLDER = os.environ.get("ERA5_FOLDER", r"C:\Users\rafff\Documents\Wetterdaten\ERA5\Climate_Pulse")
 FILE = os.path.join(FOLDER, "ERA5_global_tag.txt")
+if IST_MEER:
+    URL = ("https://sites.ecmwf.int/data/climatepulse/timeseries/csv/daily/"
+           f"timeseries_era5_sst_daily_{MEER_DATEI}.csv")
+    FILE = os.path.join(FOLDER, f"MEER_{GEBIET}_roh.txt")
 PNG_FOLDER = os.path.join(FOLDER, "Grafiken")
 QUELLE = ("Datenquelle: Copernicus Climate Pulse (ERA5), C3S/ECMWF · CC BY 4.0\n"
           "https://pulse.climate.copernicus.eu/ · eigene Berechnung\n"
@@ -97,17 +125,23 @@ def komma(v, plus=False):
 # DATEN
 # =========================================================
 if not (os.environ.get("ERA5_OHNE_DOWNLOAD") == "1" and os.path.exists(FILE)):
-    print("Lade aktuelle ERA5-Daten herunter...")
+    print(f"Lade aktuelle ERA5-Daten herunter ({GEBIET_NAME})...")
     os.makedirs(FOLDER, exist_ok=True)
     r = requests.get(URL, timeout=60)
     r.raise_for_status()
-    angleichung.climate_pulse_speichern(r.content, FILE)   # ins bisherige Format
+    if IST_MEER:
+        with open(FILE, "wb") as f:
+            f.write(r.content)
+    else:
+        angleichung.climate_pulse_speichern(r.content, FILE)   # ins bisherige Format
 
 df = pd.read_csv(FILE, comment="#", parse_dates=["date"])
+if IST_MEER:   # Meer: Spalte sst als Temperatur, Abweichung vom Mittel 1991-2020
+    df = df.rename(columns={"sst": "2t", "anom_1991_2020": "ano_91-20", "rnino_anom_1991_2020": "rnino"})
 df = df[df["date"].dt.year >= START].copy()
 df["jahr"] = df["date"].dt.year
 df["monat"] = df["date"].dt.month
-df["abw"] = df["ano_91-20"] + angleichung.offset_tag(df["date"])
+df["abw"] = df["ano_91-20"] + (0 if IST_MEER else angleichung.offset_tag(df["date"]))
 # feste Position im Jahr (1-365), der 29. Februar fällt heraus
 df["pos"] = pd.to_datetime("2001-" + df["date"].dt.strftime("%m-%d"), errors="coerce").dt.dayofyear
 alle_tage = df.copy()                       # mit 29. Februar - zum Zählen der Tage über einer Schwelle
@@ -128,7 +162,7 @@ jahre = jahre[(jahre["n"] >= 365) | (jahre.index == JAHR)]
 rang = int((jahre["k"] > jahre.loc[JAHR, "k"]).sum()) + 1
 
 # Farben je Jahrzehnt
-DEKADEN = list(range(START, (JAHR // 10) * 10 + 10, 10))
+DEKADEN = list(range((START // 10) * 10, (JAHR // 10) * 10 + 10, 10))
 # Kräftigere Farben als die Standard-Palette: hell nichts zu Helles (Gelb und Hellblau verschwinden sonst
 # auf Weiß), dunkel nichts zu Dunkles (das tiefe Blau der 1940er verschwindet sonst im Hintergrund).
 def _palette(n):
@@ -209,15 +243,56 @@ kacheln = dict(
                temp=round(float(m_jetzt["c"]), 3), abw=round(float(m_jetzt["k"]), 3),
                rang=int((gleich["k"] > m_jetzt["k"]).sum()) + 1, von=int(len(gleich)),
                rekord=round(float(m_rek["c"]), 3), rekord_abw=round(float(m_rek["k"]), 3), rekord_jahr=int(m_rek["jahr"])),
-    schwellen=[schwelle(s) for s in (1.0, 1.5, 2.0)],
-    ueber15=dict(tage=int((akt["abw"] > 1.5).sum()), von=int(len(akt)),
-                 monate=int((monate[(monate["jahr"] == JAHR)]["k"] > 1.5).sum()),
+    schwellen=[schwelle(s) for s in SCHWELLEN],
+    ueber15=dict(tage=int((akt["abw"] > HAUPT).sum()), von=int(len(akt)),
+                 monate=int((monate[(monate["jahr"] == JAHR)]["k"] > HAUPT).sum()),
                  von_monate=int((monate["jahr"] == JAHR).sum())),
     jahr_bisher=dict(temp=round(float(akt["2t"].mean()), 3), abw=round(float(akt["abw"].mean()), 3),
                      rang=rang, von=int(len(jahre))),
 )
-with open(os.path.join(FOLDER, "ERA5_aktuell.json"), "w", encoding="utf-8") as f:
+kacheln.update(gebiet=GEBIET, name=GEBIET_NAME, start=START, bezug="1991-2020" if IST_MEER else "1850-1900")
+if IST_MEER:
+    kacheln["lage"] = GEBIET_LAGE
+if IST_NINO and "rnino" in df.columns:
+    # relativer Niño-Index (Copernicus): Niño-Abweichung minus Abweichung der Tropen (20° S-20° N) -
+    # zeigt El Niño / La Niña ohne den allgemeinen Erwärmungstrend. Eingestuft nach dem 90-Tage-Mittel
+    # (wie beim offiziellen Drei-Monats-Index).
+    rn = alle_tage.set_index("date")["rnino"].dropna()
+    m90, m30 = float(rn.iloc[-90:].mean()), float(rn.iloc[-30:].mean())
+    def stufe(w):
+        if w >= 2.0: return "sehr starker El Niño"
+        if w >= 1.5: return "starker El Niño"
+        if w >= 1.0: return "mäßiger El Niño"
+        if w >= 0.5: return "schwacher El Niño"
+        if w <= -1.5: return "starke La Niña"
+        if w <= -1.0: return "mäßige La Niña"
+        if w <= -0.5: return "schwache La Niña"
+        return "neutral"
+    kacheln["rnino"] = dict(tag=round(float(rn.iloc[-1]), 3), mittel30=round(m30, 3), mittel90=round(m90, 3),
+                            stufe=stufe(m90), abw_tag=round(float(letzte["abw"]), 3),
+                            abw90=round(float(alle_tage["abw"].iloc[-90:].mean()), 3))
+with open(os.path.join(FOLDER, f"{STAMM}.json" if IST_MEER else "ERA5_aktuell.json"), "w", encoding="utf-8") as f:
     json.dump(kacheln, f, ensure_ascii=False)
+
+# Downloads für den Reiter Meer: alle Tage und alle Monate
+if IST_MEER:
+    kopf_txt = (f"# Meeresoberflächentemperatur – {GEBIET_NAME} ({GEBIET_LAGE}), ERA5, Copernicus Climate Pulse\n"
+                "# Abweichung bezogen auf 1991-2020; Tageswerte = Wert um 12 UTC\n"
+                f"# Stand: {LETZTER:%d.%m.%Y}\n#\n")
+    mit_rn = IST_NINO and "rnino" in alle_tage.columns
+    with open(os.path.join(FOLDER, f"{STAMM}_tageswerte.txt"), "w", encoding="utf-8") as f:
+        f.write(kopf_txt + f"{'Datum':>10}  {'Temp_°C':>8}  {'Abw_K':>6}" + (f"  {'relNino_K':>9}" if mit_rn else "") + "\n")
+        rn_werte = alle_tage["rnino"] if mit_rn else [None] * len(alle_tage)
+        for d, t, a, r in zip(alle_tage["date"], alle_tage["2t"], alle_tage["abw"], rn_werte):
+            f.write(f"{d:%d.%m.%Y}  {t:>8.3f}  {a:>+6.3f}" + (f"  {r:>+9.3f}" if mit_rn else "") + "\n")
+    mm = alle_tage.groupby(["jahr", "monat"]).agg(temp=("2t", "mean"), abw=("abw", "mean"), tage=("2t", "size"),
+                                                  letzter=("date", "max")).reset_index()
+    mm["rang"] = mm.groupby("monat")["abw"].rank(ascending=False, method="min").astype(int)
+    with open(os.path.join(FOLDER, f"{STAMM}_monatswerte.txt"), "w", encoding="utf-8") as f:
+        f.write(kopf_txt.replace("Tageswerte = Wert um 12 UTC", f"Monatsmittel; Rang unter allen gleichen Monaten seit {START}")
+                + f"{'Jahr':>4}  {'Monat':>5}  {'Temp_°C':>8}  {'Abw_K':>6}  {'Rang':>4}  {'Tage':>4}  letzter_Tag\n")
+        for z in mm.itertuples():
+            f.write(f"{z.jahr:>4}  {z.monat:>5}  {z.temp:>8.3f}  {z.abw:>+6.3f}  {z.rang:>4}  {z.tage:>4}  {z.letzter:%d.%m.%Y}\n")
 
 
 # =========================================================
@@ -251,9 +326,13 @@ def zeichne(fassung):
     ax.plot(x, kalt.to_numpy(), color=FARBEN["rekord"], lw=1.4 if art == "tag" else 1.8, ls=(0, (1.5, 2.5)), alpha=0.9,
             zorder=2.5, label=f"{wort} Kälterekord {START}-{VORJAHR}")
 
-    # 1,5-K-Linie bei der Abweichung
+    # 1,5-K-Linie bei der Abweichung (Luft) bzw. El-Niño-/La-Niña-Schwelle (Niño-Gebiete)
     if einheit == "k":
-        ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Pariser Klimaabkommen)")
+        if not IST_MEER:
+            ax.axhline(1.5, color=FARBEN["limit"], ls=":", lw=2.2, zorder=2, label="1,5-K-Grenze (Pariser Klimaabkommen)")
+        elif IST_NINO:
+            ax.axhline(0.5, color=FARBEN["limit"], ls=":", lw=2.0, zorder=2, label="±0,5 K (El-Niño- / La-Niña-Schwelle)")
+            ax.axhline(-0.5, color="#2166ac" if not DUNKEL else "#6baed6", ls=":", lw=2.0, zorder=2)
         ax.axhline(0, color=FARBEN["fg"], lw=0.9, zorder=1.5)
 
     # laufendes Jahr
@@ -285,7 +364,7 @@ def zeichne(fassung):
         ax.set_xlim(1, 12)                                           # Linien beginnen und enden an der Achse
     werte = pd.concat([tab[j] for j in tab.columns]).dropna()
     unten, oben = float(werte.min()), float(werte.max())
-    if einheit == "k":
+    if einheit == "k" and not IST_MEER:
         oben = max(oben, 1.6)
     spanne = oben - unten
     ax.set_ylim(unten - 0.04 * spanne, oben + (0.34 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
@@ -293,7 +372,7 @@ def zeichne(fassung):
     fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9
            else f"{v:.2f}".replace(".", ",").replace("-", "−"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt))
-    ax.set_ylabel("Temperatur [°C]" if einheit == "c" else "Temperaturabweichung [K]",
+    ax.set_ylabel(("Meerestemperatur [°C]" if IST_MEER else "Temperatur [°C]") if einheit == "c" else "Temperaturabweichung [K]",
                   fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for lab in ax.get_xticklabels() + ax.get_yticklabels():
@@ -313,12 +392,12 @@ def zeichne(fassung):
 
     # Überschrift in drei Zeilen wie bei den anderen Grafiken
     # °C: was gezeigt wird · Abweichung: gleiche dritte Zeile wie bei den anderen Grafiken
-    zeile3 = ("Abweichung von der vorindustriellen Zeit (1850-1900)" if einheit == "k"
+    zeile3 = (BEZUG_TEXT if einheit == "k"
               else ("Tageswerte" if art == "tag" else "Monatswerte") + f" im Vergleich zu den Jahren {START}-{VORJAHR}")
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
-    mitte = ax.annotate(f"Global | {JAHR} | ERA5", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
+    mitte = ax.annotate(f"{GEBIET_NAME} | {JAHR} | ERA5", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom", fontsize=16 * SCHRIFT, fontweight="bold")
-    ax.annotate("Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3), textcoords="offset points",
+    ax.annotate("Meerestemperatur" if IST_MEER else "Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3), textcoords="offset points",
                 ha="center", va="bottom", fontsize=24 * SCHRIFT, fontweight="bold")
     kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
     fig.text(0.99, 0.01, QUELLE, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
@@ -353,13 +432,13 @@ def zeichne(fassung):
     if art == "tag":
         z1 = (f"{tag_monat(LETZTER)} {JAHR}: {c_(letzte['2t'])} °C | {k_(letzte['abw'])} K"
               f"  (Tagesrekord {c_(rekord_c)} °C, {rekord_j})")
-        z2 = (f"Tage über 1,5 K in {JAHR}: {kacheln['ueber15']['tage']} von {kacheln['ueber15']['von']}" if einheit == "k"
+        z2 = (f"Tage über {komma(HAUPT)[:-1]} K in {JAHR}: {kacheln['ueber15']['tage']} von {kacheln['ueber15']['von']}" if einheit == "k"
               else f"Temperaturmittel {JAHR}{bis}: {c_(akt['2t'].mean())} °C | {k_(akt['abw'].mean())} K")
     else:
         m = monate[monate["jahr"] == JAHR].iloc[-1]
         z1 = (f"{MONATSNAMEN[int(m['monat']) - 1]} {JAHR}{'' if monat_voll else ' (bisher)'}: "
               f"{c_(m['c'])} °C | {k_(m['k'])} K")
-        z2 = (f"Monate über 1,5 K in {JAHR}: {kacheln['ueber15']['monate']} von {kacheln['ueber15']['von_monate']}"
+        z2 = (f"Monate über {komma(HAUPT)[:-1]} K in {JAHR}: {kacheln['ueber15']['monate']} von {kacheln['ueber15']['von_monate']}"
               if einheit == "k" else f"Temperaturmittel {JAHR}{bis}: {c_(akt['2t'].mean())} °C | {k_(akt['abw'].mean())} K")
     info = ax.text(0.01, 0.97, f"{z1}\n{z2}", transform=ax.transAxes, ha="left", va="top",
                    fontsize=11 * SCHRIFT, fontweight="bold", linespacing=1.35, zorder=10,
@@ -487,7 +566,7 @@ def zeichne(fassung):
 
     # Speichern
     os.makedirs(PNG_FOLDER, exist_ok=True)
-    name = f"ERA5_aktuell_{fassung}"
+    name = f"{STAMM}_{fassung}"
     basis = os.path.join(PNG_FOLDER, name + ("_dunkel" if DUNKEL else ""))
     fig.savefig(basis + "_voll.png", dpi=PNG_DPI, facecolor=FARBEN["bg"])
     fig.savefig(basis + "_voll.pdf", dpi=PNG_DPI, facecolor=FARBEN["bg"])
