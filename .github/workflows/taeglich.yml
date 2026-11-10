@@ -317,6 +317,8 @@ jobs:
       - name: Auf GitHub Pages veröffentlichen
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 1800000        # bis zu 30 Minuten warten (Standard 10) - große Webseite mit vielen Grafiken
 
   # Verhindert, dass GitHub den täglichen Lauf nach 60 Tagen ohne Änderung pausiert:
   # am 1. jedes Monats schreibt der geplante Lauf das Datum in wachhalten.txt.
