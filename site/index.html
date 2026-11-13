@@ -761,7 +761,7 @@
     csv.href = `daten/${datei}.csv`; csv.textContent = `${Dat} (CSV)`;
     // Texte passend zu Luft oder Meer
     const seit = istMeer ? 1979 : 1940, bezug = istMeer ? "1991–2020" : "1850–1900";
-    document.querySelector("#h-aktuell").firstChild.textContent = istMeer ? "Meerestemperatur " : "Aktuell ";
+    document.querySelector("#h-aktuell").firstChild.textContent = istMeer ? "Meeresoberflächentemperatur " : "Aktuell ";
     document.getElementById("ak-unter").textContent = istMeer
       ? `${MEERE[g].name} (${MEERE[g].lage}) · das laufende Jahr im Vergleich zu allen Jahren seit ${seit} · jede Linie ein Jahr, gefärbt nach Jahrzehnt`
       : `Das laufende Jahr im Vergleich zu allen Jahren seit ${seit} · jede Linie ein Jahr, gefärbt nach Jahrzehnt`;
@@ -926,7 +926,7 @@
     if (!eu) zeigeAktuell();
     document.getElementById("qlabel").textContent = eu ? "Bezugszeitraum" : "Datenquelle";
     document.getElementById("untertitel").innerHTML = meer
-      ? "Meerestemperatur – Temperatur der Meeresoberfläche (ERA5) als Abweichung vom Mittel 1991–2020 und in&nbsp;°C"
+      ? "Meeresoberflächentemperatur (ERA5) als Abweichung vom Mittel 1991–2020 und in&nbsp;°C"
       : eu
       ? "Temperatur in Europa (Landflächen) – als Abweichung vom Klimamittel und in&nbsp;°C"
       : "Globale Temperatur – als Abweichung von der vorindustriellen Zeit (1850–1900) und in&nbsp;°C";
