@@ -369,10 +369,10 @@ def zeichne(fassung):
     spanne = oben - unten
     ax.set_ylim(unten - 0.04 * spanne, oben + (0.34 if einheit == "k" else 0.20) * spanne)   # oben Platz für Info-Kasten (und Legende)
     # Abweichung mit zwei Nachkommastellen wie bei den anderen Grafiken (1,00 · 1,50 ...)
-    fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and abs(v - round(v)) < 1e-9
+    fmt = (lambda v, _: f"{v:.0f}" if einheit == "c" and not IST_MEER and abs(v - round(v)) < 1e-9
            else f"{v:.2f}".replace(".", ",").replace("-", "−"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(fmt))
-    ax.set_ylabel(("Meerestemperatur [°C]" if IST_MEER else "Temperatur [°C]") if einheit == "c" else "Temperaturabweichung [K]",
+    ax.set_ylabel(("Meeresoberflächentemperatur [°C]" if IST_MEER else "Temperatur [°C]") if einheit == "c" else "Temperaturabweichung [K]",
                   fontsize=18 * SCHRIFT, fontweight="bold")
     ax.tick_params(axis="both", labelsize=11 * SCHRIFT)
     for lab in ax.get_xticklabels() + ax.get_yticklabels():
@@ -397,7 +397,7 @@ def zeichne(fassung):
     ax.set_title(zeile3, fontsize=15 * SCHRIFT, fontweight="normal", pad=8)
     mitte = ax.annotate(f"{GEBIET_NAME} | {JAHR} | ERA5", xy=(0.5, 1), xycoords=ax.title, xytext=(0, 3),
                         textcoords="offset points", ha="center", va="bottom", fontsize=16 * SCHRIFT, fontweight="bold")
-    ax.annotate("Meerestemperatur" if IST_MEER else "Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3), textcoords="offset points",
+    ax.annotate("Meeresoberflächentemperatur" if IST_MEER else "Temperaturmittel", xy=(0.5, 1), xycoords=mitte, xytext=(0, 3), textcoords="offset points",
                 ha="center", va="bottom", fontsize=24 * SCHRIFT, fontweight="bold")
     kopf.setzen(fig, ax)   # Überschrift an festen Stellen (siehe kopf.py)
     fig.text(0.99, 0.01, QUELLE, ha="right", va="bottom", fontsize=9 * SCHRIFT, color=FARBEN["fuss"])
