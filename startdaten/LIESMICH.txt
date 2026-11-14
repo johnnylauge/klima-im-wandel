@@ -1,2 +1,12 @@
-Hier kommt die Datei ERA5_europa_tag.txt hinein (einmalig auf dem PC mit skripte/ERA5_Europa_Daten.py erstellt).
-Der tägliche Lauf auf GitHub nutzt sie als Grundstock und lädt danach nur noch die neuesten Tage nach.
+Europa (Land, 25° W–40° E, 34°–72° N) - Grundstock für skripte/Europa_Grafiken.py:
+
+time_series_of_annual_temperatures_1850-2025_wrt_1850-1900_europe.csv
+    Copernicus-Klimaindikator Europa (climate.copernicus.eu/climate-indicators/temperature, Abbildung 4).
+    Genutzt wird die Spalte ERA5 (1940-2025). Kommt eine neue Fassung (z. B. bis 2026), einfach die neue
+    CSV hier ablegen und die alte löschen bzw. den Namen in Europa_Grafiken.py (CSV_NAME) anpassen.
+
+Europa_Land_Tag.txt
+    Tagesmittel vom PC (era5_regionen_auswertung.py), derzeit 1940-1968, 2024, 2025. Dient zum Abgleich mit
+    dem Klimaindikator. Später einfach durch die vollständige Reihe ersetzen.
+
+Das laufende Jahr ab 2026 lädt der Ablauf "Europa-Daten nachladen" täglich um 06:00 UTC selbst.
