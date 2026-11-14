@@ -5,3 +5,4 @@ matplotlib
 cdsapi
 xarray
 netCDF4
+ecmwf-datastores-client
