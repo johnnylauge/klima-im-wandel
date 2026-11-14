@@ -27,7 +27,7 @@ jobs:
       PYTHONUNBUFFERED: "1"            # Ausgaben der Skripte sofort im Protokoll zeigen
       # Erweiterungen ein- und ausschalten: "ja" oder "nein"
       # (auf der Webseite zusätzlich in site/index.html bei GEBIETE umstellen)
-      MIT_EUROPA: "nein"               # Europa aus ERA5 (Climate Data Store)
+      MIT_EUROPA: "ja"                 # Europa (Land) aus ERA5 (Klimaindikator + Climate Data Store)
       MIT_MEER: "ja"                   # Meer: Meerestemperatur und Niño-Gebiete (Copernicus Climate Pulse)
     steps:
       - name: Projekt holen
@@ -217,9 +217,9 @@ jobs:
           ERA5_DUNKEL: "1"
         run: python skripte/Vergleich_Linien.py
 
-      # Europa (ERA5 aus dem Climate Data Store): fehlende neueste Tage nachladen. Beim allerersten Lauf
-      # kommt der Grundstock aus startdaten/ (einmalig auf dem PC mit ERA5_Europa_Daten.py erstellt).
-      - name: Stand des Europa-Nachladens holen
+      # Europa (Land) aus ERA5: Jahreswerte 1940-2025 aus dem Copernicus-Klimaindikator (startdaten/),
+      # das laufende Jahr aus den Tageswerten, die "Europa-Daten nachladen" um 06:00 UTC holt
+      - name: Stand des Europa-Downloads holen
         if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
         uses: actions/cache/restore@v4
@@ -228,48 +228,16 @@ jobs:
           key: europa-${{ github.run_id }}
           restore-keys: europa-
 
-      - name: Europa-Daten laden
+      - name: Europa-Grafiken erstellen (hell und dunkel)
         if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
-        timeout-minutes: 30            # hängt der Copernicus-Server, geht der Lauf trotzdem weiter
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
-          CDSAPI_URL: https://cds.climate.copernicus.eu/api
-          CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
-          EUROPA_TEIL: neu                 # nur die neuesten Monate; das Auffüllen übernimmt "Europa-Daten nachladen"
-          EUROPA_MAX_MINUTEN: "20"         # danach mit dem Vorhandenen weiterrechnen
-          EUROPA_MAX_OFFEN: "1"            # der CDS verlangt derzeit: eine Anfrage nach der anderen
-          EUROPA_ZUSATZ: ${{ github.workspace }}/europa_daten/ERA5_europa_tag.txt
+          EUROPA_DATEN: ${{ github.workspace }}/europa_daten
         run: |
-          if [ ! -f _site/daten/ERA5_europa_tag.txt ] && [ -f startdaten/ERA5_europa_tag.txt ]; then
-            cp startdaten/ERA5_europa_tag.txt _site/daten/
-          fi
-          python skripte/ERA5_Europa_Daten.py
-
-      # Europa-Grafiken: je Bezugszeitraum (1961-1990, 1991-2020) hell und dunkel
-      - name: Europa-Grafiken erstellen
-        if: env.MIT_EUROPA == 'ja'
-        continue-on-error: true
-        timeout-minutes: 60
-        env:
-          ERA5_FOLDER: ${{ github.workspace }}/_site/daten
-          ERA5_REGION: europa
-        run: |
-          for bezug in 1961-1990 1991-2020; do
-            kurz=${bezug:2:2}${bezug:7:2}
-            if [ ! -f _site/daten/ERA5_europa_tag_$kurz.txt ]; then
-              echo "Europa $bezug: noch keine vollständigen Daten - Grafiken folgen später"
-              continue
-            fi
-            for dunkel in 0 1; do
-              export ERA5_BEZUG=$bezug ERA5_DUNKEL=$dunkel
-              python skripte/ERA5_Jahresmittel_Balken.py
-              ERA5_MONATE=alle python skripte/ERA5_Monatsmittel_Balken.py
-              ERA5_JAHRESZEITEN=alle python skripte/ERA5_Jahreszeiten_Balken.py
-              ERA5_PUNKTE=alle python skripte/ERA5_Tageswerte_Punkte.py
-              ERA5_LINIEN=alle python skripte/ERA5_Mittel_Linien.py
-            done
-          done
+          mkdir -p europa_daten
+          python skripte/Europa_Grafiken.py
+          ERA5_DUNKEL=1 python skripte/Europa_Grafiken.py
 
       # Reiter Meer: Meeresoberflächentemperatur 60° S-60° N und die vier Niño-Gebiete
       # (Copernicus Climate Pulse, ERA5), je Gebiet hell und dunkel
