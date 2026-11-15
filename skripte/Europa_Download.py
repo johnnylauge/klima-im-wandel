@@ -151,6 +151,8 @@ def gewichte():
     m = feld_aus(oeffne(MASKE))
     if "time" in m.dims:
         m = m.isel(time=0)
+    # nur Breite und Länge behalten: das Datum der Maske (2020-01-01) darf nicht an den Gewichten hängen
+    m = m.drop_vars([c for c in m.coords if c not in ("latitude", "longitude")])
     land = (m >= LAND_AB)
     g = np.cos(np.deg2rad(m["latitude"])) * land
     return g, int(land.sum())
@@ -159,8 +161,9 @@ def gewichte():
 def gebietsmittel(pfad, g):
     """Landflächenmittel je Zeitschritt in °C."""
     f = feld_aus(oeffne(pfad))
-    f = f.sel(latitude=g["latitude"], longitude=g["longitude"], method="nearest")
-    f = f.assign_coords(latitude=g["latitude"], longitude=g["longitude"])
+    f = f.drop_vars([c for c in f.coords if c not in f.dims])      # Beiwerk wie expver, number
+    f = f.sel(latitude=g["latitude"].values, longitude=g["longitude"].values, method="nearest")
+    f = f.assign_coords(latitude=g["latitude"].values, longitude=g["longitude"].values)
     w = g * f.notnull()
     m = (f.fillna(0) * w).sum(("latitude", "longitude")) / w.sum(("latitude", "longitude"))
     s = m.to_series()
