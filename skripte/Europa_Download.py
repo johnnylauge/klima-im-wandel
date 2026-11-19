@@ -267,7 +267,8 @@ def abgleich():
         abw = werte.mean() - klima[m]
         ref = BULLETIN_2026.get(m)
         zusatz = f"  Bulletin {ref:+.2f}  Unterschied {abw - ref:+.2f}" if (ref is not None and voll) else ""
-        print(f"  {m:02d}: {abw:+.2f} K{'' if voll else ' (bisher)'}{zusatz}")
+        print(f"  {m:02d}: {werte.mean():6.2f} °C (Klima {klima[m]:6.2f} °C)  {abw:+.2f} K"
+              f"{'' if voll else ' (bisher)'}{zusatz}")
 
 
 def main():
