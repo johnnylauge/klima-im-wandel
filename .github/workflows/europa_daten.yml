@@ -1,6 +1,6 @@
-# Lädt jeden Tag um 06:00 UTC die neuesten ERA5-Tagesmittel für Europa (Land) aus dem Climate Data Store
+# Lädt jeden Tag gegen 04:13 UTC die neuesten ERA5-Tagesmittel für Europa (Land) aus dem Climate Data Store
 # (skripte/Europa_Download.py). Beim ersten Lauf zusätzlich einmalig die Landmaske und das Klimamittel
-# 1991-2020. Der Stand liegt in einem eigenen Speicher ("europa-"); der tägliche Lauf um 09:00 UTC
+# 1991-2020. Der Stand liegt in einem eigenen Speicher ("europa-"); der tägliche Lauf um 06 UTC
 # holt ihn sich und zeichnet daraus die Europa-Grafiken.
 # Manuell starten: Reiter "Actions" -> "Europa-Daten nachladen" -> "Run workflow" (geht auch am Handy).
 # Voraussetzung: Geheimnis CDSAPI_KEY (Settings -> Secrets and variables -> Actions) und im CDS die
@@ -10,7 +10,7 @@ name: Europa-Daten nachladen
 
 on:
   schedule:
-    - cron: "0 6 * * *"          # täglich 06:00 UTC - drei Stunden vor dem täglichen Lauf
+    - cron: "13 4 * * *"         # täglich 04:13 UTC - vor dem täglichen Lauf (krumme Minute: weniger Verspätung)
   workflow_dispatch:
 
 permissions:
@@ -54,7 +54,7 @@ jobs:
           CDSAPI_URL: https://cds.climate.copernicus.eu/api
           CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
           EUROPA_START: "2026-01-01"
-          EUROPA_MAX_MINUTEN: "50"         # wartet eine Anfrage länger, holt sie der nächste Lauf ab
+          EUROPA_MAX_MINUTEN: "45"         # wartet eine Anfrage länger, holt sie der nächste Lauf ab
         run: |
           mkdir -p europa_daten
           # Reste des früheren Verfahrens entfernen (die Landmaske bleibt, sie ist dieselbe)
