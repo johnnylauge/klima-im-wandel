@@ -1,11 +1,13 @@
-# Erstellt jeden Tag um 09:00 UTC die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880, ein Vergleich und Europa aus ERA5) und veröffentlicht sie auf GitHub Pages.
+# Erstellt jeden Tag zweimal (06 und 12 UTC) die Klimagrafiken (Jahr, alle Monate und Jahreszeiten, als Balken, Punkte und Linien; dazu Berkeley Earth, NOAA und HadCRUT5 ab 1850, NASA GISTEMP ab 1880, ein Vergleich und Europa aus ERA5) und veröffentlicht sie auf GitHub Pages.
 # Manuell starten: Reiter "Actions" -> "Tägliche Klimagrafik" -> "Run workflow".
 
 name: Tägliche Klimagrafik
 
 on:
   schedule:
-    - cron: "0 9 * * *"        # täglich 09:00 UTC (= 11:00 Sommerzeit / 10:00 Winterzeit)
+    - cron: "3 6 * * *"        # Lauf 1: täglich 06:03 UTC
+    - cron: "3 12 * * *"       # Lauf 2: täglich 12:03 UTC - holt nach, was morgens noch fehlte
+                               # (3 Minuten nach der vollen Stunde: GitHub startet dann pünktlicher)
   workflow_dispatch:            # Knopf zum manuellen Starten
   push:
     branches: [main]            # auch nach jeder Änderung an Skript oder Webseite
