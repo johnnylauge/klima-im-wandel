@@ -574,18 +574,18 @@
     vgl:  { stamm: "VGL_global", start: 1850, takt: "", vergleich: true,
             info: "Vergleich: ERA5, NASA, NOAA, HadCRUT5 und Berkeley Earth als Abweichung von 1850–1900 in einer Grafik, " +
                   "dazu der Trend aus dem Mittel aller Datensätze (vor 1940 ohne ERA5). ERA5 endet täglich aktuell, die anderen etwa einen Monat früher." },
-    eu:   { stamm: "ERA5_europa", start: 1940, takt: "täglich", europa: true, nurJahr: true, bezug: "1850–1900",
-            info: "Europa (ERA5, Copernicus): Jahresmittel über die Landflächen von 34–72° N und 25° W–40° E ab 1940, " +
+    eu:   { stamm: "ERA5_europa", start: 1940, takt: "täglich", europa: true, bezug: "1850–1900",
+            info: "Europa (ERA5, Copernicus): Tagesmittel über die Landflächen von 34–72° N und 25° W–40° E ab 1940, " +
                   "als Abweichung von der vorindustriellen Zeit (1850–1900; wie bei Copernicus 1,43 K unter dem Mittel 1991–2020). " +
-                  "Bis 2025 Werte des Copernicus-Klimaindikators, das laufende Jahr eigene Berechnung aus den ERA5-Tagesmitteln " +
-                  "(etwa 6 Tage Verzug). Jahreszeiten und Monate folgen." },
+                  "Eigene Berechnung aus den ERA5-Tagesmitteln, abgeglichen mit dem Copernicus-Klimaindikator; " +
+                  "die neuesten Tage kommen täglich aus dem Climate Data Store (etwa 6 Tage Verzug)." },
   };
   // welche Darstellungen es je Quelle gibt (Punkte brauchen Tageswerte, der Vergleich ist nur als Linie da)
   QUELLEN.era5.arten = ["balken", "punkte", "linien"];
   QUELLEN.be.arten = QUELLEN.noaa.arten = ["balken", "linien"];
   QUELLEN.hadcrut.arten = QUELLEN.nasa.arten = ["balken", "linien"];
   QUELLEN.vgl.arten = ["linien"];
-  QUELLEN.eu.arten = ["balken", "linien"];
+  QUELLEN.eu.arten = ["balken", "punkte", "linien"];
   // Gebiet: zuletzt gewählte Quelle je Gebiet merken (Global: ERA5 ... Vergleich, Europa: Bezugszeitraum)
   const zuletzt = { global: "era5", europa: "eu" };
   try { Object.assign(zuletzt, JSON.parse(localStorage.getItem("zuletzt") || "{}")); } catch (e) {}
