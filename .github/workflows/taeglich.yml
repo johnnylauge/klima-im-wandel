@@ -219,8 +219,9 @@ jobs:
           ERA5_DUNKEL: "1"
         run: python skripte/Vergleich_Linien.py
 
-      # Europa (Land) aus ERA5: Jahreswerte 1940-2025 aus dem Copernicus-Klimaindikator (startdaten/),
-      # das laufende Jahr aus den Tageswerten, die "Europa-Daten nachladen" um 06:00 UTC holt
+      # Europa (Land) aus ERA5: Tageswerte 1940 bis heute (startdaten/Europa_Land_Tag.txt vom PC,
+      # die neuesten Tage aus dem Download "Europa-Daten nachladen"); daraus dieselben Grafiken wie
+      # bei Global: Jahr, Jahreszeiten, Monate als Balken, Punkte und Linien - hell und dunkel
       - name: Stand des Europa-Downloads holen
         if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
@@ -233,13 +234,23 @@ jobs:
       - name: Europa-Grafiken erstellen (hell und dunkel)
         if: env.MIT_EUROPA == 'ja'
         continue-on-error: true
+        timeout-minutes: 40
         env:
           ERA5_FOLDER: ${{ github.workspace }}/_site/daten
           EUROPA_DATEN: ${{ github.workspace }}/europa_daten
+          ERA5_REGION: europa
+          ERA5_BEZUG: "1850-1900"
         run: |
           mkdir -p europa_daten
-          python skripte/Europa_Grafiken.py
-          ERA5_DUNKEL=1 python skripte/Europa_Grafiken.py
+          python skripte/Europa_Tageswerte.py
+          for dunkel in 0 1; do
+            export ERA5_DUNKEL=$dunkel
+            python skripte/ERA5_Jahresmittel_Balken.py
+            ERA5_MONATE=alle python skripte/ERA5_Monatsmittel_Balken.py
+            ERA5_JAHRESZEITEN=alle python skripte/ERA5_Jahreszeiten_Balken.py
+            ERA5_PUNKTE=alle python skripte/ERA5_Tageswerte_Punkte.py
+            ERA5_LINIEN=alle python skripte/ERA5_Mittel_Linien.py
+          done
 
       # Reiter Meer: Meeresoberflächentemperatur 60° S-60° N und die vier Niño-Gebiete
       # (Copernicus Climate Pulse, ERA5), je Gebiet hell und dunkel
