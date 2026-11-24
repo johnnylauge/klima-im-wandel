@@ -208,6 +208,7 @@ else:
 # DATEN AUFBEREITEN
 # =========================================================
 df = region.anpassen_tage(pd.read_csv(FILE, comment="#", parse_dates=["date"]))
+df = region.ohne_schalttag(df)               # Europa: Jahresmittel ohne 29. Februar (wie Copernicus)
 df = df[df["date"].dt.year >= START_YEAR]
 df["year"] = df["date"].dt.year
 df["ano_pre"] = df["ano_91-20"] + angleichung.offset_tag(df["date"], MONTHLY_OFFSETS)

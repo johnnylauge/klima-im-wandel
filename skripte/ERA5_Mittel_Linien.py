@@ -242,6 +242,8 @@ def erstelle(wahl, anzeigen=True):
     # DATEN AUFBEREITEN
     # =========================================================
     df = ALLE_TAGE[ALLE_TAGE["date"].dt.month.isin(monate)].copy()
+    if art == "jahr":
+        df = region.ohne_schalttag(df)           # Europa: Jahresmittel ohne 29. Februar (wie Copernicus)
     df["year"] = df["date"].dt.year
     if name == "Winter":                                  # Dezember zählt zum Folgejahr
         df.loc[df["date"].dt.month == 12, "year"] += 1

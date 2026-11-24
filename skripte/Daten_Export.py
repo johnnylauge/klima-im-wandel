@@ -5,7 +5,7 @@ Bereitet die Daten-Downloads der Webseite einheitlich auf:
      Abweichung von 1850-1900) - passend zu den Punktdiagrammen: alle Tage
      (ERA5_global_tageswerte.txt), je Jahreszeit (..._saison_herbst.txt) und je Monat (..._monat_10.txt),
      dazu alle Monate hintereinander (ERA5_global_monatswerte.txt) für die Monatswerte im Abschnitt "Aktuell".
-     Für Europa genauso je Bezugszeitraum (ERA5_europa_6190_tageswerte..., ERA5_europa_9120_...).
+     Für Europa genauso (ERA5_europa_tageswerte..., Bezug 1850-1900).
   2. Zu jeder TXT-Datei *_global_*.txt und ERA5_europa_*.txt (Jahres-, Jahreszeiten-, Monatswerte, Tageswerte,
      Vergleichstabellen) eine CSV-Datei für Excel: Trennzeichen Semikolon, Dezimalkomma,
      UTF-8 mit BOM (damit Excel °C und Umlaute richtig zeigt). Die Kopfzeilen mit # (Quelle,
@@ -92,13 +92,14 @@ if os.path.exists(ERA5_ROH):
 else:
     print(f"Hinweis: {ERA5_ROH} fehlt - keine globalen ERA5-Tageswerte")
 
-# Europa: je Bezugszeitraum (von ERA5_Europa_Daten.py berechnet)
-for kurz, bezug in (("6190", "1961-1990"), ("9120", "1991-2020")):
+# Europa: Bezug 1850-1900 (von Europa_Tageswerte.py berechnet); ältere Bezüge, falls vorhanden
+for kurz, bezug, stamm in (("1850", "1850-1900", "ERA5_europa"), ("6190", "1961-1990", "ERA5_europa_6190"),
+                           ("9120", "1991-2020", "ERA5_europa_9120")):
     quelle = os.path.join(FOLDER, f"ERA5_europa_tag_{kurz}.txt")
     if os.path.exists(quelle):
         tage = pd.read_csv(quelle, comment="#", parse_dates=["date"])
-        tage_je_zeitraum(tage, os.path.join(FOLDER, f"ERA5_europa_{kurz}_tageswerte"),
-                         "Europa (ERA5, Copernicus Climate Data Store, Landflächen)", bezug)
+        tage_je_zeitraum(tage, os.path.join(FOLDER, f"{stamm}_tageswerte"),
+                         "Europa (Land, ERA5, Copernicus Climate Data Store)", bezug)
 
 
 # =========================================================
@@ -123,7 +124,8 @@ def als_csv(txt):
 
 
 anzahl = 0
-ROHDATEIEN = {"ERA5_global_tag.txt", "ERA5_europa_tag.txt", "ERA5_europa_tag_6190.txt", "ERA5_europa_tag_9120.txt"}
+ROHDATEIEN = {"ERA5_global_tag.txt", "ERA5_europa_tag.txt", "ERA5_europa_tag_1850.txt",
+              "ERA5_europa_tag_6190.txt", "ERA5_europa_tag_9120.txt"}
 for txt in sorted(glob.glob(os.path.join(FOLDER, "*_global_*.txt")) + glob.glob(os.path.join(FOLDER, "ERA5_europa_*.txt"))
                   + glob.glob(os.path.join(FOLDER, "NINO34_*.txt"))
                   + [t for t in glob.glob(os.path.join(FOLDER, "MEER_*.txt")) if not t.endswith("_roh.txt")]):

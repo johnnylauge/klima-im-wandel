@@ -5,13 +5,13 @@ Die ERA5-Skripte lesen hier, für welches Gebiet sie rechnen. Gesteuert wird das
 Umgebungsvariablen (auf GitHub in der Steuerdatei, lokal z. B. per "set ERA5_REGION=europa"):
 
   ERA5_REGION   "global" (Standard) oder "europa"
-  ERA5_BEZUG    nur bei Europa: "1961-1990" (Standard) oder "1991-2020"
+  ERA5_BEZUG    nur bei Europa: "1850-1900" (Standard), "1961-1990" oder "1991-2020"
 
 Global:  Tageswerte von Copernicus Climate Pulse, Abweichung bezogen auf 1850-1900.
-Europa:  Tagesmittel aus dem Copernicus Climate Data Store (ERA5 post-processed daily statistics),
-         über die Landflächen 34-72° N, 25° W-40° E gemittelt (Europa-Gebiet von C3S);
-         ERA5_Europa_Daten.py lädt und berechnet sie. Abweichung bezogen auf 1961-1990 oder
-         1991-2020 - ERA5 beginnt 1940, der Bezug 1850-1900 ist hier nicht möglich.
+Europa:  Tagesmittel aus ERA5 über die Landflächen 34-72° N, 25° W-40° E (Europa-Gebiet von C3S):
+         1940 bis heute vom PC (startdaten/Europa_Land_Tag.txt), die neuesten Tage täglich aus dem
+         Climate Data Store (Europa_Download.py). Europa_Tageswerte.py rechnet daraus die Abweichung:
+         zum Klimamittel 1991-2020 plus 1,43 K = Abweichung von 1850-1900, wie Copernicus.
 """
 
 import os
@@ -27,16 +27,24 @@ if REGION not in ("global", "europa"):
 EUROPA = REGION == "europa"
 
 if EUROPA:
-    BEZUG = os.environ.get("ERA5_BEZUG", "1961-1990").strip()
-    if BEZUG not in ("1961-1990", "1991-2020"):
-        raise ValueError(f"ERA5_BEZUG '{BEZUG}' unbekannt - möglich: 1961-1990, 1991-2020")
-    KURZ = BEZUG[2:4] + BEZUG[7:9]                     # "6190" oder "9120"
-    GEBIET = "Europa"
-    STAMM = f"ERA5_europa_{KURZ}"                      # Dateinamen, z. B. ERA5_europa_6190_jahreswerte
-    TAG_DATEI = f"ERA5_europa_tag_{KURZ}.txt"          # Tageswerte mit Abweichung zu diesem Bezug
+    BEZUG = os.environ.get("ERA5_BEZUG", "1850-1900").strip()
+    if BEZUG not in ("1850-1900", "1961-1990", "1991-2020"):
+        raise ValueError(f"ERA5_BEZUG '{BEZUG}' unbekannt - möglich: 1850-1900, 1961-1990, 1991-2020")
+    GEBIET = "Europa (Land)"
     DATENNAME = "ERA5, Copernicus Climate Data Store, Landflächen"
-    UNTERTITEL = f"Abweichung vom Klimamittel {BEZUG} · Landflächen"
-    FUSS = ("Datenquelle: ERA5, C3S/ECMWF (Climate Data Store) · CC BY 4.0 · eigene Berechnung\n"
+    if BEZUG == "1850-1900":
+        KURZ = "1850"
+        STAMM = "ERA5_europa"                          # Dateinamen, z. B. ERA5_europa_jahreswerte
+        UNTERTITEL = "Abweichung von der vorindustriellen Zeit (1850-1900)"
+    else:
+        KURZ = BEZUG[2:4] + BEZUG[7:9]                 # "6190" oder "9120"
+        STAMM = f"ERA5_europa_{KURZ}"
+        UNTERTITEL = f"Abweichung vom Klimamittel {BEZUG} · Landflächen"
+    TAG_DATEI = f"ERA5_europa_tag_{KURZ}.txt"          # Tageswerte mit Abweichung zu diesem Bezug
+    FUSS = ("Datenquelle: Copernicus Climate Change Service (C3S) · ERA5 · CC BY 4.0 · eigene Berechnung\n"
+            "Landfläche 25°W–40°E, 34°–72°N · 1850-1900 = 1991-2020 − 1,43 K (wie Copernicus)"
+            if BEZUG == "1850-1900" else
+            "Datenquelle: ERA5, C3S/ECMWF (Climate Data Store) · CC BY 4.0 · eigene Berechnung\n"
             "Europa: Landflächen 34–72° N, 25° W–40° E")
 else:
     BEZUG = "1850-1900"
@@ -58,6 +66,14 @@ def anpassen_tage(df):
     Spalte bereitstellen, damit die Skripte unverändert weiterrechnen."""
     if EUROPA and "abw" in df.columns:
         df = df.rename(columns={"abw": "ano_91-20"})
+    return df
+
+
+def ohne_schalttag(df):
+    """Europa: Jahresmittel wie Copernicus ohne 29. Februar (sonst liegen Schaltjahre in °C rund
+    0,02 K zu tief). Global bleibt alles wie bei Climate Pulse."""
+    if EUROPA:
+        df = df[~((df["date"].dt.month == 2) & (df["date"].dt.day == 29))]
     return df
 
 
