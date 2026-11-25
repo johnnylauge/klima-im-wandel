@@ -235,19 +235,19 @@ def schwelle(s):
 
 kacheln = dict(
     stand=f"{LETZTER:%d.%m.%Y}", jahr=JAHR,
-    tag=dict(datum=f"{LETZTER:%d.%m.%Y}", temp=round(float(letzte["2t"]), 3), abw=round(float(letzte["abw"]), 3),
+    tag=dict(datum=f"{LETZTER:%d.%m.%Y}", temp=round(float(letzte["2t"]), 4), abw=round(float(letzte["abw"]), 4),
              rang=rang_tag, von=int(len(heute)),
-             rekord=round(float(rekord_c), 3), rekord_abw=round(rekord_abw, 3), rekord_jahr=rekord_j,
-             abstand=round(float(letzte["2t"] - rekord_c), 3)),
+             rekord=round(float(rekord_c), 4), rekord_abw=round(rekord_abw, 4), rekord_jahr=rekord_j,
+             abstand=round(float(letzte["2t"] - rekord_c), 4)),
     monat=dict(monat=int(m_jetzt["monat"]), name=MONATSNAMEN[int(m_jetzt["monat"]) - 1], voll=bool(monat_voll),
-               temp=round(float(m_jetzt["c"]), 3), abw=round(float(m_jetzt["k"]), 3),
+               temp=round(float(m_jetzt["c"]), 4), abw=round(float(m_jetzt["k"]), 4),
                rang=int((gleich["k"] > m_jetzt["k"]).sum()) + 1, von=int(len(gleich)),
-               rekord=round(float(m_rek["c"]), 3), rekord_abw=round(float(m_rek["k"]), 3), rekord_jahr=int(m_rek["jahr"])),
+               rekord=round(float(m_rek["c"]), 4), rekord_abw=round(float(m_rek["k"]), 4), rekord_jahr=int(m_rek["jahr"])),
     schwellen=[schwelle(s) for s in SCHWELLEN],
     ueber15=dict(tage=int((akt["abw"] > HAUPT).sum()), von=int(len(akt)),
                  monate=int((monate[(monate["jahr"] == JAHR)]["k"] > HAUPT).sum()),
                  von_monate=int((monate["jahr"] == JAHR).sum())),
-    jahr_bisher=dict(temp=round(float(akt["2t"].mean()), 3), abw=round(float(akt["abw"].mean()), 3),
+    jahr_bisher=dict(temp=round(float(akt["2t"].mean()), 4), abw=round(float(akt["abw"].mean()), 4),
                      rang=rang, von=int(len(jahre))),
 )
 kacheln.update(gebiet=GEBIET, name=GEBIET_NAME, start=START, bezug="1991-2020" if IST_MEER else "1850-1900")
@@ -268,9 +268,9 @@ if IST_NINO and "rnino" in df.columns:
         if w <= -1.0: return "mäßige La Niña"
         if w <= -0.5: return "schwache La Niña"
         return "neutral"
-    kacheln["rnino"] = dict(tag=round(float(rn.iloc[-1]), 3), mittel30=round(m30, 3), mittel90=round(m90, 3),
-                            stufe=stufe(m90), abw_tag=round(float(letzte["abw"]), 3),
-                            abw90=round(float(alle_tage["abw"].iloc[-90:].mean()), 3))
+    kacheln["rnino"] = dict(tag=round(float(rn.iloc[-1]), 4), mittel30=round(m30, 4), mittel90=round(m90, 4),
+                            stufe=stufe(m90), abw_tag=round(float(letzte["abw"]), 4),
+                            abw90=round(float(alle_tage["abw"].iloc[-90:].mean()), 4))
 with open(os.path.join(FOLDER, f"{STAMM}.json" if IST_MEER else "ERA5_aktuell.json"), "w", encoding="utf-8") as f:
     json.dump(kacheln, f, ensure_ascii=False)
 
