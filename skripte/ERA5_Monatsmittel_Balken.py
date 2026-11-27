@@ -433,12 +433,13 @@ def erstelle(monat, anzeigen=True):
     else:
         pad_bottom = 0.1
     if Y_LIMITS:
-        ax.set_ylim(*Y_LIMITS)
+        # feste Achse wie gewohnt - reicht sie nicht (z. B. ein Rekordmonat über 2 K), wird sie erweitert
+        unten = min(Y_LIMITS[0], np.floor((ymin - pad_bottom) * 4) / 4)
+        oben = max(Y_LIMITS[1], np.ceil((ymax + pad_top) * 4) / 4)
+        ax.set_ylim(unten, oben)
         ax.yaxis.set_major_locator(MultipleLocator(Y_TICK_STEP))
-        outside = annual[(annual["anomaly"] < Y_LIMITS[0]) | (annual["anomaly"] > Y_LIMITS[1])]
-        if not outside.empty:
-            print(f"Hinweis: {len(outside)} Wert(e) liegen außerhalb der y-Achse "
-                  f"{Y_LIMITS}: {', '.join(str(y) for y in outside.index)}")
+        if (unten, oben) != tuple(Y_LIMITS):
+            print(f"Hinweis: y-Achse erweitert auf {unten} bis {oben} K (Werte außerhalb von {Y_LIMITS})")
     else:
         ax.set_ylim(ymin - pad_bottom, ymax + pad_top)
     ax.set_xticks(range((START_YEAR // 10) * 10, current_year + 1, 10))
